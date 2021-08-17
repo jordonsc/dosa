@@ -15,6 +15,8 @@ const char* deviceServiceCharacteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1
  */
 void setup()
 {
+    Serial.begin(9600);
+
     initLights();
     initComms();
 
@@ -31,12 +33,13 @@ void setup()
 void loop()
 {
     setLights(false, true, false, false);
-    delay(500);
+    delay(200);
     setLights(false, false, true, false);
-    delay(500);
+    delay(200);
     setLights(false, false, false, true);
-    delay(500);
+    delay(200);
 }
+
 
 void initLights()
 {
@@ -51,22 +54,49 @@ void initLights()
 void initComms()
 {
     Serial.begin(9600);
-    while (!Serial) {
-    };
+    waitForSerial();
 
     if (!BLE.begin()) {
         Serial.println("ERROR: Starting BLE module failed!");
-        setLights(true, true, false, false);
-        while (1) {
-        };
+        errorPatternInit();
     }
 }
 
+/**
+ * Sets the onboard lights.
+ */
 void setLights(bool bin, bool red, bool green, bool blue)
 {
     digitalWrite(LED_BUILTIN, bin ? HIGH : LOW);
 
-    digitalWrite(LEDR, red ? HIGH : LOW);
-    digitalWrite(LEDG, green ? HIGH : LOW);
-    digitalWrite(LEDB, blue ? HIGH : LOW);
+    digitalWrite(LEDR, red ? LOW : HIGH);
+    digitalWrite(LEDG, green ? LOW : HIGH);
+    digitalWrite(LEDB, blue ? LOW : HIGH);
+}
+
+/**
+ * Waits for the serial interface to come up (user literally needs to open the serial monitor in the IDE).
+ * 
+ * Will blink a signal (yellow 500ms) while waiting.
+ */
+void waitForSerial() {
+    while (!Serial) {
+      setLights(true, true, true, false);
+      delay(500);
+      setLights(true, false, false, false);
+      delay(500);
+    };
+}
+
+/**
+ * Loops indefinitely in an error pattern suggesting an 'init' error.
+ */
+void errorPatternInit()
+{
+  while (true) {
+    setLights(true, true, false, false);
+    delay(500);
+    setLights(true, false, false, false);
+    delay(500);
+  };
 }
