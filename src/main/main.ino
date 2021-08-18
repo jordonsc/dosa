@@ -6,25 +6,36 @@
  */
 
 #include <ArduinoBLE.h>
+#include <dosa.h>
 
-const char* deviceServiceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
-const char* deviceServiceCharacteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1214";
+char const* deviceServiceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
+char const* deviceServiceCharacteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1214";
+int const max_devices = 5;
 
 /**
  * Arduino setup
  */
 void setup()
 {
-    Serial.begin(9600);
+    auto lights = dosa::Lights::getInstance();
+    lights.setBuiltIn(true);
 
-    initLights();
-    initComms();
+    auto serial = dosa::SerialComms::getInstance();
+    serial.wait();
 
-    BLE.setLocalName("DOSA Driver Unit");
-    BLE.advertise();
+    serial.writeln("-- DOSA Driver Unit --");
+    serial.writeln("begin init..");
 
-    Serial.println("DOSA Driver");
-    Serial.println(" ");
+    // Bluetooth init
+    auto bt = dosa::Bluetooth::getInstance();
+    bt.setName("DOSA Main Driver");
+    bt.setAdvertise(true);
+
+    // Init completed
+    serial.writeln("Init complete\n");
+
+    lights.off();
+    lights.setBlue(true);
 }
 
 /**
@@ -32,71 +43,65 @@ void setup()
  */
 void loop()
 {
-    setLights(false, true, false, false);
-    delay(200);
-    setLights(false, false, true, false);
-    delay(200);
-    setLights(false, false, false, true);
-    delay(200);
-}
+    BLEDevice sensors[max_devices];
 
+    auto lights = dosa::Lights::getInstance();
+    auto bt = dosa::Bluetooth::getInstance();
+    auto serial = dosa::SerialComms::getInstance();
 
-void initLights()
-{
-    pinMode(LEDR, OUTPUT);
-    pinMode(LEDG, OUTPUT);
-    pinMode(LEDB, OUTPUT);
-    pinMode(LED_BUILTIN, OUTPUT);
-
-    setLights(true, false, false, false);
-}
-
-void initComms()
-{
-    Serial.begin(9600);
-    waitForSerial();
-
-    if (!BLE.begin()) {
-        Serial.println("ERROR: Starting BLE module failed!");
-        errorPatternInit();
+    // Visual indicator of number of devices connected
+    // TODO: this adds a lot of lag, replace this later
+    for (int i = 0; i < max_devices; ++i) {
+        if (sensors[i] && sensors[i].connected()) {
+            lights.setBlue(true);
+            delay(100);
+            lights.setBlue(false);
+            delay(100);
+        }
     }
-}
 
-/**
- * Sets the onboard lights.
- */
-void setLights(bool bin, bool red, bool green, bool blue)
-{
-    digitalWrite(LED_BUILTIN, bin ? HIGH : LOW);
+    // Scan for new sensors to add
+    auto sensor = bt.scanForService(deviceServiceUuid);
+    if (sensor) {
+        serial.writeln("Found sensor: " + sensor.address());
 
-    digitalWrite(LEDR, red ? LOW : HIGH);
-    digitalWrite(LEDG, green ? LOW : HIGH);
-    digitalWrite(LEDB, blue ? LOW : HIGH);
-}
+        // Check if we already know about this sensor
+        bool registered = false;
+        for (int i = 0; i < max_devices; ++i) {
+            if (sensors[i]) {
+                if (sensors[i].address() == sensor.address()) {
+                    registered = true;
+                    // Already have this guy registered
+                    if (!sensors[i].connected()) {
+                        // No longer connected, reconnect
+                        serial.writeln("- reconnecting..");
+                        lights.setRed(true);
+                        lights.setGreen(true);
+                        delay(500);
+                        lights.setRed(false);
+                        lights.setGreen(false);
+                    } else {
+                        serial.writeln("- already connected");
+                        lights.setRed(true);
+                        lights.setBlue(true);
+                        delay(500);
+                        lights.setRed(false);
+                        lights.setBlue(false);
+                    }
+                }
+            }
+        }
 
-/**
- * Waits for the serial interface to come up (user literally needs to open the serial monitor in the IDE).
- * 
- * Will blink a signal (yellow 500ms) while waiting.
- */
-void waitForSerial() {
-    while (!Serial) {
-      setLights(true, true, true, false);
-      delay(500);
-      setLights(true, false, false, false);
-      delay(500);
-    };
-}
-
-/**
- * Loops indefinitely in an error pattern suggesting an 'init' error.
- */
-void errorPatternInit()
-{
-  while (true) {
-    setLights(true, true, false, false);
-    delay(500);
-    setLights(true, false, false, false);
-    delay(500);
-  };
+        if (!registered) {
+            // Device was not in our registry, connect to it
+            for (int i = 0; i < max_devices; ++i) {
+                if (sensors[i]) {
+                    sensors[i] = sensor;
+                    lights.setGreen(true);
+                    delay(500);
+                    lights.setGreen(false);
+                }
+            }
+        }
+    }
 }

@@ -1,4 +1,9 @@
-# System Files
+# IDE files
+.clwb
+.idea
+/bazel-*/
+
+# System files
 .DS_Store
 Thumbs.db
 
