@@ -3,6 +3,10 @@
 .idea
 bazel-*
 
+# Arduino user-specific sym-links
+arduino/*
+!arduino/BUILD
+
 # System files
 .DS_Store
 Thumbs.db
