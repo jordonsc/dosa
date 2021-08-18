@@ -4,7 +4,23 @@
 
 #pragma once
 
-#include <ArduinoBLE.h>
+#include <Arduino.h>
+
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 0
+#endif
+
+#ifndef LEDR
+#define LEDR 0
+#endif
+
+#ifndef LEDG
+#define LEDG 0
+#endif
+
+#ifndef LEDB
+#define LEDB 0
+#endif
 
 namespace dosa {
 

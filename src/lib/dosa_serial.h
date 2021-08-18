@@ -4,17 +4,34 @@
 
 #pragma once
 
-#include <ArduinoBLE.h>
+#include <Arduino.h>
 
 #include "dosa_error.h"
 #include "dosa_lights.h"
+
+#ifndef SERIAL_BUFFER_SIZE
+class Serial_
+{
+   public:
+    void begin(unsigned long) {}
+    void print(String const&) {}
+    void println(String const&) {}
+
+    explicit operator bool()
+    {
+        return true;
+    }
+};
+
+Serial_ Serial;
+#endif
 
 namespace dosa {
 
 class SerialComms
 {
    public:
-    static SerialComms &getInstance()
+    static SerialComms& getInstance()
     {
         static SerialComms instance;
         return instance;
@@ -23,7 +40,7 @@ class SerialComms
     /**
      * Write to serial interface.
      */
-    void write(String msg)
+    void write(String const& msg)
     {
         Serial.print(msg);
     }
@@ -31,7 +48,7 @@ class SerialComms
     /**
      * Write to serial interface, include a trailing new-line.
      */
-    void writeln(String msg)
+    void writeln(String const& msg)
     {
         Serial.println(msg);
     }

@@ -1,7 +1,7 @@
-# IDE files
+# IDE/build files
 .clwb
 .idea
-/bazel-*/
+bazel-*
 
 # System files
 .DS_Store

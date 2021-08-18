@@ -34,7 +34,7 @@ class Bluetooth
         }
     }
 
-    auto scanForService(char const* service)
+    BLEDevice scanForService(char const* service)
     {
         BLE.scanForUuid(service);
         return BLE.available();
@@ -43,7 +43,7 @@ class Bluetooth
    private:
     Bluetooth()
     {
-        BLE.setDeviceName("DOSA Driver");
+        // BLE.setDeviceName("DOSA");
     }
 };
 
