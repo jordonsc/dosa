@@ -25,14 +25,14 @@ void setup()
 
     auto& serial = dosa::SerialComms::getInstance();
     serial.setLogLevel(dosa::LogLevel::INFO);
-    serial.wait();
+    //serial.wait();
 
     serial.writeln("-- DOSA Motion Sensor --");
     serial.writeln("Begin init..");
 
     // Bluetooth init
     auto& bt = dosa::Bluetooth::getInstance();
-    if (!bt.setEnabled(true) || !bt.setName("DOSA-S " + bt.localAddress().substring(15)) ) {
+    if (!bt.setEnabled(true) || !bt.setName("DOSA-S " + bt.localAddress().substring(15))) {
         serial.writeln("Bluetooth init failed", dosa::LogLevel::CRITICAL);
         errorHoldingPattern();
     }
@@ -71,23 +71,33 @@ void loop()
     auto& lights = dosa::Lights::getInstance();
     auto& bt = dosa::Bluetooth::getInstance();
 
+    static String ctl = "";
+    static unsigned long updated = millis();
+
     if (!bt.isEnabled()) {
         serial.writeln("BT not enabled!", dosa::LogLevel::CRITICAL);
         errorHoldingPattern();
     }
 
     BLEDevice central = BLE.central();
-    if (central && central.connected()) {
-        serial.writeln("Connected to main driver: " + central.address());
-        lights.set(false, false, false, true);
 
-        while (central.connected()) {
-            delay(3000);
-            unsigned short state = random(100);
-            sensorCharacteristic.writeValue(state);
+    // Calling connected() will also poll the BLE interface
+    if (central && central.connected()) {
+        if (ctl != central.address()) {
+            serial.writeln("Connected to main driver: " + central.address());
+            ctl = central.address();
+            lights.set(false, false, false, true);
         }
 
-        serial.writeln("Disconnected from main driver");
-        lights.off();
+        if (millis() - updated > 500) {
+            sensorCharacteristic.writeValue(static_cast<unsigned short>(random(100, 200)));
+            updated = millis();
+        }
+    } else {
+        if (ctl != "") {
+            serial.writeln("Disconnected from " + ctl);
+            ctl = "";
+            lights.off();
+        }
     }
 }

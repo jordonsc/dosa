@@ -23,7 +23,7 @@ void setup()
 
     auto& serial = dosa::SerialComms::getInstance();
     serial.setLogLevel(dosa::LogLevel::INFO);
-    serial.wait();
+    // serial.wait();
 
     serial.writeln("-- DOSA Driver Unit --");
     serial.writeln("Begin init..");
@@ -47,18 +47,28 @@ void setup()
 bool connectToSensor(BLEDevice& device)
 {
     auto& serial = dosa::SerialComms::getInstance();
-    serial.write("Connecting to " + device.address() + ".. ");
+    serial.write("Connecting to " + device.address() + "..");
     if (device.connect()) {
-        if (device.discoverAttributes()) {
-            serial.writeln("success");
-            return true;
-        } else {
-            serial.writeln("discovery failed");
-            device.disconnect();
-            return false;
+        for (int i = 0; i < 3; ++i) {
+            if (device.discoverAttributes()) {
+                serial.writeln(" success");
+                return true;
+            } else {
+                serial.write(".");
+
+                if (!device.connected()) {
+                    serial.writeln(" failed");
+                    device.disconnect();
+                    return false;
+                }
+            }
         }
+        serial.writeln(" discovery failed");
+        device.disconnect();
+        return false;
+
     } else {
-        serial.writeln("failed");
+        serial.writeln(" failed");
         return false;
     }
 }
@@ -68,7 +78,9 @@ bool connectToSensor(BLEDevice& device)
  */
 void loop()
 {
-    static BLEDevice sensors[max_devices];
+    static BLEDevice devices[max_devices];
+    static BLECharacteristic sensors[max_devices];
+    static unsigned short states[max_devices] = {0};
 
     auto& lights = dosa::Lights::getInstance();
     auto& bt = dosa::Bluetooth::getInstance();
@@ -81,32 +93,24 @@ void loop()
 
     // Visual indicator of number of devices connected
     int connected = 0;
-    for (auto& s : sensors) {
-        if (!s) {
+    for (unsigned i = 0; i < max_devices; ++i) {
+        auto& d = devices[i];
+        if (!d) {
             continue;
         }
 
-        if (s.connected()) {
-            BLECharacteristic sensorCharacteristic = s.characteristic(sensorCharacteristicId);
-            if (!sensorCharacteristic) {
-                serial.writeln("Device " + s.address() + " is not reporting a sensor", dosa::LogLevel::ERROR);
-                s.disconnect();
-                continue;
-            } else if (!sensorCharacteristic.canRead()) {
-                serial.writeln("Device" + s.address() + " is not granting sensor access", dosa::LogLevel::ERROR);
-                s.disconnect();
-                continue;
-            }
-
-            sensorCharacteristic.read();
+        if (d.connected()) {
             unsigned short value = 0;
-            sensorCharacteristic.readValue(value);
-            serial.writeln("Sensor " + s.address() + " reporting state: " + (value == 0 ? "INACTIVE" : "ACTIVE"));
+            sensors[i].readValue(value);
+            if (value != states[i]) {
+                serial.writeln("Sensor " + d.address() + " new state: " + value);
+                states[i] = value;
+            }
 
             ++connected;
         } else {
-            serial.writeln("Disconnected: " + s.address());
-            s = BLEDevice();
+            serial.writeln("Failed: " + d.address());
+            // d = BLEDevice();
         }
     }
 
@@ -120,28 +124,43 @@ void loop()
         lights.red();
     }
 
-    // Scan for new sensors to add
-    auto sensor = bt.scanForService(sensorServiceId);
-    if (sensor) {
-        // Check if we already know about this sensor
-        for (auto& i : sensors) {
-            if (i && (i.address() == sensor.address())) {
+    // Scan for new devices to add
+    auto device = bt.scanForService(sensorServiceId);
+    if (device) {
+        // Check if we already know about this device
+        for (auto& i : devices) {
+            if (i && (i.address() == device.address())) {
                 return;
             }
         }
 
         // Device was not in our registry, scan for a free slot and connect to it
-        for (auto& i : sensors) {
-            if (!i) {
-                if (connectToSensor(sensor)) {
-                    i = sensor;
+        for (int i = 0; i < max_devices; ++i) {
+            if (!devices[i]) {
+                if (connectToSensor(device)) {
+                    BLECharacteristic sensor = device.characteristic(sensorCharacteristicId);
+                    if (!sensor) {
+                        serial.writeln(
+                            "Device " + device.address() + " is not reporting a sensor",
+                            dosa::LogLevel::ERROR);
+                        device.disconnect();
+                    } else if (!sensor.canRead()) {
+                        serial.writeln(
+                            "Device" + device.address() + " is not granting sensor access",
+                            dosa::LogLevel::ERROR);
+                        device.disconnect();
+                    } else {
+                        devices[i] = device;
+                        sensors[i] = sensor;
+                    }
                 }
+
                 return;
             }
         }
 
         serial.writeln(
-            "Unable to register sensor (" + sensor.address() + "): hit device limit",
+            "Unable to register sensor (" + device.address() + "): hit device limit",
             dosa::LogLevel::WARNING);
         lights.off();
         errorSignal();
