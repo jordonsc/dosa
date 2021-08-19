@@ -1,6 +1,5 @@
 Project Setup
 =============
-
 Connecting to the Arduino's
 ---------------------------
 
@@ -10,6 +9,8 @@ Programming the Arduino's is done via the Arduino IDE. Download the [Arduino IDE
 get started.
 
 You may use any IDE to edit code, but you'll need to use the Arduino IDE to compile and burn the binary.
+
+On Linux, you'll need to run the IDE as `root`.
 
 ### Board Driver
 
@@ -49,7 +50,7 @@ path is something like `Arduino\libraries\**\*`.
 
 ### Linux
 
-    ln -s ~/PROJECT-PATH/src/lib /root/Arduino/libraries/dosa
+    sudo ln -s ~/PROJECT-PATH/src/lib /root/Arduino/libraries/dosa
 
 ### Windows
 On Windows, consider using the `cmd` prompt (as Administrator) with something like this:
@@ -62,7 +63,14 @@ If you're using an IDE that wants to be able to see the Arduino library headers,
 `arduino/` directory (which will be git ignored). There is a Bazel build file there pre-configured.
 
     # Update this path with the location of your Arduino IDE installation -
-    ln -s ~/bin/arduino-1.8.15/hardware/arduino/avr/cores/arduino arduino
+    ln -s ~/bin/arduino-1.8.15/hardware/arduino/avr/cores/arduino arduino/arduino
     
     # This can only be linked after you've downloaded the libraries in the IDE
     ln -s ~/Arduino/libraries/ArduinoBLE arduino/ArduinoBLE
+
+> NB: Change paths if you have not installed BLE libraries under your local user.
+
+
+Getting Started
+---------------
+Head on over to the [Getting Started](Getting_Started.md) docs to dive into the codebase.

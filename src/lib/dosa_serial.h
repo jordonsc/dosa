@@ -28,29 +28,51 @@ Serial_ Serial;
 
 namespace dosa {
 
+enum class LogLevel
+{
+    TRACE = 0,
+    DEBUG = 1,
+    INFO = 2,
+    WARNING = 3,
+    ERROR = 4,
+    CRITICAL = 5
+};
+
 class SerialComms
 {
    public:
+    SerialComms(SerialComms const&) = delete;
+    void operator=(SerialComms const&) = delete;
+
     static SerialComms& getInstance()
     {
         static SerialComms instance;
         return instance;
     }
 
+    void setLogLevel(LogLevel level)
+    {
+        loggingLevel = level;
+    }
+
     /**
      * Write to serial interface.
      */
-    void write(String const& msg)
+    void write(String const& msg, LogLevel level = LogLevel::INFO)
     {
-        Serial.print(msg);
+        if (level >= loggingLevel) {
+            Serial.print(msg);
+        }
     }
 
     /**
      * Write to serial interface, include a trailing new-line.
      */
-    void writeln(String const& msg)
+    void writeln(String const& msg, LogLevel level = LogLevel::INFO)
     {
-        Serial.println(msg);
+        if (level >= loggingLevel) {
+            Serial.println(msg);
+        }
     }
 
     /**
@@ -60,7 +82,7 @@ class SerialComms
      */
     void wait()
     {
-        auto lights = dosa::Lights::getInstance();
+        auto& lights = dosa::Lights::getInstance();
 
         while (!Serial) {
             lights.setRed(true);
@@ -77,6 +99,8 @@ class SerialComms
     {
         Serial.begin(9600);
     }
+
+    LogLevel loggingLevel = LogLevel::INFO;
 };
 
 }  // namespace dosa

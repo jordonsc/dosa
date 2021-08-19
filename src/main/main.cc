@@ -18,18 +18,24 @@ int const max_devices = 5;
  */
 void setup()
 {
-    auto lights = dosa::Lights::getInstance();
+    auto& lights = dosa::Lights::getInstance();
     lights.setBuiltIn(true);
 
-    auto serial = dosa::SerialComms::getInstance();
+    auto& serial = dosa::SerialComms::getInstance();
+    serial.setLogLevel(dosa::LogLevel::INFO);
     serial.wait();
 
     serial.writeln("-- DOSA Driver Unit --");
     serial.writeln("Begin init..");
 
     // Bluetooth init
-    auto bt = dosa::Bluetooth::getInstance();
-    bt.setName("DOSA Main Driver");
+    auto& bt = dosa::Bluetooth::getInstance();
+    if (!bt.setEnabled(true) || !bt.setName("DOSA-D " + bt.localAddress().substring(15))) {
+        serial.writeln("Bluetooth init failed", dosa::LogLevel::CRITICAL);
+        errorHoldingPattern();
+    }
+
+    bt.setAppearance(0x0741);  // powered gate
     bt.setAdvertise(true);
 
     // Init completed
@@ -38,10 +44,23 @@ void setup()
     lights.off();
 }
 
-void connectToSensor(BLEDevice const& device)
+bool connectToSensor(BLEDevice& device)
 {
-    auto serial = dosa::SerialComms::getInstance();
-    serial.writeln("Connecting to: " + device.localName() + " at " + device.address());
+    auto& serial = dosa::SerialComms::getInstance();
+    serial.write("Connecting to " + device.address() + ".. ");
+    if (device.connect()) {
+        if (device.discoverAttributes()) {
+            serial.writeln("success");
+            return true;
+        } else {
+            serial.writeln("discovery failed");
+            device.disconnect();
+            return false;
+        }
+    } else {
+        serial.writeln("failed");
+        return false;
+    }
 }
 
 /**
@@ -49,68 +68,83 @@ void connectToSensor(BLEDevice const& device)
  */
 void loop()
 {
-    BLEDevice sensors[max_devices];
+    static BLEDevice sensors[max_devices];
 
-    auto lights = dosa::Lights::getInstance();
-    auto bt = dosa::Bluetooth::getInstance();
-    auto serial = dosa::SerialComms::getInstance();
+    auto& lights = dosa::Lights::getInstance();
+    auto& bt = dosa::Bluetooth::getInstance();
+    auto& serial = dosa::SerialComms::getInstance();
+
+    if (!bt.isEnabled()) {
+        serial.writeln("BT not enabled!", dosa::LogLevel::CRITICAL);
+        errorHoldingPattern();
+    }
 
     // Visual indicator of number of devices connected
-    // TODO: this adds a lot of lag, replace this later
-    for (const auto& sensor : sensors) {
-        if (sensor && sensor.connected()) {
-            lights.setBlue(true);
-            delay(100);
-            lights.setBlue(false);
-            delay(100);
+    int connected = 0;
+    for (auto& s : sensors) {
+        if (!s) {
+            continue;
+        }
+
+        if (s.connected()) {
+            BLECharacteristic sensorCharacteristic = s.characteristic(sensorCharacteristicId);
+            if (!sensorCharacteristic) {
+                serial.writeln("Device " + s.address() + " is not reporting a sensor", dosa::LogLevel::ERROR);
+                s.disconnect();
+                continue;
+            } else if (!sensorCharacteristic.canRead()) {
+                serial.writeln("Device" + s.address() + " is not granting sensor access", dosa::LogLevel::ERROR);
+                s.disconnect();
+                continue;
+            }
+
+            sensorCharacteristic.read();
+            unsigned short value = 0;
+            sensorCharacteristic.readValue(value);
+            serial.writeln("Sensor " + s.address() + " reporting state: " + (value == 0 ? "INACTIVE" : "ACTIVE"));
+
+            ++connected;
+        } else {
+            serial.writeln("Disconnected: " + s.address());
+            s = BLEDevice();
         }
     }
-    delay(200);
+
+    if (connected == 0) {
+        lights.off();
+    } else if (connected == 1) {
+        lights.blue();
+    } else if (connected == 2) {
+        lights.green();
+    } else {
+        lights.red();
+    }
 
     // Scan for new sensors to add
     auto sensor = bt.scanForService(sensorServiceId);
     if (sensor) {
-        serial.writeln("Found sensor: " + sensor.address());
-
         // Check if we already know about this sensor
-        bool registered = false;
         for (auto& i : sensors) {
-            if (i) {
-                if (i.address() == sensor.address()) {
-                    registered = true;
-                    // Already have this guy registered
-                    if (!i.connected()) {
-                        // No longer connected, reconnect
-                        serial.writeln("- reconnecting..");
-                        lights.setRed(true);
-                        lights.setGreen(true);
-                        connectToSensor(sensor);
-                        delay(500);
-                        lights.setRed(false);
-                        lights.setGreen(false);
-                    } else {
-                        serial.writeln("- already connected");
-                        lights.setRed(true);
-                        lights.setBlue(true);
-                        delay(500);
-                        lights.setRed(false);
-                        lights.setBlue(false);
-                    }
-                }
+            if (i && (i.address() == sensor.address())) {
+                return;
             }
         }
 
-        if (!registered) {
-            // Device was not in our registry, connect to it
-            for (auto& i : sensors) {
-                if (i) {
+        // Device was not in our registry, scan for a free slot and connect to it
+        for (auto& i : sensors) {
+            if (!i) {
+                if (connectToSensor(sensor)) {
                     i = sensor;
-                    lights.setGreen(true);
-                    connectToSensor(sensor);
-                    delay(500);
-                    lights.setGreen(false);
                 }
+                return;
             }
         }
+
+        serial.writeln(
+            "Unable to register sensor (" + sensor.address() + "): hit device limit",
+            dosa::LogLevel::WARNING);
+        lights.off();
+        errorSignal();
+        delay(1000);
     }
 }

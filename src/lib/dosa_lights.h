@@ -27,6 +27,9 @@ namespace dosa {
 class Lights
 {
    public:
+    Lights(Lights const&) = delete;
+    void operator=(Lights const&) = delete;
+
     static Lights& getInstance()
     {
         static Lights instance;
@@ -38,7 +41,31 @@ class Lights
      */
     void off()
     {
-        setLights(false, false, false, false);
+        set(false, false, false, false);
+    }
+
+    /**
+     * Illuminate red light only, all others off.
+     */
+    void red()
+    {
+        set(false, true, false, false);
+    }
+
+    /**
+     * Illuminate green light only, all others off.
+     */
+    void green()
+    {
+        set(false, false, true, false);
+    }
+
+    /**
+     * Illuminate blue light only, all others off.
+     */
+    void blue()
+    {
+        set(false, false, false, true);
     }
 
     /**
@@ -76,7 +103,7 @@ class Lights
     /**
      * Sets the state of all onboard lights.
      */
-    void setLights(bool bin, bool red, bool green, bool blue)
+    void set(bool bin, bool red, bool green, bool blue)
     {
         setBuiltIn(bin);
         setRed(red);
