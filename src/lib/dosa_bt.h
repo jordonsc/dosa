@@ -35,6 +35,30 @@ class Bluetooth
         BLE.setAppearance(value);
     }
 
+    /**
+     * Set the connection interval in multiples of 1.25ms.
+     * milliseconds = value * 1.25
+     *
+     * Min cannot be lower than 7.5ms (6)
+     * Max cannot be higher than 4s (3200)
+     */
+    void setConnectionInterval(uint16_t min, uint16_t max) const
+    {
+        if (!enabled) {
+            auto& serial = dosa::SerialComms::getInstance();
+            serial.writeln("BT disabled, cannot alter connection interval", LogLevel::ERROR);
+            return;
+        }
+
+        if (min < 6 || max < 6 || min > 3200 || max > 3200 || max < min) {
+            auto& serial = dosa::SerialComms::getInstance();
+            serial.writeln("Connection interval values are invalid", LogLevel::ERROR);
+            return;
+        }
+
+        BLE.setConnectionInterval(min, max);
+    }
+
     String localAddress()
     {
         return BLE.address();

@@ -37,6 +37,7 @@ void setup()
         errorHoldingPattern();
     }
 
+    bt.setConnectionInterval(500, 3200);  // 0.5-4 seconds
     bt.setAppearance(0x0541);  // motion sensor
 
     if (!BLE.setAdvertisedService(sensorService)) {
