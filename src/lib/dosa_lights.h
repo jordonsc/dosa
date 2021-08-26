@@ -81,7 +81,9 @@ class Lights
      */
     void setRed(bool value)
     {
+#if LEDR > 0
         digitalWrite(LEDR, value ? LOW : HIGH);
+#endif
     }
 
     /**
@@ -89,7 +91,9 @@ class Lights
      */
     void setGreen(bool value)
     {
+#if LEDG > 0
         digitalWrite(LEDG, value ? LOW : HIGH);
+#endif
     }
 
     /**
@@ -97,7 +101,9 @@ class Lights
      */
     void setBlue(bool value)
     {
+#if LEDB > 0
         digitalWrite(LEDB, value ? LOW : HIGH);
+#endif
     }
 
     /**
@@ -106,17 +112,29 @@ class Lights
     void set(bool bin, bool red, bool green, bool blue)
     {
         setBuiltIn(bin);
+#if LEDR > 0
         setRed(red);
+#endif
+#if LEDG > 0
         setGreen(green);
+#endif
+#if LEDB > 0
         setBlue(blue);
+#endif
     }
 
    private:
     Lights()
     {
+#if LEDR > 0
         pinMode(LEDR, OUTPUT);
+#endif
+#if LEDG > 0
         pinMode(LEDG, OUTPUT);
+#endif
+#if LEDB > 0
         pinMode(LEDB, OUTPUT);
+#endif
         pinMode(LED_BUILTIN, OUTPUT);
 
         off();

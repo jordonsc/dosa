@@ -68,10 +68,15 @@ class Bluetooth
     {
         auto& serial = dosa::SerialComms::getInstance();
         if (value) {
-            serial.writeln("Enabling BLE", LogLevel::DEBUG);
-            enabled = (bool)BLE.begin();
+            serial.writeln("Enabling BLE..", LogLevel::DEBUG);
+            enabled = BLE.begin() == 1;
+
+            // deviceName = "DOSA" + localAddress().substring(15);
+            // BLE.setDeviceName(deviceName.c_str());
+
+            // BLE.setTimeout(10000);
         } else {
-            serial.writeln("Disabling BLE", LogLevel::DEBUG);
+            serial.writeln("Disabling BLE..", LogLevel::DEBUG);
             BLE.end();
             enabled = false;
         }
@@ -82,6 +87,16 @@ class Bluetooth
     [[nodiscard]] bool isEnabled() const
     {
         return enabled;
+    }
+
+    [[nodiscard]] bool isScanning() const
+    {
+        return scanning;
+    }
+
+    [[nodiscard]] bool isAdvertising() const
+    {
+        return advertising;
     }
 
     /**
@@ -101,50 +116,53 @@ class Bluetooth
     }
 
     /**
-     * Toggle the BT advertising state.
+     * Toggle the BT advertising & connectability state.
      *
      * This will NOT turn the BT on or off, BT can be enabled but not advertising.
      *
      * Returns false on failure.
      */
-    bool setAdvertise(bool advertise) const
+    bool setAdvertise(bool advertise)
     {
-        if (enabled) {
-            if (advertise) {
-                return (bool)BLE.advertise();
-            } else {
-                BLE.stopAdvertise();
-                return true;
-            }
+        if (advertise) {
+            BLE.setConnectable(true);
+            advertising = BLE.advertise() == 1;
         } else {
-            auto& serial = dosa::SerialComms::getInstance();
-            serial.writeln("BT disabled, cannot alter advertising state", LogLevel::ERROR);
-            return false;
+            BLE.setConnectable(false);
+            BLE.stopAdvertise();
+            advertising = false;
         }
+
+        return advertising;
     }
 
-    [[nodiscard]] BLEDevice scanForService(String const& service) const
+    void scanForService(String const& service)
     {
         auto& serial = dosa::SerialComms::getInstance();
-        if (enabled) {
-            serial.writeln("Scanning for service " + service, LogLevel::DEBUG);
-            BLE.scanForUuid(service);
-            return BLE.available();
-        } else {
-            serial.writeln("Attempting to scan when disabled", LogLevel::ERROR);
-            return BLEDevice();
-        }
+        serial.writeln("Scanning for service " + service, LogLevel::DEBUG);
+        BLE.scanForUuid(service);
+        scanning = true;
+    }
+
+    void stopScan()
+    {
+        BLE.stopScan();
+        scanning = false;
     }
 
    private:
     Bluetooth()
     {
-        BLE.setDeviceName("DOSA");
         localName = "DOSA";
+        deviceName = "DOSA";
+        BLE.setDeviceName(deviceName.c_str());
     }
 
     bool enabled = false;
+    bool scanning = false;
+    bool advertising = false;
     String localName;
+    String deviceName;
 };
 
 }  // namespace dosa

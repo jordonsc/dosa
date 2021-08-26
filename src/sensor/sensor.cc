@@ -9,11 +9,11 @@
 #include <ArduinoBLE.h>
 #include <dosa.h>
 
-char const* sensorServiceId = "19b10000-e8f2-537e-4f6c-d104768a1214";
-char const* sensorCharacteristicId = "19b10001-e8f2-537e-4f6c-d104768a1214";
+// Time between checking health of central connection (ms)
+#define CON_CHECK 500
 
-BLEService sensorService(sensorServiceId);
-BLEUnsignedShortCharacteristic sensorCharacteristic(sensorCharacteristicId, BLERead | BLENotify);
+BLEService sensorService(dosa::sensor_svc_id);
+BLEUnsignedShortCharacteristic sensorCharacteristic(dosa::sensor_char_id, BLERead | BLENotify);
 
 /**
  * Arduino setup
@@ -24,8 +24,8 @@ void setup()
     lights.setBuiltIn(true);
 
     auto& serial = dosa::SerialComms::getInstance();
-    serial.setLogLevel(dosa::LogLevel::INFO);
-    //serial.wait();
+    serial.setLogLevel(dosa::LogLevel::DEBUG);
+    // serial.wait();
 
     serial.writeln("-- DOSA Motion Sensor --");
     serial.writeln("Begin init..");
@@ -38,7 +38,7 @@ void setup()
     }
 
     bt.setConnectionInterval(500, 3200);  // 0.5-4 seconds
-    bt.setAppearance(0x0541);  // motion sensor
+    bt.setAppearance(0x0541);             // motion sensor
 
     if (!BLE.setAdvertisedService(sensorService)) {
         serial.writeln("Bluetooth failed to set advertised service", dosa::LogLevel::CRITICAL);
@@ -59,7 +59,6 @@ void setup()
 
     // Init completed
     serial.writeln("Init complete\n");
-
     lights.off();
 }
 
@@ -68,37 +67,49 @@ void setup()
  */
 void loop()
 {
-    auto& serial = dosa::SerialComms::getInstance();
-    auto& lights = dosa::Lights::getInstance();
-    auto& bt = dosa::Bluetooth::getInstance();
+    static auto& serial = dosa::SerialComms::getInstance();
+    static auto& lights = dosa::Lights::getInstance();
+    static auto& bt = dosa::Bluetooth::getInstance();
 
-    static String ctl = "";
-    static unsigned long updated = millis();
+    static bool connected = false;
+    static BLEDevice central;
+    static unsigned long last_health_check = 0;
+    static unsigned long last_updated = 0;
+
+    static unsigned short sensor_value = 1;
 
     if (!bt.isEnabled()) {
         serial.writeln("BT not enabled!", dosa::LogLevel::CRITICAL);
         errorHoldingPattern();
     }
 
-    BLEDevice central = BLE.central();
+    if (connected) {
+        if (millis() - last_health_check > CON_CHECK) {
+            last_health_check = millis();
 
-    // Calling connected() will also poll the BLE interface
-    if (central && central.connected()) {
-        if (ctl != central.address()) {
-            serial.writeln("Connected to main driver: " + central.address());
-            ctl = central.address();
-            lights.set(false, false, false, true);
-        }
-
-        if (millis() - updated > 500) {
-            sensorCharacteristic.writeValue(static_cast<unsigned short>(random(100, 200)));
-            updated = millis();
+            if (!central.connected()) {
+                connected = false;
+                lights.off();
+                serial.writeln("Disconnected");
+                bt.setAdvertise(true);
+            }
         }
     } else {
-        if (ctl != "") {
-            serial.writeln("Disconnected from " + ctl);
-            ctl = "";
-            lights.off();
+        central = BLE.central();
+        if (central) {
+            bt.setAdvertise(false);
+            last_health_check = millis();
+            connected = true;
+            lights.set(true, false, false, true);
+            serial.writeln("Connected to main driver: " + central.address());
         }
+    }
+
+    // Test data - change random value every 2 seconds
+    if (millis() - last_updated > 2000) {
+        last_updated = millis();
+        sensor_value = static_cast<unsigned short>(random(100, 200));
+        serial.writeln("Update sensor value: " + String(sensor_value));
+        sensorCharacteristic.writeValue(sensor_value);
     }
 }

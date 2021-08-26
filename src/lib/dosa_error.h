@@ -53,12 +53,11 @@ void waitSignal()
 void errorHoldingPattern()
 {
     auto& lights = dosa::Lights::getInstance();
-    lights.set(true, false, false, false);
 
     while (true) {
-        lights.setRed(true);
+        lights.set(true, true, false, false);
         delay(500);
-        lights.setRed(true);
+        lights.off();
         delay(500);
     }
 }
