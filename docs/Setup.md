@@ -17,7 +17,8 @@ On Linux, you'll need to run the IDE as `root`.
 Once you have the IDE, you need the correct board drivers for the Nano BLE boards. Go to *Tools* > *Board* > *Board
 Manager* then search for and install:
 
-* Arduino Mbed OS Nano Boards
+* _Arduino Mbed OS Nano Boards_: for Nano 33 BLE boards
+* _Arduino SAMD Boards (32-bits ARM Cortex-M0+)_: for Nano 33 IoT boards
 
 Select *Arduino Nano 33 BLE* from the _Board_ selection once the driver has been installed.
 

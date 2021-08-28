@@ -85,12 +85,10 @@ class SerialComms
         auto& lights = dosa::Lights::getInstance();
 
         while (!Serial) {
-            lights.setRed(true);
-            lights.setGreen(true);
-            delay(500);
-            lights.setRed(false);
-            lights.setGreen(false);
-            delay(500);
+            lights.set(true, true, true, true);
+            delay(1500);
+            lights.off();
+            delay(1500);
         }
     }
 

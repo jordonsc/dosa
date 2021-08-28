@@ -21,8 +21,8 @@ cc_library(
 )
 
 cc_binary(
-    name = "main",
-    srcs = glob(["src/main/main.cc"]),
+    name = "door",
+    srcs = glob(["src/door/door.cc"]),
     copts = COPTS,
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],

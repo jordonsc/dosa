@@ -1,6 +1,10 @@
+/**
+ * Central sensor pool container.
+ */
+
 #pragma once
 
-#include "dosa_sensor.h"
+#include "dosa_motion_sensor.h"
 
 namespace dosa {
 
@@ -73,7 +77,7 @@ class DevicePool
                 continue;
             }
 
-            if (d.shouldPoll(poll_freq) && d.poll()) {
+            if (d.shouldPoll(DOSA_POLL_FREQ) && d.poll()) {
                 serial.writeln("Device " + d.getAddress() + " new state: " + d.getState());
 
                 // Polling may have invalidated the connection. If d is still returning true, then the connection lives
@@ -91,7 +95,7 @@ class DevicePool
     }
 
    private:
-    Sensor devices[max_devices];
+    Sensor devices[DOSA_MAX_PERIPHERALS];
     dosa::SerialComms& serial;
 
     DevicePool() : serial(dosa::SerialComms::getInstance()) {}

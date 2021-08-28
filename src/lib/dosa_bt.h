@@ -1,5 +1,5 @@
 /**
- * Bluetooth Comms.
+ * Bluetooth library for central and peripheral devices.
  */
 
 #pragma once
@@ -50,16 +50,10 @@ class Bluetooth
             return;
         }
 
-        if (min < 6 || max < 6 || min > 3200 || max > 3200 || max < min) {
-            auto& serial = dosa::SerialComms::getInstance();
-            serial.writeln("Connection interval values are invalid", LogLevel::ERROR);
-            return;
-        }
-
         BLE.setConnectionInterval(min, max);
     }
 
-    String localAddress()
+    [[nodiscard]] String localAddress() const
     {
         return BLE.address();
     }
@@ -70,11 +64,6 @@ class Bluetooth
         if (value) {
             serial.writeln("Enabling BLE..", LogLevel::DEBUG);
             enabled = BLE.begin() == 1;
-
-            // deviceName = "DOSA" + localAddress().substring(15);
-            // BLE.setDeviceName(deviceName.c_str());
-
-            // BLE.setTimeout(10000);
         } else {
             serial.writeln("Disabling BLE..", LogLevel::DEBUG);
             BLE.end();
@@ -104,7 +93,7 @@ class Bluetooth
      *
      * Returns false on failure.
      */
-    bool setName(String const& name)
+    bool setLocalName(String const& name)
     {
         auto& serial = dosa::SerialComms::getInstance();
         serial.writeln("Local name: " + name);
@@ -113,6 +102,20 @@ class Bluetooth
         // important to store in a local variable.
         localName = name;
         return BLE.setLocalName(localName.c_str());
+    }
+
+    /**
+     * Set the BT device name.
+     */
+    void setDeviceName(String const& name)
+    {
+        auto& serial = dosa::SerialComms::getInstance();
+        serial.writeln("Device name: " + name);
+
+        // IMPORTANT: updating or invalidating the reference passed will update (or break) the BLE device name, so it's
+        // important to store in a local variable.
+        deviceName = name;
+        BLE.setDeviceName(deviceName.c_str());
     }
 
     /**

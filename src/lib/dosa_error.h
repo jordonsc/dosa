@@ -1,5 +1,7 @@
 /**
  * Error patterns.
+ *
+ * Use these to signal an error pattern using device lights.
  */
 
 #pragma once

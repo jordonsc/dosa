@@ -1,3 +1,7 @@
+/**
+ * Client class for motion sensor satellites.
+ */
+
 #pragma once
 
 #include <ArduinoBLE.h>
@@ -12,7 +16,7 @@ class Sensor
    public:
     Sensor() : serial(dosa::SerialComms::getInstance()) {}
 
-    [[nodiscard]] unsigned short getState() const
+    [[nodiscard]] byte getState() const
     {
         return state;
     }
@@ -117,7 +121,7 @@ class Sensor
     BLEDevice device;
     BLECharacteristic sensor;
 
-    unsigned short state = 0;
+    byte state = 0;
     unsigned long last_poll = 0;
     dosa::SerialComms& serial;
 };
