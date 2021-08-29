@@ -26,7 +26,7 @@ BLEByteCharacteristic sensor_characteristic(dosa::sensor_char_id, BLERead | BLEN
 void setup()
 {
     auto& lights = dosa::Lights::getInstance();
-    lights.setBuiltIn(true);
+    lights.setDoor(true);
 
     auto& serial = dosa::SerialComms::getInstance();
     serial.setLogLevel(dosa::LogLevel::DEBUG);

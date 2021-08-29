@@ -11,36 +11,68 @@
 #include "dosa_const.h"
 #include "dosa_serial.h"
 
-#define SWITCH_DEBOUNCE_THRESHOLD 200
+#define SWITCH_DEBOUNCE_THRESHOLD 100
 
 namespace dosa {
 
 class Switch
 {
    public:
-    explicit Switch(uint8_t p) : pin(p), serial(dosa::SerialComms::getInstance())
+    /**
+     * Any given open/close switch.
+     *
+     * @param p  Digital pin number
+     * @param pu If the switch is configured for pull-up (else it must have a pull-down resistor)
+     */
+    explicit Switch(uint8_t p, bool pu) : pin(p), pull_up(pu), serial(dosa::SerialComms::getInstance())
     {
-        pinMode(pin, INPUT);
+        if (pull_up) {
+            pinMode(pin, INPUT_PULLUP);
+        } else {
+            pinMode(pin, INPUT);
+        }
     }
 
     /**
-     * Checks for state change, triggers callback on change.
+     * Checks for state change.
+     *
+     * Returns true if the state has changed.
      */
-    void process() {}
+    bool process()
+    {
+        if (millis() - last_poll < SWITCH_DEBOUNCE_THRESHOLD) {
+            return false;
+        }
+
+        last_poll = millis();
+        bool s = digitalRead(pin) == 1;
+        if (pull_up) {
+            s = !s;
+        }
+
+        if (s != state) {
+            state = s;
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     /**
-     * Get the state of the switch.
+     * Get the last known state of the switch.
      *
-     * @return
+     * Returns true if the switch is closed. To update the state, first call `process()`.
      */
-    bool getState()
+    [[nodiscard]] bool getState() const
     {
-        return digitalRead(pin) == 1;
+        return state;
     }
 
    protected:
     uint8_t pin;
-    uint8_t state = 0;
+    bool pull_up;
+    bool state = false;
+    unsigned long last_poll = 0;
     dosa::SerialComms& serial;
 };
 

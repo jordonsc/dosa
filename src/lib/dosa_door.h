@@ -30,20 +30,58 @@ class Door
 
     /**
      * Trigger the door open/close sequence.
-     *
-     * Do not manually call lower-level functions during this sequence.
      */
-    void trigger() {}
+    void trigger()
+    {
+        open();
+        delay(2000);
+        close();
+    }
 
     /**
      * Start door open sequence
      */
-    void open() {}
+    void open()
+    {
+        serial.writeln("Door: OPEN");
+
+        for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
+            setMotor(true, pwr);
+            delay(100);
+        }
+        setMotor(true, 255);
+        serial.writeln("Full drive, current: " + String(getMotorCurrent()), dosa::LogLevel::DEBUG);
+
+        delay(2000);
+
+        for (unsigned short pwr = 250; pwr > 50; pwr -= 10) {
+            setMotor(true, pwr);
+            delay(100);
+        }
+
+        delay(2000);
+        stopMotor();
+    }
 
     /**
      * Release the door, allowing it to close fully.
      */
-    void close() {}
+    void close()
+    {
+        serial.writeln("Door: CLOSE");
+
+        for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
+            setMotor(false, pwr);
+            delay(100);
+        }
+
+        setMotor(false, 255);
+        serial.writeln("Full drive, current: " + String(getMotorCurrent()), dosa::LogLevel::DEBUG);
+
+        delay(3000);
+
+        stopMotor();
+    }
 
     void stopMotor()
     {
@@ -68,45 +106,6 @@ class Door
     int getMotorCurrent()
     {
         return analogRead(PIN_MOTOR_CS);
-    }
-
-    void motorTest()
-    {
-        serial.writeln("\nBEGIN MOTOR TEST");
-
-        serial.writeln("Forward 10");
-        setMotor(true, 10);
-        delay(1000);
-        serial.writeln("Current: " + String(getMotorCurrent()));
-        delay(1000);
-
-        serial.writeln("Forward 100");
-        setMotor(true, 100);
-        delay(1000);
-        serial.writeln("Current: " + String(getMotorCurrent()));
-        delay(1000);
-
-        serial.writeln("Forward 255");
-        setMotor(true, 255);
-        delay(1000);
-        serial.writeln("Current: " + String(getMotorCurrent()));
-        delay(1000);
-
-        serial.writeln("Stop");
-        stopMotor();
-        delay(1000);
-        serial.writeln("Current: " + String(getMotorCurrent()));
-        delay(1000);
-
-        serial.writeln("Reverse 255");
-        setMotor(false, 255);
-        delay(1000);
-        serial.writeln("Current: " + String(getMotorCurrent()));
-        delay(1000);
-
-        stopMotor();
-
-        serial.writeln("MOTOR TEST COMPLETE\n");
     }
 
    protected:

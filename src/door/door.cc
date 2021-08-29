@@ -8,8 +8,8 @@
 #include <ArduinoBLE.h>
 #include <dosa.h>
 
-#define PIN_SWITCH 9
-#define PIN_SWITCH_LED 10
+#define PIN_SWITCH_DOOR 9
+#define BLINK_INTERVAL 500
 
 /**
  * Arduino setup
@@ -19,13 +19,10 @@ void setup()
     auto& lights = dosa::Lights::getInstance();
     lights.setBuiltIn(true);
 
-    // Switch
-    pinMode(PIN_SWITCH_LED, OUTPUT);
-
     // Serial
     auto& serial = dosa::SerialComms::getInstance();
     serial.setLogLevel(dosa::LogLevel::DEBUG);
-    serial.wait();
+    // serial.wait();
 
     serial.writeln("-- DOSA Driver Unit --");
     serial.writeln("Begin init..");
@@ -44,11 +41,10 @@ void setup()
     // Init completed
     serial.writeln("Init complete\n");
     lights.off();
-    digitalWrite(PIN_SWITCH_LED, HIGH);
 
-    // Motor test
-    dosa::Door door;
-    door.motorTest();
+    // Set lights to ready configuration
+    dosa::DoorLights door_lights;
+    door_lights.ready();
 }
 
 /**
@@ -60,26 +56,36 @@ void loop()
     static auto& bt = dosa::Bluetooth::getInstance();
     static auto& serial = dosa::SerialComms::getInstance();
     static auto& pool = dosa::DevicePool::getInstance();
-    static dosa::Switch door_switch(PIN_SWITCH);
+    static dosa::Switch door_switch(PIN_SWITCH_DOOR, true);
+    static dosa::Door door;
+    static dosa::DoorLights door_lights;
 
+    // Peripheral scan timer
     static unsigned long last_scan = 0;
 
-    if (!bt.isEnabled()) {
-        serial.writeln("BT not enabled!", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
-    }
+    // When no devices are ready, we'll use this timer to blink the ready LED
+    static unsigned long blink_timer = 0;
+    static bool blink_state = true;
 
     // Check the door switch
-    door_switch.process();
+    if (door_switch.process() && door_switch.getState()) {
+        serial.writeln("Door switch pressed");
+        door_lights.activity();
+        door.trigger();
+        door_lights.ready();
+        blink_state = true;
+    }
 
     // Process connected peripherals
     auto connected = pool.process();
 
     // Visual indicator of number of devices connected
     if (connected == 0) {
-        lights.off();
-    } else {
-        lights.setBuiltIn(true);
+        if (millis() - blink_timer > BLINK_INTERVAL) {
+            blink_timer = millis();
+            blink_state = !blink_state;
+            door_lights.setReady(blink_state);
+        }
     }
 
     // Scan for new devices to add
@@ -96,8 +102,14 @@ void loop()
 
         auto device = BLE.available();
         if (device) {
+            door_lights.connecting();
+
             bt.stopScan();  // IMPORTANT: connection won't work if scanning
             pool.add(device);
+
+            // Set notification devices to indicate we have a sensor ready
+            door_lights.ready();
+            blink_state = true;
         }
     }
 }
