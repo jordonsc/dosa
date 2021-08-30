@@ -16,12 +16,13 @@ function getFqbn() {
 
 function syntax() {
   echo "Usage: "
-  echo "  dosa COMMAND APPLICATION [port]"
+  echo "  dosa [COMMAND] [APPLICATION] [PORT]"
   echo
   echo "Commands:"
   echo "  compile  :  Compiles the application, does not upload"
   echo "  upload   :  Uploads the application, does not compile"
   echo "  install  :  Compiles application, uploads if compile is successful"
+  echo "  monitor  :  Opens a serial monitor to provided port (wrapper for screen)"
   echo
   echo "Applications:"
   echo "  door     : Master unit for door driver"
@@ -52,23 +53,29 @@ if [[ $# -lt 2 ]]; then
   syntax
 fi
 
+function validateApp() {
+  if [ -z "$1" ]; then
+    echo "Invalid application, aborting"
+    exit 2
+  fi
+}
+
 fqbn=$(getFqbn $2)
-if [ -z "$fqbn" ]; then
-  echo "Invalid application, aborting"
-  exit 2
-fi
 
 case $1 in
 "compile")
+  validateApp $fqbn
   echo "Compile '$2' against ${fqbn}.."
   arduino-cli compile -b ${fqbn} "src/$2"
   ;;
 "upload")
+  validateApp $fqbn
   validatePort $3
   echo "Uploading $2 to board on port $3.."
   arduino-cli upload -b ${fqbn} -p $3 "src/$2"
   ;;
 "install")
+  validateApp $fqbn
   validatePort $3
   echo "Compile $1 against ${fqbn}.."
   arduino-cli compile -b ${fqbn} "src/$2"
@@ -79,6 +86,10 @@ case $1 in
     echo
     echo "Compile error, not uploading"
   fi
+  ;;
+"monitor")
+  validatePort $2
+  screen $2 9600
   ;;
 *)
   syntax
