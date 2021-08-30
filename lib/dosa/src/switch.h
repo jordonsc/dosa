@@ -8,8 +8,7 @@
 
 #include <ArduinoBLE.h>
 
-#include "dosa_const.h"
-#include "dosa_serial.h"
+#include "const.h"
 
 #define SWITCH_DEBOUNCE_THRESHOLD 100
 
@@ -24,7 +23,7 @@ class Switch
      * @param p  Digital pin number
      * @param pu If the switch is configured for pull-up (else it must have a pull-down resistor)
      */
-    explicit Switch(uint8_t p, bool pu) : pin(p), pull_up(pu), serial(dosa::SerialComms::getInstance())
+    Switch(uint8_t p, bool pu) : pin(p), pull_up(pu)
     {
         if (pull_up) {
             pinMode(pin, INPUT_PULLUP);
@@ -73,7 +72,6 @@ class Switch
     bool pull_up;
     bool state = false;
     unsigned long last_poll = 0;
-    dosa::SerialComms& serial;
 };
 
 }  // namespace dosa

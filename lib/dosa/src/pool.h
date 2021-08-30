@@ -4,20 +4,19 @@
 
 #pragma once
 
-#include "dosa_sensor.h"
+#include "loggable.h"
+#include "sensor.h"
 
 namespace dosa {
 
-class DevicePool
+class DevicePool : public Loggable
 {
    public:
-    DevicePool(DevicePool const&) = delete;
-    void operator=(DevicePool const&) = delete;
-
-    static DevicePool& getInstance()
+    explicit DevicePool(SerialComms* s = nullptr) : Loggable(s)
     {
-        static DevicePool instance;
-        return instance;
+        for (auto& d : devices) {
+            d = Sensor(serial);
+        }
     }
 
     Sensor& getDevice(unsigned short index)
@@ -54,15 +53,8 @@ class DevicePool
         }
 
         // Overflow - will only reach here if there are no free slots to add
-        auto& lights = dosa::Lights::getInstance();
-
-        serial.writeln(
-            "Unable to register sensor (" + device.address() + "): hit device limit",
-            dosa::LogLevel::WARNING);
-
-        lights.off();
-        errorSignal();
-        delay(500);
+        logln("Unable to register sensor (" + device.address() + "): hit device limit", dosa::LogLevel::WARNING);
+        delay(100);
     }
 
     /**
@@ -78,7 +70,7 @@ class DevicePool
             }
 
             if (d.shouldPoll(DOSA_POLL_FREQ) && d.poll()) {
-                serial.writeln("Device " + d.getAddress() + " new state: " + d.getState());
+                logln("Device " + d.getAddress() + " new state: " + d.getState());
 
                 // Polling may have invalidated the connection. If d is still returning true, then the connection lives
                 if (d) {
@@ -96,9 +88,6 @@ class DevicePool
 
    private:
     Sensor devices[DOSA_MAX_PERIPHERALS];
-    dosa::SerialComms& serial;
-
-    DevicePool() : serial(dosa::SerialComms::getInstance()) {}
 };
 
 }  // namespace dosa

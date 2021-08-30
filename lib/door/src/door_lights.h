@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include <Arduino.h>
+#include <ArduinoBLE.h>
 
 #define PIN_LED_SWITCH 10
 #define PIN_LED_READY 15
 #define PIN_LED_ACTIVITY 16
 #define PIN_LED_ERROR 17
 
-namespace dosa {
+namespace dosa::door {
 
 class DoorLights
 {
@@ -108,4 +108,4 @@ class DoorLights
     }
 };
 
-}  // namespace dosa
+}  // namespace dosa::door

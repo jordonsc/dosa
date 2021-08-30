@@ -6,8 +6,8 @@
 
 #include <Arduino.h>
 #include <ArduinoBLE.h>
-#include <lib_door.h>
-#include <lib_dosa.h>
+#include <dosa.h>
+#include <dosa_door.h>
 
 #define PIN_SWITCH_DOOR 9
 #define NO_DEVICE_BLINK_INTERVAL 500
@@ -17,11 +17,14 @@
  */
 void setup()
 {
-    auto& lights = dosa::Lights::getInstance();
-    lights.setBuiltIn(true);
+    // DI container
+    auto& container = dosa::Container::getInstance();
+
+    // Lights
+    container.getLights().setBuiltIn(true);
 
     // Serial
-    auto& serial = dosa::SerialComms::getInstance();
+    auto& serial = container.getSerial();
     serial.setLogLevel(dosa::LogLevel::DEBUG);
     // serial.wait();
 
@@ -29,10 +32,10 @@ void setup()
     serial.writeln("Begin init..");
 
     // Bluetooth init
-    auto& bt = dosa::Bluetooth::getInstance();
+    auto& bt = container.getBluetooth();
     if (!bt.setEnabled(true) || !bt.setLocalName("DOSA-D " + bt.localAddress().substring(15))) {
         serial.writeln("Bluetooth init failed", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
+        container.getLights().errorHoldingPattern();
     }
 
     bt.setConnectionInterval(DOSA_BT_DATA_MIN, DOSA_BT_DATA_MAX);  // 0.5 - 4 seconds
@@ -41,10 +44,10 @@ void setup()
 
     // Init completed
     serial.writeln("Init complete\n");
-    lights.off();
+    container.getLights().off();
 
     // Set lights to ready configuration
-    dosa::DoorLights door_lights;
+    dosa::door::DoorLights door_lights;
     door_lights.ready();
 }
 
@@ -53,13 +56,14 @@ void setup()
  */
 void loop()
 {
-    static auto& lights = dosa::Lights::getInstance();
-    static auto& bt = dosa::Bluetooth::getInstance();
-    static auto& serial = dosa::SerialComms::getInstance();
-    static auto& pool = dosa::DevicePool::getInstance();
+    static auto& container = dosa::Container::getInstance();
+    auto& serial = container.getSerial();
+    auto& bt = container.getBluetooth();
+    auto& pool = container.getDevicePool();
+
     static dosa::Switch door_switch(PIN_SWITCH_DOOR, true);
-    static dosa::Door door;
-    static dosa::DoorLights door_lights;
+    static dosa::door::Door door(&serial);
+    static dosa::door::DoorLights door_lights;
 
     // Peripheral scan timer
     static unsigned long last_scan = 0;
@@ -70,7 +74,7 @@ void loop()
 
     // Check the door switch
     if (door_switch.process() && door_switch.getState()) {
-        serial.writeln("Door switch pressed");
+        container.getSerial().writeln("Door switch pressed");
         door_lights.activity();
         door.trigger();
         door_lights.ready();

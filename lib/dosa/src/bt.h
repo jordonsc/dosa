@@ -6,29 +6,24 @@
 
 #include <ArduinoBLE.h>
 
-#include "dosa_error.h"
-#include "dosa_lights.h"
-#include "dosa_serial.h"
+#include "loggable.h"
 
 namespace dosa {
 
-class Bluetooth
+class Bluetooth : public Loggable
 {
    public:
-    Bluetooth(Bluetooth const&) = delete;
-    void operator=(Bluetooth const&) = delete;
-
-    static Bluetooth& getInstance()
+    explicit Bluetooth(SerialComms* s = nullptr) : Loggable(s)
     {
-        static Bluetooth instance;
-        return instance;
+        localName = "DOSA";
+        deviceName = "DOSA";
+        BLE.setDeviceName(deviceName.c_str());
     }
 
     void setAppearance(uint16_t value) const
     {
         if (!enabled) {
-            auto& serial = dosa::SerialComms::getInstance();
-            serial.writeln("BT disabled, cannot alter appearance", LogLevel::ERROR);
+            logln("BT disabled, cannot alter appearance", LogLevel::ERROR);
             return;
         }
 
@@ -45,8 +40,7 @@ class Bluetooth
     void setConnectionInterval(uint16_t min, uint16_t max) const
     {
         if (!enabled) {
-            auto& serial = dosa::SerialComms::getInstance();
-            serial.writeln("BT disabled, cannot alter connection interval", LogLevel::ERROR);
+            logln("BT disabled, cannot alter connection interval", LogLevel::ERROR);
             return;
         }
 
@@ -60,12 +54,11 @@ class Bluetooth
 
     bool setEnabled(bool value)
     {
-        auto& serial = dosa::SerialComms::getInstance();
         if (value) {
-            serial.writeln("Enabling BLE..", LogLevel::DEBUG);
+            logln("Enabling BLE..", LogLevel::DEBUG);
             enabled = BLE.begin() == 1;
         } else {
-            serial.writeln("Disabling BLE..", LogLevel::DEBUG);
+            logln("Disabling BLE..", LogLevel::DEBUG);
             BLE.end();
             enabled = false;
         }
@@ -95,8 +88,7 @@ class Bluetooth
      */
     bool setLocalName(String const& name)
     {
-        auto& serial = dosa::SerialComms::getInstance();
-        serial.writeln("Local name: " + name);
+        logln("Local name: " + name);
 
         // IMPORTANT: updating or invalidating the reference passed will update (or break) the BLE local name, so it's
         // important to store in a local variable.
@@ -109,8 +101,7 @@ class Bluetooth
      */
     void setDeviceName(String const& name)
     {
-        auto& serial = dosa::SerialComms::getInstance();
-        serial.writeln("Device name: " + name);
+        logln("Device name: " + name);
 
         // IMPORTANT: updating or invalidating the reference passed will update (or break) the BLE device name, so it's
         // important to store in a local variable.
@@ -141,8 +132,7 @@ class Bluetooth
 
     void scanForService(String const& service)
     {
-        auto& serial = dosa::SerialComms::getInstance();
-        serial.writeln("Scanning for service " + service, LogLevel::DEBUG);
+        logln("Scanning for service " + service, LogLevel::DEBUG);
         BLE.scanForUuid(service);
         scanning = true;
     }
@@ -154,13 +144,6 @@ class Bluetooth
     }
 
    private:
-    Bluetooth()
-    {
-        localName = "DOSA";
-        deviceName = "DOSA";
-        BLE.setDeviceName(deviceName.c_str());
-    }
-
     bool enabled = false;
     bool scanning = false;
     bool advertising = false;

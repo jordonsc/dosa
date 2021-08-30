@@ -27,13 +27,20 @@ namespace dosa {
 class Lights
 {
    public:
-    Lights(Lights const&) = delete;
-    void operator=(Lights const&) = delete;
-
-    static Lights& getInstance()
+    Lights()
     {
-        static Lights instance;
-        return instance;
+#if LEDR > 0
+        pinMode(LEDR, OUTPUT);
+#endif
+#if LEDG > 0
+        pinMode(LEDG, OUTPUT);
+#endif
+#if LEDB > 0
+        pinMode(LEDB, OUTPUT);
+#endif
+        pinMode(LED_BUILTIN, OUTPUT);
+
+        off();
     }
 
     /**
@@ -123,21 +130,14 @@ class Lights
 #endif
     }
 
-   private:
-    Lights()
+    [[noreturn]] void errorHoldingPattern()
     {
-#if LEDR > 0
-        pinMode(LEDR, OUTPUT);
-#endif
-#if LEDG > 0
-        pinMode(LEDG, OUTPUT);
-#endif
-#if LEDB > 0
-        pinMode(LEDB, OUTPUT);
-#endif
-        pinMode(LED_BUILTIN, OUTPUT);
-
-        off();
+        while (true) {
+            set(true, true, false, false);
+            delay(1000);
+            off();
+            delay(1000);
+        }
     }
 };
 

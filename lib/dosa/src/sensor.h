@@ -4,17 +4,17 @@
 
 #pragma once
 
-#include <ArduinoBLE.h>
+#include <Arduino.h>
 
-#include "dosa_const.h"
-#include "dosa_serial.h"
+#include "const.h"
+#include "loggable.h"
 
 namespace dosa {
 
-class Sensor
+class Sensor : public Loggable
 {
    public:
-    Sensor() : serial(dosa::SerialComms::getInstance()) {}
+    explicit Sensor(dosa::SerialComms* s = nullptr) : Loggable(s) {}
 
     [[nodiscard]] byte getState() const
     {
@@ -48,7 +48,7 @@ class Sensor
 
     bool poll()
     {
-        serial.writeln("Polling device " + device.address() + "..", dosa::LogLevel::TRACE);
+        serial->writeln("Polling device " + device.address() + "..", dosa::LogLevel::TRACE);
         last_poll = millis();
         device.poll();
 
@@ -63,13 +63,13 @@ class Sensor
     bool connect(BLEDevice const& d)
     {
         device = d;
-        serial.write("Connecting to " + device.address() + "..");
+        log("Connecting to " + device.address() + "..");
 
         if (device.connect()) {
-            serial.writeln(" OK");
+            logln(" OK");
             return true;
         } else {
-            serial.writeln(" FAILED");
+            logln(" FAILED");
             disconnect();
             return false;
         }
@@ -77,7 +77,7 @@ class Sensor
 
     void disconnect()
     {
-        serial.writeln("Disconnecting from " + device.address());
+        logln("Disconnecting from " + device.address());
         device = BLEDevice();
         sensor = BLECharacteristic();
         last_poll = 0;
@@ -91,27 +91,27 @@ class Sensor
             return false;
         }
 
-        serial.write("Device " + device.address() + " discovery in progress..");
+        log("Device " + device.address() + " discovery in progress..");
         if (device.discoverAttributes()) {
             sensor = device.characteristic(dosa::bt::char_sensor);
             if (!sensor) {
-                serial.writeln(" ERROR - no sensor discovered");
+                logln(" ERROR - no sensor discovered");
                 disconnect();
                 return false;
             } else {
-                serial.writeln(" OK");
-                serial.write("Subscribing..");
+                logln(" OK");
+                log("Subscribing..");
                 if (sensor.subscribe()) {
-                    serial.writeln(" OK");
+                    logln(" OK");
                     return true;
                 } else {
-                    serial.writeln(" ERROR");
+                    logln(" ERROR");
                     disconnect();
                     return false;
                 }
             }
         } else {
-            serial.writeln(" FAILED");
+            logln(" FAILED");
             disconnect();
             return false;
         }
@@ -123,7 +123,6 @@ class Sensor
 
     byte state = 0;
     unsigned long last_poll = 0;
-    dosa::SerialComms& serial;
 };
 
 }  // namespace dosa

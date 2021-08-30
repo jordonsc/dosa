@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 #include <ArduinoBLE.h>
-#include <lib_dosa.h>
+#include <dosa.h>
 
 #define CON_CHECK 500  // Time between checking health of central connection (ms)
 #define PIR_POLL 50    // How often we check the PIR sensor for state change
@@ -25,10 +25,14 @@ BLEByteCharacteristic sensor_characteristic(dosa::bt::char_sensor, BLERead | BLE
  */
 void setup()
 {
-    auto& lights = dosa::Lights::getInstance();
-    lights.setBuiltIn(true);
+    // DI container
+    auto& container = dosa::Container::getInstance();
 
-    auto& serial = dosa::SerialComms::getInstance();
+    // Lights
+    container.getLights().setBuiltIn(true);
+
+    // Serial
+    auto& serial = container.getSerial();
     serial.setLogLevel(dosa::LogLevel::DEBUG);
     // serial.wait();
 
@@ -36,10 +40,10 @@ void setup()
     serial.writeln("Begin init..");
 
     // Bluetooth init
-    auto& bt = dosa::Bluetooth::getInstance();
+    auto& bt = container.getBluetooth();
     if (!bt.setEnabled(true) || !bt.setLocalName("DOSA-S " + bt.localAddress().substring(15))) {
         serial.writeln("Bluetooth init failed", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
+        container.getLights().errorHoldingPattern();
     }
 
     bt.setConnectionInterval(DOSA_BT_DATA_MIN, DOSA_BT_DATA_MAX);  // 0.5-4 seconds
@@ -47,7 +51,7 @@ void setup()
 
     if (!BLE.setAdvertisedService(sensor_service)) {
         serial.writeln("Bluetooth failed to set advertised service", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
+        container.getLights().errorHoldingPattern();
     }
 
     sensor_service.addCharacteristic(sensor_characteristic);
@@ -56,7 +60,7 @@ void setup()
 
     if (!bt.setAdvertise(true)) {
         serial.writeln("Bluetooth advertise failed", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
+        container.getLights().errorHoldingPattern();
     }
 
     // PIR init
@@ -64,7 +68,7 @@ void setup()
 
     // Init completed
     serial.writeln("Init complete\n");
-    lights.off();
+    container.getLights().off();
 }
 
 /**
@@ -72,9 +76,11 @@ void setup()
  */
 void loop()
 {
-    static auto& serial = dosa::SerialComms::getInstance();
-    static auto& lights = dosa::Lights::getInstance();
-    static auto& bt = dosa::Bluetooth::getInstance();
+    static auto& container = dosa::Container::getInstance();
+    auto& serial = container.getSerial();
+    auto& bt = container.getBluetooth();
+    auto& pool = container.getDevicePool();
+    auto& lights = container.getLights();
 
     static bool connected = false;
     static BLEDevice central;
@@ -85,7 +91,7 @@ void loop()
 
     if (!bt.isEnabled()) {
         serial.writeln("BT not enabled!", dosa::LogLevel::CRITICAL);
-        errorHoldingPattern();
+        lights.errorHoldingPattern();
     }
 
     if (connected) {
