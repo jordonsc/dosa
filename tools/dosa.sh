@@ -16,15 +16,19 @@ function getFqbn() {
 
 function syntax() {
   echo "Usage: "
-  echo "  dosa (compile|upload|install) (door|sensor) [port]"
+  echo "  dosa COMMAND APPLICATION [port]"
   echo
-  echo "compile  :  compiles the application, does not upload"
-  echo "upload   :  uploads the application, does not compile"
-  echo "install  :  compiles application, uploads if compile is successful"
+  echo "Commands:"
+  echo "  compile  :  Compiles the application, does not upload"
+  echo "  upload   :  Uploads the application, does not compile"
+  echo "  install  :  Compiles application, uploads if compile is successful"
   echo
-  echo "Connected boards:"
+  echo "Applications:"
+  echo "  door     : Master unit for door driver"
+  echo "  sensor   : Satellite unit for sensory suite"
   echo
-  arduino-cli board list
+  echo "Connected boards & ports:"
+  arduino-cli board list | awk '{ print "  " $0 }'
   exit 1
 }
 
