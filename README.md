@@ -1,6 +1,7 @@
 DOSA
 ====
-The DOSA project is a series of milestones for home automation devices.
+The DOSA project is a series of milestones for home automation devices. The project is closing in on the first 
+milestone.
 
 Milestone 1
 -----------
@@ -67,6 +68,6 @@ Docs
 ====
 * [Setup](docs/Setup.md)
 * [Getting Started](docs/Getting_Started.md)
-
+* [Troubleshooting](docs/Troubleshooting.md)
 
 

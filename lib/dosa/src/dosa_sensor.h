@@ -1,5 +1,5 @@
 /**
- * Client class for motion sensor satellites.
+ * Client class for sensor satellites.
  */
 
 #pragma once
@@ -93,7 +93,7 @@ class Sensor
 
         serial.write("Device " + device.address() + " discovery in progress..");
         if (device.discoverAttributes()) {
-            sensor = device.characteristic(sensor_char_id);
+            sensor = device.characteristic(dosa::bt::char_sensor);
             if (!sensor) {
                 serial.writeln(" ERROR - no sensor discovered");
                 disconnect();

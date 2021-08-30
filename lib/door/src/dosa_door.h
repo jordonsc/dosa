@@ -7,8 +7,8 @@
 
 #include <ArduinoBLE.h>
 
-#include "dosa_const.h"
-#include "dosa_serial.h"
+#include "dosa/dosa_const.h"
+#include "dosa/dosa_serial.h"
 
 #define PIN_MOTOR_A 2
 #define PIN_MOTOR_B 3

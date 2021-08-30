@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "dosa_motion_sensor.h"
+#include "dosa_sensor.h"
 
 namespace dosa {
 

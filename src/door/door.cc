@@ -6,10 +6,11 @@
 
 #include <Arduino.h>
 #include <ArduinoBLE.h>
-#include <dosa.h>
+#include <lib_door.h>
+#include <lib_dosa.h>
 
 #define PIN_SWITCH_DOOR 9
-#define BLINK_INTERVAL 500
+#define NO_DEVICE_BLINK_INTERVAL 500
 
 /**
  * Arduino setup
@@ -81,7 +82,7 @@ void loop()
 
     // Visual indicator of number of devices connected
     if (connected == 0) {
-        if (millis() - blink_timer > BLINK_INTERVAL) {
+        if (millis() - blink_timer > NO_DEVICE_BLINK_INTERVAL) {
             blink_timer = millis();
             blink_state = !blink_state;
             door_lights.setReady(blink_state);
@@ -94,7 +95,7 @@ void loop()
 
         if (!bt.isScanning()) {
             // Not in scan mode, start the scanner and wait for next run
-            bt.scanForService(dosa::sensor_svc_id);
+            bt.scanForService(dosa::bt::svc_service);
             return;
         }
 

@@ -11,14 +11,14 @@
 
 #include <Arduino.h>
 #include <ArduinoBLE.h>
-#include <dosa.h>
+#include <lib_dosa.h>
 
 #define CON_CHECK 500  // Time between checking health of central connection (ms)
 #define PIR_POLL 50    // How often we check the PIR sensor for state change
 #define PIN_PIR 2      // Data pin for PIR sensor
 
-BLEService sensor_service(dosa::sensor_svc_id);
-BLEByteCharacteristic sensor_characteristic(dosa::sensor_char_id, BLERead | BLENotify);
+BLEService sensor_service(dosa::bt::svc_service);
+BLEByteCharacteristic sensor_characteristic(dosa::bt::char_sensor, BLERead | BLENotify);
 
 /**
  * Arduino setup
@@ -26,7 +26,7 @@ BLEByteCharacteristic sensor_characteristic(dosa::sensor_char_id, BLERead | BLEN
 void setup()
 {
     auto& lights = dosa::Lights::getInstance();
-    lights.setDoor(true);
+    lights.setBuiltIn(true);
 
     auto& serial = dosa::SerialComms::getInstance();
     serial.setLogLevel(dosa::LogLevel::DEBUG);
