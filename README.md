@@ -3,6 +3,8 @@ DOSA
 The DOSA project is a series of milestones for home automation devices. The project is closing in on the first 
 milestone.
 
+See the [DOSA Device Registry](docs/Devices.md) for details on physical devices.
+
 Milestone 1
 -----------
 A central device contains a motor and winch (driver). Satellite peripherals have PIR sensors and communicate with the 
@@ -10,17 +12,7 @@ driver via Bluetooth to open a door when motion is detected.
 
 Devices:
 * Door Driver (master device)
-  * Arduino 33 IoT
-  * 12v motor: drives winch
-  * Push-button switch: manual trigger of door mechanics
-  * Reed switch: detect door fully open/closed - TBD
-  * BLE central
-  * Wifi (dormant for Milestone 1)
-  * 240v AC power transformed to 12v DC
 * Sensor Suite (satellite device)
- * Arduino 33 BLE
- * PIR sensor
- * 12v battery power supply
 
 Milestone 2
 -----------
@@ -67,7 +59,11 @@ Sensor Suite should be plug-and-play with sensor accessories.
 Docs
 ====
 * [Setup](docs/Setup.md)
-* [Getting Started](docs/Getting_Started.md)
+* [Device List](docs/Devices.md)
+* [Building](docs/Building.md)
 * [Troubleshooting](docs/Troubleshooting.md)
 
-
+Etymology
+=========
+DOSA stands for 'door opening sensor automation', although plans extend beyond just a door winch (someone must have 
+been hungry when picking a name).

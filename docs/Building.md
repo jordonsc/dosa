@@ -18,7 +18,7 @@ The application directories contain a `.cc` file and a `.ino` file symlinked tog
 your IDE sane, but the Arduino IDE/CLI needs to see the `.ino` file and will ignore the `.cc` file.
  
 Building and Uploading
-----------------------
+======================
 You can manage the devices entirely with the [Arduino CLI](https://arduino.github.io/arduino-cli/latest/), but there is
 also a quick helper bash script to run the obvious commands:
 
