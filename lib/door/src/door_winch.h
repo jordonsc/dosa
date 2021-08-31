@@ -15,10 +15,10 @@
 
 namespace dosa::door {
 
-class Door : public Loggable
+class DoorWinch : public Loggable
 {
    public:
-    explicit Door(SerialComms* s) : Loggable(s)
+    explicit DoorWinch(SerialComms* s) : Loggable(s)
     {
         pinMode(PIN_MOTOR_A, OUTPUT);
         pinMode(PIN_MOTOR_B, OUTPUT);

@@ -93,7 +93,7 @@ class Sensor : public Loggable
 
         log("Device " + device.address() + " discovery in progress..");
         if (device.discoverAttributes()) {
-            sensor = device.characteristic(dosa::bt::char_sensor);
+            sensor = device.characteristic(dosa::bt::char_pir);
             if (!sensor) {
                 logln(" ERROR - no sensor discovered");
                 disconnect();

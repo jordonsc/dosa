@@ -16,7 +16,6 @@ cc_binary(
         "//arduino",
         "//arduino:ArduinoBLE",
         "//lib:door",
-        "//lib:dosa",
     ],
 )
 
@@ -29,6 +28,6 @@ cc_binary(
     deps = [
         "//arduino",
         "//arduino:ArduinoBLE",
-        "//lib:dosa",
+        "//lib:sensor",
     ],
 )

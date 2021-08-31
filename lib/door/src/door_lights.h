@@ -22,6 +22,8 @@ class DoorLights
         pinMode(PIN_LED_READY, OUTPUT);
         pinMode(PIN_LED_ACTIVITY, OUTPUT);
         pinMode(PIN_LED_ERROR, OUTPUT);
+
+        off();
     }
 
     /**

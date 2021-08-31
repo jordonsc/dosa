@@ -10,14 +10,7 @@ namespace dosa {
 class Container
 {
    public:
-    Container(Container const&) = delete;
-    void operator=(Container const&) = delete;
-
-    static Container& getInstance()
-    {
-        static Container instance;
-        return instance;
-    }
+    Container() : bluetooth(Bluetooth(&serial)), device_pool(DevicePool(&serial)) {}
 
     SerialComms& getSerial()
     {
@@ -40,8 +33,6 @@ class Container
     }
 
    protected:
-    Container() : bluetooth(Bluetooth(&serial)), device_pool(DevicePool(&serial)) {}
-
     SerialComms serial;
     Lights lights;
     Bluetooth bluetooth;

@@ -19,14 +19,16 @@ function syntax() {
   echo "  dosa [COMMAND] [APPLICATION] [PORT]"
   echo
   echo "Commands:"
-  echo "  compile  :  Compiles the application, does not upload"
-  echo "  upload   :  Uploads the application, does not compile"
-  echo "  install  :  Compiles application, uploads if compile is successful"
-  echo "  monitor  :  Opens a serial monitor to provided port (wrapper for screen)"
+  echo "  compile        :  Compiles the application, does not upload"
+  echo "  compile-debug  :  Compiles the application in debug mode, does not upload"
+  echo "  upload         :  Uploads the last compiled application"
+  echo "  install        :  Compiles application, uploads if compile is successful"
+  echo "  install-debug  :  Compiles application in debug mode, uploads if compile is successful"
+  echo "  monitor        :  Opens a serial monitor to provided port (wrapper for screen)"
   echo
   echo "Applications:"
-  echo "  door     : Master unit for door driver"
-  echo "  sensor   : Satellite unit for sensory suite"
+  echo "  door           : Master unit for door driver"
+  echo "  sensor         : Satellite unit for sensory suite"
   echo
   echo "Connected boards & ports:"
   arduino-cli board list | awk '{ print "  " $0 }'
@@ -68,6 +70,11 @@ case $1 in
   echo "Compile '$2' against ${fqbn}.."
   arduino-cli compile -b ${fqbn} "src/$2"
   ;;
+"compile-debug")
+  validateApp $fqbn
+  echo "[DEBUG] Compile '$2' against ${fqbn}.."
+  arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=\"-DDOSA_DEBUG=1\"" "src/$2"
+  ;;
 "upload")
   validateApp $fqbn
   validatePort $3
@@ -81,6 +88,19 @@ case $1 in
   arduino-cli compile -b ${fqbn} "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "Uploading $1 to board on port $3.."
+    arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+  else
+    echo
+    echo "Compile error, not uploading"
+  fi
+  ;;
+"install-debug")
+  validateApp $fqbn
+  validatePort $3
+  echo "[DEBUG] Compile $1 against ${fqbn}.."
+  arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=\"-DDOSA_DEBUG=1\"" "src/$2"
+  if [[ $? -eq 0 ]]; then
+    echo "[DEBUG] Uploading $1 to board on port $3.."
     arduino-cli upload -b ${fqbn} -p $3 "src/$2"
   else
     echo

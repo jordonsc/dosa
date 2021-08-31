@@ -17,3 +17,4 @@ mkdir -p ~/Arduino
 rm ~/Arduino/libraries/dosa ~/Arduino/libraries/door
 ln -s ${app}/../lib/dosa ~/Arduino/libraries/dosa
 ln -s ${app}/../lib/door ~/Arduino/libraries/door
+ln -s ${app}/../lib/sensor ~/Arduino/libraries/sensor

@@ -10,7 +10,7 @@
 
 #include "const.h"
 
-#define SWITCH_DEBOUNCE_THRESHOLD 100
+#define SWITCH_DEFAULT_DEBOUNCE_THRESHOLD 250
 
 namespace dosa {
 
@@ -23,7 +23,10 @@ class Switch
      * @param p  Digital pin number
      * @param pu If the switch is configured for pull-up (else it must have a pull-down resistor)
      */
-    Switch(uint8_t p, bool pu) : pin(p), pull_up(pu)
+    Switch(uint8_t p, bool pu, unsigned long debounce = SWITCH_DEFAULT_DEBOUNCE_THRESHOLD)
+        : pin(p),
+          pull_up(pu),
+          debounce_threshold(debounce)
     {
         if (pull_up) {
             pinMode(pin, INPUT_PULLUP);
@@ -39,7 +42,7 @@ class Switch
      */
     bool process()
     {
-        if (millis() - last_poll < SWITCH_DEBOUNCE_THRESHOLD) {
+        if (millis() - last_poll < SWITCH_DEFAULT_DEBOUNCE_THRESHOLD) {
             return false;
         }
 
@@ -72,6 +75,7 @@ class Switch
     bool pull_up;
     bool state = false;
     unsigned long last_poll = 0;
+    unsigned long debounce_threshold;
 };
 
 }  // namespace dosa
