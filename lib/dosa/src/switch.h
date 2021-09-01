@@ -10,7 +10,7 @@
 
 #include "const.h"
 
-#define SWITCH_DEFAULT_DEBOUNCE_THRESHOLD 250
+#define SWITCH_DEFAULT_DEBOUNCE_THRESHOLD 100
 
 namespace dosa {
 

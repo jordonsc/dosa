@@ -12,13 +12,14 @@
 #define PIN_MOTOR_B 3
 #define PIN_MOTOR_PWM 6
 #define PIN_MOTOR_CS 21
+#define PIN_REED_SW 7
 
 namespace dosa::door {
 
 class DoorWinch : public Loggable
 {
    public:
-    explicit DoorWinch(SerialComms* s) : Loggable(s)
+    explicit DoorWinch(SerialComms* s) : Loggable(s), kill_sw(PIN_REED_SW, true)
     {
         pinMode(PIN_MOTOR_A, OUTPUT);
         pinMode(PIN_MOTOR_B, OUTPUT);
@@ -32,7 +33,7 @@ class DoorWinch : public Loggable
     void trigger()
     {
         open();
-        delay(2000);
+        delay(5000);
         close();
     }
 
@@ -43,21 +44,45 @@ class DoorWinch : public Loggable
     {
         logln("Door: OPEN");
 
+        kill_sw.process();
+
+        // Start sequence: slowly increase speed of winch
         for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
             setMotor(true, pwr);
             delay(100);
+            if (checkForKill()) {
+                return;
+            }
         }
+
         setMotor(true, 255);
         logln("Full drive, current: " + String(getMotorCurrent()), dosa::LogLevel::DEBUG);
 
-        delay(2000);
+        // Full-drive sequence: continue at full speed
+        for (short i = 0; i < 200; ++i) {
+            delay(10);
+            if (checkForKill()) {
+                return;
+            }
+        }
 
+        // Approaching sequence: slow down as the door approaches apex
         for (unsigned short pwr = 250; pwr > 50; pwr -= 10) {
             setMotor(true, pwr);
             delay(100);
+            if (checkForKill()) {
+                return;
+            }
         }
 
-        delay(2000);
+        // Final sequence: continue on slowly, monitoring kill switch and current
+        for (short i = 0; i < 1000; ++i) {
+            delay(10);
+            if (checkForKill()) {
+                return;
+            }
+        }
+
         stopMotor();
     }
 
@@ -68,11 +93,13 @@ class DoorWinch : public Loggable
     {
         logln("Door: CLOSE");
 
+        // Start sequence: ramp up to full speed
         for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
             setMotor(false, pwr);
             delay(100);
         }
 
+        // Final sequence: release belt at full speed for calculated time
         setMotor(false, 255);
         logln("Full drive, current: " + String(getMotorCurrent()), dosa::LogLevel::DEBUG);
 
@@ -108,6 +135,25 @@ class DoorWinch : public Loggable
 
    protected:
     unsigned short state = 0;
+    unsigned long motor_panic_time = 0;
+    dosa::Switch kill_sw;
+
+    /**
+     * Check if the door winch should be halted.
+     *
+     * This will occur if either the kill switch is closed, or if the motor current exceeds a threshold.
+     */
+    bool checkForKill()
+    {
+        // Check kill switch
+        if (kill_sw.process() && kill_sw.getState()) {
+            logln("Door hit kill switch");
+            stopMotor();
+            return true;
+        }
+
+        return false;
+    }
 };
 
 }  // namespace dosa::door

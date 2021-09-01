@@ -14,7 +14,7 @@ ln -s ~/Arduino/libraries/ArduinoBLE arduino/ArduinoBLE
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
 mkdir -p ~/Arduino
-rm ~/Arduino/libraries/dosa ~/Arduino/libraries/door
+rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/door ~/Arduino/libraries/sensor
 ln -s ${app}/../lib/dosa ~/Arduino/libraries/dosa
 ln -s ${app}/../lib/door ~/Arduino/libraries/door
 ln -s ${app}/../lib/sensor ~/Arduino/libraries/sensor
