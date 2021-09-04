@@ -1,6 +1,5 @@
 COPTS = [
     "-std=c++17",
-    "-Ilib",
 ]
 
 LINKOPTS = [
