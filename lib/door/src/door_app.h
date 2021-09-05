@@ -5,10 +5,11 @@
 #include "door_container.h"
 
 #define NO_DEVICE_BLINK_INTERVAL 500
+#define SENSOR_TRIGGER_VALUE 2
 
 namespace dosa::door {
 
-class DoorApp : public dosa::App
+class DoorApp final : public dosa::App
 {
    public:
     using dosa::App::App;
@@ -17,6 +18,7 @@ class DoorApp : public dosa::App
     {
         App::init();
         container.getDoorLights().ready();
+        container.getDevicePool().setDeviceChangeCallback(&sensorStateChangeForwarder, this);
     }
 
     void loop() override
@@ -26,21 +28,11 @@ class DoorApp : public dosa::App
         auto& pool = container.getDevicePool();
         auto& door_lights = container.getDoorLights();
 
-        // Peripheral scan timer
-        static unsigned long last_scan = 0;
-
-        // When no devices are ready, we'll use this timer to blink the ready LED
-        static unsigned long blink_timer = 0;
-        static bool blink_state = true;
-
         // Check the door switch
         auto& door_switch = container.getDoorSwitch();
         if (door_switch.process() && door_switch.getState()) {
             serial.writeln("Door switch pressed");
-            door_lights.activity();
-            container.getDoorWinch().trigger();
-            door_lights.ready();
-            blink_state = true;
+            doorSequence();
         }
 
         // Process connected peripherals
@@ -81,12 +73,53 @@ class DoorApp : public dosa::App
         }
     }
 
-   protected:
+   private:
     DoorContainer container;
+
+    // Peripheral scan timer
+    unsigned long last_scan = 0;
+
+    // When no devices are ready, we'll use this timer to blink the ready LED
+    unsigned long blink_timer = 0;
+    bool blink_state = true;
+
+    /**
+     * Open and close the door, adjust lights in turn.
+     */
+    void doorSequence()
+    {
+        container.getDoorLights().activity();
+        container.getDoorWinch().trigger();
+        container.getDoorLights().ready();
+        blink_state = true;
+    }
+
+    /**
+     * When a peripheral sensor changes state (eg PIR sensor detects motion).
+     */
+    void sensorStateChange(Sensor& sensor)
+    {
+        if (sensor.getState() != SENSOR_TRIGGER_VALUE) {
+            return;
+        }
+
+        container.getSerial().writeln("Sensor triggered");
+        doorSequence();
+    }
 
     Container& getContainer() override
     {
         return container;
+    }
+
+    /**
+     * Context forwarder for device pool callback.
+     *
+     * Translates a void* context to a DoorApp.
+     */
+    static void sensorStateChangeForwarder(Sensor& sensor, void* context)
+    {
+        static_cast<DoorApp*>(context)->sensorStateChange(sensor);
     }
 };
 

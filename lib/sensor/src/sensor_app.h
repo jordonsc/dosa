@@ -3,12 +3,13 @@
 #include <dosa.h>
 
 #define NO_DEVICE_BLINK_INTERVAL 500
-#define PIR_POLL 50  // How often we check the PIR sensor for state change
-#define PIN_PIR 2    // Data pin for PIR sensor
+#define LOW_PWR_TIMER 300000  // Time before we turn off all LEDs to save power (ms)
+#define PIR_POLL 50           // How often we check the PIR sensor for state change
+#define PIN_PIR 2             // Data pin for PIR sensor
 
 namespace dosa::sensor {
 
-class SensorApp : public dosa::App
+class SensorApp final : public dosa::App
 {
    public:
     explicit SensorApp(Config const& config)
@@ -52,10 +53,11 @@ class SensorApp : public dosa::App
         }
     }
 
-   protected:
+   private:
     Container container;
     BLEByteCharacteristic bt_char_pir;
 
+    unsigned long start_time = 0;
     unsigned long pir_last_updated = 0;
     byte pir_sensor_value = 1;
 

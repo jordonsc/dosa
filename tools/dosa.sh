@@ -73,7 +73,14 @@ case $1 in
 "compile-debug")
   validateApp $fqbn
   echo "[DEBUG] Compile '$2' against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=\"-DDOSA_DEBUG=1\"" "src/$2"
+  # NB: some boards have -D flags in their platform.txt file -
+  #     See https://github.com/arduino/arduino-cli/issues/846
+  if [[ "${fqbn}" == "arduino:samd:nano_33_iot" ]]; then
+    echo "(adding nano_33_iot build options)"
+    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1 -D__SAMD21G18A__ {build.usb_flags}" "src/$2"
+  else
+    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1" "src/$2"
+  fi
   ;;
 "upload")
   validateApp $fqbn
@@ -98,7 +105,12 @@ case $1 in
   validateApp $fqbn
   validatePort $3
   echo "[DEBUG] Compile $1 against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=\"-DDOSA_DEBUG=1\"" "src/$2"
+  if [[ "${fqbn}" == "arduino:samd:nano_33_iot" ]]; then
+    echo "(adding nano_33_iot build options)"
+    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1 -D__SAMD21G18A__ {build.usb_flags}" "src/$2"
+  else
+    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1" "src/$2"
+  fi
   if [[ $? -eq 0 ]]; then
     echo "[DEBUG] Uploading $1 to board on port $3.."
     arduino-cli upload -b ${fqbn} -p $3 "src/$2"

@@ -15,7 +15,7 @@
 #define PIN_MOTOR_CPR 2  // Motor CPR encoder pulse
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
-#define MAX_DOOR_SEQ_TIME 30000  // Max time in milliseconds to open or close the door
+#define MAX_DOOR_SEQ_TIME 15000  // Max time in milliseconds to open or close the door
 #define MOTOR_CPR_WARMUP 1000    // Number of milliseconds grace we give the motor to report CPR pulses
 
 namespace dosa::door {
@@ -76,7 +76,7 @@ class DoorWinch : public Loggable
         // Start sequence: slowly increase speed of winch
         for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
             setMotor(true, pwr);
-            delay(100);
+            delay(50);
             if (checkForOpenKill()) {
                 stopMotor();
                 return int_cpr_ticks;
@@ -86,7 +86,7 @@ class DoorWinch : public Loggable
         setMotor(true, 255);
 
         // Full-drive sequence: continue at full speed
-        for (short i = 0; i < 200; ++i) {
+        for (short i = 0; i < 100; ++i) {
             delay(10);
             if (checkForOpenKill()) {
                 stopMotor();
@@ -97,7 +97,7 @@ class DoorWinch : public Loggable
         // Approaching sequence: slow down as the door approaches apex
         for (unsigned short pwr = 250; pwr > 50; pwr -= 10) {
             setMotor(true, pwr);
-            delay(100);
+            delay(50);
             if (checkForOpenKill()) {
                 stopMotor();
                 return int_cpr_ticks;

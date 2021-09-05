@@ -9,6 +9,8 @@
 
 namespace dosa {
 
+typedef void (*poolCallback)(Sensor&, void*);
+
 class DevicePool : public Loggable
 {
    public:
@@ -17,6 +19,12 @@ class DevicePool : public Loggable
         for (auto& d : devices) {
             d = Sensor(serial);
         }
+    }
+
+    void setDeviceChangeCallback(poolCallback cb, void* context = nullptr)
+    {
+        device_change_cb = cb;
+        device_change_cb_ctx = context;
     }
 
     Sensor& getDevice(unsigned short index)
@@ -71,14 +79,14 @@ class DevicePool : public Loggable
 
             if (d.shouldPoll(DOSA_POLL_FREQ) && d.poll()) {
                 logln("Device " + d.getAddress() + " new state: " + d.getState());
+                ++connected;
 
-                // Polling may have invalidated the connection. If d is still returning true, then the connection lives
-                if (d) {
-                    ++connected;
+                if (device_change_cb != nullptr) {
+                    device_change_cb(d, device_change_cb_ctx);
                 }
             } else {
-                // Testing d.connected() will require a poll - which we don't want - so just assume connection is still
-                // good
+                // Testing d.connected() will require a poll - which we don't want just yet - so just assume connection
+                // is still good.
                 ++connected;
             }
         }
@@ -86,8 +94,10 @@ class DevicePool : public Loggable
         return connected;
     }
 
-   private:
+   protected:
     Sensor devices[DOSA_MAX_PERIPHERALS];
+    poolCallback device_change_cb = nullptr;
+    void* device_change_cb_ctx = nullptr;
 };
 
 }  // namespace dosa

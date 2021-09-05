@@ -30,6 +30,9 @@ class App
         }
 
         serial.writeln("-- " + config.app_name + " --");
+#ifdef DOSA_DEBUG
+        serial.writeln("// Debug Mode //");
+#endif
         serial.writeln("Begin init..");
 
         // Bluetooth init
