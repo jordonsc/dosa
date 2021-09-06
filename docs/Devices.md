@@ -31,6 +31,18 @@ Pending:
 * Physical winch
 * [FRAM](https://core-electronics.com.au/adafruit-spi-non-volatile-fram-breakout-64kbit-8kbyte.html) (required for Gen II cloud support)
 
+LED Signals:
+* Green blinking: no sensors connected, ready via button press only
+* Green steady: sensors connected, ready
+* Green steady, blue quickly flashes: displays count of connected devices
+* Green steady, blue steady: connecting to device
+* Red light 1s during connect: connection failed
+* Red light flashes 3 times: device disconnected
+* Red steady, blue flashes: timeout during open sequence - holding for safety
+* Red steady, green flashes: timeout during close sequence - holding for safety
+* Red steady, green & blue alternate: motor jam - holding for safety
+* All lights flash together: unknown error
+
 Sensor Suite
 ------------
 * Satellite unit

@@ -86,7 +86,9 @@ class App
 
                 if (!bt_central.connected()) {
                     central_connected = false;
+#ifdef DOSA_DEBUG
                     getContainer().getLights().off();
+#endif
                     getContainer().getSerial().writeln("Central disconnected");
                     getContainer().getBluetooth().setAdvertise(true);
                 }
@@ -97,7 +99,9 @@ class App
                 getContainer().getBluetooth().setAdvertise(false);
                 central_last_health_check = millis();
                 central_connected = true;
-                getContainer().getLights().set(true, false, false, true);
+#ifdef DOSA_DEBUG
+                getContainer().getLights().set(false, false, false, true);
+#endif
                 getContainer().getSerial().writeln("Connected to central: " + bt_central.address());
             }
         }
@@ -112,7 +116,6 @@ class App
 
     bool central_connected = false;
     unsigned long central_last_health_check = 0;
-
 };
 
 }  // namespace dosa

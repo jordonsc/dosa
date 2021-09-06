@@ -34,6 +34,16 @@ void intCprTick()
 
 }  // end anonymous namespace
 
+enum class DoorErrorCode : byte
+{
+    UNKNOWN = 0,
+    OPEN_TIMEOUT = 1,
+    CLOSE_TIMEOUT = 2,
+    JAMMED = 3
+};
+
+typedef void (*winchErrorCallback)(DoorErrorCode, void*);
+
 class DoorWinch : public Loggable
 {
    protected:
@@ -47,6 +57,15 @@ class DoorWinch : public Loggable
         pinMode(PIN_MOTOR_CPR, INPUT);
 
         attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_CPR), intCprTick, RISING);
+    }
+
+    /**
+     * Callback to be run when an error has occurred.
+     */
+    void setErrorCallback(winchErrorCallback cb, void* context = nullptr)
+    {
+        error_cb = cb;
+        error_cb_ctx = context;
     }
 
     /**
@@ -78,7 +97,6 @@ class DoorWinch : public Loggable
             setMotor(true, pwr);
             delay(50);
             if (checkForOpenKill()) {
-                stopMotor();
                 return int_cpr_ticks;
             }
         }
@@ -89,7 +107,6 @@ class DoorWinch : public Loggable
         for (short i = 0; i < 100; ++i) {
             delay(10);
             if (checkForOpenKill()) {
-                stopMotor();
                 return int_cpr_ticks;
             }
         }
@@ -99,7 +116,6 @@ class DoorWinch : public Loggable
             setMotor(true, pwr);
             delay(50);
             if (checkForOpenKill()) {
-                stopMotor();
                 return int_cpr_ticks;
             }
         }
@@ -130,7 +146,6 @@ class DoorWinch : public Loggable
             delay(100);
 
             if (checkForCloseKill(ticks)) {
-                stopMotor();
                 return int_cpr_ticks;
             }
         }
@@ -176,12 +191,14 @@ class DoorWinch : public Loggable
     }
 
    protected:
-    unsigned short state;  // Motor state
     dosa::Switch kill_sw;
 
     unsigned long seq_start_time = 0;  // Time that an open/close sequence started
     unsigned long cpr_last_time = 0;   // For calculating motor speed
     unsigned long cpr_last_ticks = 0;
+
+    winchErrorCallback error_cb = nullptr;
+    void* error_cb_ctx = nullptr;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.
@@ -230,18 +247,24 @@ class DoorWinch : public Loggable
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
             logln("Door open sequence max time exceeded");
+            stopMotor();
+            if (error_cb != nullptr) {
+                error_cb(DoorErrorCode::OPEN_TIMEOUT, error_cb_ctx);
+            }
             return true;
         }
 
         // Check kill switch
         if (kill_sw.process() && kill_sw.getState()) {
             logln("Door hit kill switch");
+            stopMotor();
             return true;
         }
 
         // Check for motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
             logln("Door blocked while opening");
+            stopMotor();
             return true;
         }
 
@@ -254,18 +277,27 @@ class DoorWinch : public Loggable
 
         // Correct way for close sequence to end: matched the same CPR pulses as open sequence
         if (int_cpr_ticks > ticks) {
+            stopMotor();
             return true;
         }
 
         // Motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
             logln("Winch jammed (close sequence!)", dosa::LogLevel::WARNING);
+            stopMotor();
+            if (error_cb != nullptr) {
+                error_cb(DoorErrorCode::JAMMED, error_cb_ctx);
+            }
             return true;
         }
 
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
             logln("Door close sequence max time exceeded", dosa::LogLevel::WARNING);
+            stopMotor();
+            if (error_cb != nullptr) {
+                error_cb(DoorErrorCode::CLOSE_TIMEOUT, error_cb_ctx);
+            }
             return true;
         }
 

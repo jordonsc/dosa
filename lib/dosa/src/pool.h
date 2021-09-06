@@ -37,16 +37,17 @@ class DevicePool : public Loggable
         return devices[index].operator bool();
     }
 
-    void add(BLEDevice const& device)
+    bool add(BLEDevice const& device)
     {
         // Check if we already know about this device, if we do - the peripheral gave up on us :)
         for (auto& d : devices) {
             if (d && (d.getAddress() == device.address())) {
                 d.disconnect();
                 if (d.connect(device)) {
-                    d.discover();
+                    return d.discover();
+                } else {
+                    return false;
                 }
-                return;
             }
         }
 
@@ -54,15 +55,16 @@ class DevicePool : public Loggable
         for (auto& d : devices) {
             if (!d) {
                 if (d.connect(device)) {
-                    d.discover();
+                    return d.discover();
+                } else {
+                    return false;
                 }
-                return;
             }
         }
 
         // Overflow - will only reach here if there are no free slots to add
         logln("Unable to register sensor (" + device.address() + "): hit device limit", dosa::LogLevel::WARNING);
-        delay(100);
+        return false;
     }
 
     /**
