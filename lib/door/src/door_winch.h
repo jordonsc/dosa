@@ -15,8 +15,13 @@
 #define PIN_MOTOR_CPR 2  // Motor CPR encoder pulse
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
-#define MAX_DOOR_SEQ_TIME 15000  // Max time in milliseconds to open or close the door
-#define MOTOR_CPR_WARMUP 1000    // Number of milliseconds grace we give the motor to report CPR pulses
+// All times in milliseconds
+#define MAX_DOOR_SEQ_TIME 15000        // Max time to open or close the door before declaring a system error
+#define OPEN_WAIT_TIME 5000            // Time door spends in then open-wait status
+#define OPEN_HIGH_SPEED_DURATION 1500  // Time we allow the door to open at full speed
+#define MOTOR_CPR_WARMUP 1000          // Grace we give the motor to report CPR pulses before declaring a stall
+#define MOTOR_SLOW_SPEED 100           // Motor speed (1-255) to run when not at full speed (nearing apex)
+#define DOOR_INTERRUPT_DELAY 1000      // Time we pause when the close sequence is interrupted
 
 namespace dosa::door {
 
@@ -25,7 +30,7 @@ namespace {
 volatile unsigned long int_cpr_ticks;
 
 /**
- * Called by interrupt when CPR pulses.
+ * Called by hardware interrupt when CPR pulses.
  */
 void intCprTick()
 {
@@ -43,6 +48,7 @@ enum class DoorErrorCode : byte
 };
 
 typedef void (*winchErrorCallback)(DoorErrorCode, void*);
+typedef bool (*doorInterruptCallback)(void*);
 
 class DoorWinch : public Loggable
 {
@@ -69,15 +75,52 @@ class DoorWinch : public Loggable
     }
 
     /**
+     * If set, this callback will be continuously called during the open-wait and closing states of the door sequence.
+     *
+     * If this function returns true, the door will either reset its wait timer or halt closing and re-open, depending
+     * on the state of the door.
+     */
+    void setInterruptCallback(doorInterruptCallback cb, void* context = nullptr)
+    {
+        interrupt_cb = cb;
+        interrupt_cb_ctx = context;
+    }
+
+    /**
      * Trigger the door open/close sequence.
      */
     void trigger()
     {
-        auto open_ticks = open();
-        logln("Opened in " + String(open_ticks) + " ticks");
-        delay(5000);
-        auto close_ticks = close(open_ticks);
-        logln("Closed in " + String(close_ticks) + " ticks");
+        // Number of ticks the close sequence didn't complete before it was interrupted
+        unsigned long deficit = 0;
+
+        // Put the sequence in a loop as the door might re-open during the closing sequence
+        while (true) {
+            auto open_ticks = open(deficit == 0);
+            logln("Opened in " + String(open_ticks) + " ticks");
+
+            auto openWaitTimer = millis();
+            while (millis() - openWaitTimer < OPEN_WAIT_TIME) {
+                if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
+                    // Callback has asked us to reset open-wait timer (activity near door)
+                    openWaitTimer = millis();
+                }
+                delay(10);
+            }
+
+            // Request the door close to the same degree as it was last opened + any deficit from previous iterations
+            auto close_ticks = close(open_ticks + deficit);
+
+            // If we fully closed, then return control to the main loop
+            if (close_ticks >= open_ticks) {
+                logln("Closed in " + String(close_ticks) + " ticks");
+                break;
+            } else {
+                deficit += open_ticks - close_ticks;
+            }
+        }
+
+        delay(DOOR_INTERRUPT_DELAY);
     }
 
     /**
@@ -85,42 +128,24 @@ class DoorWinch : public Loggable
      *
      * Returns the number of CPR pulses throughout the sequence.
      */
-    unsigned long open()
+    unsigned long open(bool allow_full_speed = true)
     {
         logln("Door: OPEN");
         seq_start_time = millis();
         resetCprTimer();
         kill_sw.process();
 
-        // Start sequence: slowly increase speed of winch
-        for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
-            setMotor(true, pwr);
-            delay(50);
-            if (checkForOpenKill()) {
-                return int_cpr_ticks;
+        if (allow_full_speed) {
+            // Full speed run at the start, this is when there is the most strain on the motor
+            setMotor(true, 255);
+            auto quickStartTimer = millis();
+            while (millis() - quickStartTimer < OPEN_HIGH_SPEED_DURATION && !checkForOpenKill()) {
+                delay(10);
             }
         }
 
-        setMotor(true, 255);
-
-        // Full-drive sequence: continue at full speed
-        for (short i = 0; i < 100; ++i) {
-            delay(10);
-            if (checkForOpenKill()) {
-                return int_cpr_ticks;
-            }
-        }
-
-        // Approaching sequence: slow down as the door approaches apex
-        for (unsigned short pwr = 250; pwr > 50; pwr -= 10) {
-            setMotor(true, pwr);
-            delay(50);
-            if (checkForOpenKill()) {
-                return int_cpr_ticks;
-            }
-        }
-
-        // Final sequence: continue on slowly, monitoring kill conditions
+        // After we've opened half-way, slow down to avoid damage
+        setMotor(true, MOTOR_SLOW_SPEED);
         while (!checkForOpenKill()) {
             delay(10);
         }
@@ -140,19 +165,7 @@ class DoorWinch : public Loggable
         seq_start_time = millis();
         resetCprTimer();
 
-        // Start sequence: ramp up to full speed
-        for (unsigned short pwr = 10; pwr < 250; pwr += 10) {
-            setMotor(false, pwr);
-            delay(100);
-
-            if (checkForCloseKill(ticks)) {
-                return int_cpr_ticks;
-            }
-        }
-
-        // Final sequence: release belt at full speed until ticks are consumed.
         setMotor(false, 255);
-        delay(10);
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
@@ -199,6 +212,9 @@ class DoorWinch : public Loggable
 
     winchErrorCallback error_cb = nullptr;
     void* error_cb_ctx = nullptr;
+
+    doorInterruptCallback interrupt_cb = nullptr;
+    void* interrupt_cb_ctx = nullptr;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.

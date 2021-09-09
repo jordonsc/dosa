@@ -96,6 +96,30 @@ class DevicePool : public Loggable
         return connected;
     }
 
+    /**
+     * Check if any sensors are in given state, but do not trigger state change callbacks.
+     *
+     * Will poll if poll timer is exceeded.
+     */
+    bool passiveStateCheck(byte state)
+    {
+        for (auto& d : devices) {
+            if (!d) {
+                continue;
+            }
+
+            if (d.shouldPoll(DOSA_POLL_FREQ)) {
+                d.poll();
+            }
+
+            if (d.getState() == state) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
    protected:
     Sensor devices[DOSA_MAX_PERIPHERALS];
     poolCallback device_change_cb = nullptr;

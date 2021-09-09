@@ -23,6 +23,7 @@ class DoorApp final : public dosa::App
         container.getDevicePool().setDeviceChangeCallback(&sensorStateChangeForwarder, this);
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
+        container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
     }
 
     void loop() override
@@ -212,11 +213,28 @@ class DoorApp final : public dosa::App
     }
 
     /**
-     * Context forwarder for door switch callback.
+     * Check if we should interrupt the closing sequence.
+     */
+    bool doorInterruptCheck()
+    {
+        return container.getDoorSwitch().getState() ||
+               container.getDevicePool().passiveStateCheck(SENSOR_TRIGGER_VALUE);
+    }
+
+    /**
+     * Context forwarder for winch error callback.
      */
     static void doorWinchErrorForwarder(DoorErrorCode error, void* context)
     {
         static_cast<DoorApp*>(context)->doorErrorHoldingPattern(error);
+    }
+
+    /**
+     * Context forwarder for door interrupt callback.
+     */
+    static bool doorInterruptForwarder(void* context)
+    {
+        return static_cast<DoorApp*>(context)->doorInterruptCheck();
     }
 };
 
