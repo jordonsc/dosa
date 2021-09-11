@@ -52,9 +52,9 @@ class Switch
     /**
      * Checks for state change.
      *
-     * Returns true if the state has changed.
+     * If `exec_cb` is true, the trigger callback will be executed. Returns true if the state has changed.
      */
-    bool process()
+    bool process(bool exec_cb = true)
     {
         if (millis() - last_poll < SWITCH_DEFAULT_DEBOUNCE_THRESHOLD) {
             return false;
@@ -68,7 +68,7 @@ class Switch
 
         if (s != state) {
             state = s;
-            if (trigger_cb != nullptr) {
+            if (exec_cb && trigger_cb != nullptr) {
                 trigger_cb(state, trigger_cb_ctx);
             }
             return true;
@@ -84,6 +84,17 @@ class Switch
      */
     [[nodiscard]] bool getState() const
     {
+        return state;
+    }
+
+    /**
+     * Process switch logic without triggering callbacks and return the current state.
+     *
+     * Returns true if the switch is closed.
+     */
+    [[nodiscard]] bool getStatePassiveProcess()
+    {
+        process(false);
         return state;
     }
 

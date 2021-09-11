@@ -217,7 +217,7 @@ class DoorApp final : public dosa::App
      */
     bool doorInterruptCheck()
     {
-        return container.getDoorSwitch().getState() ||
+        return container.getDoorSwitch().getStatePassiveProcess() ||
                container.getDevicePool().passiveStateCheck(SENSOR_TRIGGER_VALUE);
     }
 

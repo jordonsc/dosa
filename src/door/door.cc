@@ -7,7 +7,6 @@
  * This programme will operate a powered winch triggered by either button press or a signal from a satellite device.
  */
 
-#include <Arduino.h>
 #include <dosa_door.h>
 
 dosa::AppBuilder<dosa::door::DoorApp> builder;

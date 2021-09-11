@@ -16,12 +16,12 @@
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
 // All times in milliseconds
-#define MAX_DOOR_SEQ_TIME 15000        // Max time to open or close the door before declaring a system error
-#define OPEN_WAIT_TIME 5000            // Time door spends in then open-wait status
-#define OPEN_HIGH_SPEED_DURATION 1500  // Time we allow the door to open at full speed
-#define MOTOR_CPR_WARMUP 1000          // Grace we give the motor to report CPR pulses before declaring a stall
-#define MOTOR_SLOW_SPEED 100           // Motor speed (1-255) to run when not at full speed (nearing apex)
-#define DOOR_INTERRUPT_DELAY 1000      // Time we pause when the close sequence is interrupted
+#define MAX_DOOR_SEQ_TIME 15000     // Max time to open or close the door before declaring a system error
+#define OPEN_WAIT_TIME 5000         // Time door spends in then open-wait status
+#define OPEN_HIGH_SPEED_TICKS 8000  // Number of CPR pulses we run at high-speed for, below slowing the motor for safety
+#define MOTOR_CPR_WARMUP 1000       // Grace we give the motor to report CPR pulses before declaring a stall
+#define MOTOR_SLOW_SPEED 100        // Motor speed (1-255) to run when not at full speed (nearing apex)
+#define DOOR_INTERRUPT_DELAY 1000   // Time we pause when the close sequence is interrupted
 
 namespace dosa::door {
 
@@ -96,8 +96,9 @@ class DoorWinch : public Loggable
 
         // Put the sequence in a loop as the door might re-open during the closing sequence
         while (true) {
-            auto open_ticks = open(deficit == 0);
-            logln("Opened in " + String(open_ticks) + " ticks");
+            auto open_ticks = open(deficit);
+            logln("Opened in " + String(open_ticks) + " ticks, open spread " + String(open_ticks + deficit));
+            open_ticks += deficit;
 
             auto openWaitTimer = millis();
             while (millis() - openWaitTimer < OPEN_WAIT_TIME) {
@@ -109,14 +110,15 @@ class DoorWinch : public Loggable
             }
 
             // Request the door close to the same degree as it was last opened + any deficit from previous iterations
-            auto close_ticks = close(open_ticks + deficit);
+            auto close_ticks = close(open_ticks);
 
             // If we fully closed, then return control to the main loop
             if (close_ticks >= open_ticks) {
                 logln("Closed in " + String(close_ticks) + " ticks");
                 break;
             } else {
-                deficit += open_ticks - close_ticks;
+                deficit = open_ticks - close_ticks;
+                logln("Partial close for " + String(close_ticks) + " ticks, deficit " + String(deficit));
             }
         }
 
@@ -128,19 +130,26 @@ class DoorWinch : public Loggable
      *
      * Returns the number of CPR pulses throughout the sequence.
      */
-    unsigned long open(bool allow_full_speed = true)
+    unsigned long open(unsigned long deficit = 0)
     {
         logln("Door: OPEN");
         seq_start_time = millis();
         resetCprTimer();
         kill_sw.process();
 
-        if (allow_full_speed) {
+        long high_speed_ticks = OPEN_HIGH_SPEED_TICKS - deficit;
+
+        if (high_speed_ticks > 0) {
+            logln("Running at full-speed for " + String(high_speed_ticks) + " ticks", dosa::LogLevel::DEBUG);
+
             // Full speed run at the start, this is when there is the most strain on the motor
             setMotor(true, 255);
-            auto quickStartTimer = millis();
-            while (millis() - quickStartTimer < OPEN_HIGH_SPEED_DURATION && !checkForOpenKill()) {
+            while (int_cpr_ticks < high_speed_ticks) {
                 delay(10);
+                if (checkForOpenKill()) {
+                    stopMotor();
+                    return int_cpr_ticks;
+                }
             }
         }
 
@@ -169,6 +178,9 @@ class DoorWinch : public Loggable
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
+            if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
+                break;
+            }
         }
 
         stopMotor();
