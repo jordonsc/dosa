@@ -167,9 +167,36 @@ class DoorApp final : public dosa::App
     }
 
     /**
+     * Resets device state from an error state.
+     */
+    void reset()
+    {
+        auto& lights = container.getDoorLights();
+        for (unsigned short i = 0; i < 3; ++i) {
+            lights.set(false, false, false, true);
+            delay(100);
+            lights.set(false, false, true, false);
+            delay(100);
+            lights.set(false, true, false, false);
+            delay(100);
+        }
+
+        while (container.getDoorSwitch().getStatePassiveProcess()) {
+            lights.off();
+            delay(100);
+            lights.set(false, true, false, false);
+            delay(100);
+        }
+
+        container.getSerial().writeln("Reset from error state");
+        lights.setSwitch(true);
+        blink_state = true;
+    }
+
+    /**
      * Creates a holding pattern when the door winch fails.
      */
-    [[noreturn]] void doorErrorHoldingPattern(DoorErrorCode error)
+    void doorErrorHoldingPattern(DoorErrorCode error)
     {
         auto& lights = container.getDoorLights();
         lights.error();
@@ -182,6 +209,10 @@ class DoorApp final : public dosa::App
                     delay(500);
                     lights.off();
                     delay(500);
+                    if (container.getDoorSwitch().getStatePassiveProcess()) {
+                        reset();
+                        return;
+                    }
                 }
             case DoorErrorCode::OPEN_TIMEOUT:
                 // Open timeout sequence: error solid; activity blinks
@@ -190,6 +221,10 @@ class DoorApp final : public dosa::App
                     delay(500);
                     lights.setActivity(false);
                     delay(500);
+                    if (container.getDoorSwitch().getStatePassiveProcess()) {
+                        reset();
+                        return;
+                    }
                 }
             case DoorErrorCode::CLOSE_TIMEOUT:
                 // Close timeout sequence: error solid; ready blinks
@@ -198,6 +233,10 @@ class DoorApp final : public dosa::App
                     delay(500);
                     lights.setReady(false);
                     delay(500);
+                    if (container.getDoorSwitch().getStatePassiveProcess()) {
+                        reset();
+                        return;
+                    }
                 }
             case DoorErrorCode::JAMMED:
                 // Jam sequence: error solid; activity/ready alternate
@@ -208,6 +247,10 @@ class DoorApp final : public dosa::App
                     lights.setReady(false);
                     lights.setActivity(true);
                     delay(500);
+                    if (container.getDoorSwitch().getStatePassiveProcess()) {
+                        reset();
+                        return;
+                    }
                 }
         }
     }

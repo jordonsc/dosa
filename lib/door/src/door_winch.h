@@ -16,12 +16,15 @@
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
 // All times in milliseconds
-#define MAX_DOOR_SEQ_TIME 15000     // Max time to open or close the door before declaring a system error
-#define OPEN_WAIT_TIME 5000         // Time door spends in then open-wait status
-#define OPEN_HIGH_SPEED_TICKS 8000  // Number of CPR pulses we run at high-speed for, below slowing the motor for safety
-#define MOTOR_CPR_WARMUP 1000       // Grace we give the motor to report CPR pulses before declaring a stall
-#define MOTOR_SLOW_SPEED 100        // Motor speed (1-255) to run when not at full speed (nearing apex)
-#define DOOR_INTERRUPT_DELAY 1000   // Time we pause when the close sequence is interrupted
+#define MAX_DOOR_SEQ_TIME 20000      // Max time to open or close the door before declaring a system error
+#define OPEN_WAIT_TIME 2000          // Time door spends in then open-wait status
+#define OPEN_HIGH_SPEED_TICKS 14000  // Number of CPR pulses at high-speed, before slowing the motor for safety
+#define MOTOR_CPR_WARMUP 1000        // Grace we give the motor to report CPR pulses before declaring a stall
+#define MOTOR_SLOW_SPEED 100         // Motor speed (1-255) to run when not at full speed (nearing apex)
+#define DOOR_INTERRUPT_DELAY 1000    // Time we pause when the close sequence is interrupted
+
+// If defined, the door will continue to open until stopped (else it will open only to OPEN_HIGH_SPEED_TICKS)
+// #define DOOR_FULL_OPEN
 
 namespace dosa::door {
 
@@ -153,11 +156,13 @@ class DoorWinch : public Loggable
             }
         }
 
-        // After we've opened half-way, slow down to avoid damage
+#ifdef DOOR_FULL_OPEN
+        // After we've opened part-way, slow down to avoid damage
         setMotor(true, MOTOR_SLOW_SPEED);
         while (!checkForOpenKill()) {
             delay(10);
         }
+#endif
 
         stopMotor();
         return int_cpr_ticks;
