@@ -3,9 +3,12 @@
 #include <dosa.h>
 
 #define NO_DEVICE_BLINK_INTERVAL 500
-#define LOW_PWR_TIMER 300000  // Time before we turn off all LEDs to save power (ms)
 #define PIR_POLL 50           // How often we check the PIR sensor for state change
 #define PIN_PIR 2             // Data pin for PIR sensor
+
+// Never send a value of 0 through BT (0 will occur on read error)
+#define PIR_SENSOR_INACTIVE 1  // PIR state: 'off'
+#define PIR_SENSOR_ACTIVE 2    // PIR state: 'on'
 
 namespace dosa::sensor {
 
@@ -23,8 +26,8 @@ class SensorApp final : public dosa::App
     {
         App::init();
 
-        // BT PIR characteristic
-        bt_char_pir.writeValue(1);
+        // Sensor default state is "off" (no motion detected)
+        bt_char_pir.writeValue(PIR_SENSOR_INACTIVE);
 
         // PIR pin init
         pinMode(PIN_PIR, INPUT);
@@ -43,7 +46,7 @@ class SensorApp final : public dosa::App
         if (millis() - pir_last_updated > PIR_POLL) {
             pir_last_updated = millis();
 
-            byte state = digitalRead(PIN_PIR) + 1;  // + 1 because we never want to send 0 as the value
+            byte state = digitalRead(PIN_PIR) == HIGH ? PIR_SENSOR_ACTIVE : PIR_SENSOR_INACTIVE;
 
             if (state != pir_sensor_value) {
                 pir_sensor_value = state;
@@ -57,9 +60,9 @@ class SensorApp final : public dosa::App
     Container container;
     BLEByteCharacteristic bt_char_pir;
 
-    unsigned long start_time = 0;
+    //unsigned long start_time = 0; // TODO: unused? delete me
     unsigned long pir_last_updated = 0;
-    byte pir_sensor_value = 1;
+    byte pir_sensor_value = PIR_SENSOR_INACTIVE;
 
     Container& getContainer() override
     {

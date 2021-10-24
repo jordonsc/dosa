@@ -16,3 +16,11 @@ cc_library(
     includes = ["ArduinoBLE/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "WiFiNINA",
+    srcs = glob(["WiFiNINA/src/**/*.cpp"]),
+    hdrs = glob(["WiFiNINA/src/**/*.h"]),
+    includes = ["WiFiNINA/src"],
+    visibility = ["//visibility:public"],
+)

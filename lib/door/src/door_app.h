@@ -1,5 +1,6 @@
 #pragma once
 
+#include <WiFiNINA.h>
 #include <dosa.h>
 
 #include "door_container.h"
@@ -9,12 +10,28 @@
 #define SENSOR_TRIGGER_VALUE 2
 #define MAX_SENSORS 2
 
+#ifndef DOSA_NET_SSID
+#error Wifi SSID missing from environment (export DOSA_NET_SSID)
+#endif
+
+#ifndef DOSA_NET_PW
+#error Wifi password missing from environment (export DOSA_NET_PW)
+#endif
+
+#define DOSA_WIFI_SSID "DOSA_NET_SSID"
+
 namespace dosa::door {
 
 class DoorApp final : public dosa::App
 {
    public:
     using dosa::App::App;
+
+    explicit DoorApp(Config config) : App(std::move(config))
+    {
+        wifi_ssid = dosa::Base64::decode(DOSA_QUOTE(DOSA_NET_SSID));
+        wifi_password = dosa::Base64::decode(DOSA_QUOTE(DOSA_NET_PW));
+    }
 
     void init() override
     {
@@ -24,6 +41,25 @@ class DoorApp final : public dosa::App
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
+
+        auto& serial = container.getSerial();
+
+        serial.writeln("Attempting to connect to network: '" + wifi_ssid + "'");
+        serial.writeln("Using password: '" + wifi_password + "'");
+
+        // Connect to WPA/WPA2 network:
+        int status = WiFi.begin(wifi_ssid.c_str(), wifi_password.c_str());
+
+        if (status != WL_CONNECTED) {
+            // Connection failed!
+            serial.writeln("Connection failed (" + String(status) + ")");
+
+        } else {
+            auto wifi_ip = WiFi.localIP();
+            serial.writeln(
+                "Connected, local IP: " + String(wifi_ip[0]) + "." + String(wifi_ip[1]) + "." + String(wifi_ip[2]) +
+                "." + String(wifi_ip[3]));
+        }
     }
 
     void loop() override
@@ -279,6 +315,10 @@ class DoorApp final : public dosa::App
     {
         return static_cast<DoorApp*>(context)->doorInterruptCheck();
     }
+
+   private:
+    String wifi_ssid;
+    String wifi_password;
 };
 
 }  // namespace dosa::door

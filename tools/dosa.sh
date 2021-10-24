@@ -62,25 +62,32 @@ function validateApp() {
   fi
 }
 
+function getBuildFlags() {
+  if [ "$1" == "debug" ]; then
+    echo -n "-DDOSA_DEBUG=1 "
+  fi
+
+  if [ -n "${DOSA_NET_SSID}" ]; then
+    echo -n "-DDOSA_NET_SSID=$(echo -n ${DOSA_NET_SSID} | base64) "
+  fi
+
+  if [ -n "${DOSA_NET_PW}" ]; then
+    echo -n "-DDOSA_NET_PW=$(echo -n ${DOSA_NET_PW} | base64) "
+  fi
+}
+
 fqbn=$(getFqbn $2)
 
 case $1 in
 "compile")
   validateApp $fqbn
   echo "Compile '$2' against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} "src/$2"
+  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
   ;;
 "compile-debug")
   validateApp $fqbn
   echo "[DEBUG] Compile '$2' against ${fqbn}.."
-  # NB: some boards have -D flags in their platform.txt file -
-  #     See https://github.com/arduino/arduino-cli/issues/846
-  if [[ "${fqbn}" == "arduino:samd:nano_33_iot" ]]; then
-    echo "(adding nano_33_iot build options)"
-    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1 -D__SAMD21G18A__ {build.usb_flags}" "src/$2"
-  else
-    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1" "src/$2"
-  fi
+  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   ;;
 "upload")
   validateApp $fqbn
@@ -92,7 +99,7 @@ case $1 in
   validateApp $fqbn
   validatePort $3
   echo "Compile $1 against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} "src/$2"
+  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "Uploading $1 to board on port $3.."
     arduino-cli upload -b ${fqbn} -p $3 "src/$2"
@@ -105,12 +112,7 @@ case $1 in
   validateApp $fqbn
   validatePort $3
   echo "[DEBUG] Compile $1 against ${fqbn}.."
-  if [[ "${fqbn}" == "arduino:samd:nano_33_iot" ]]; then
-    echo "(adding nano_33_iot build options)"
-    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1 -D__SAMD21G18A__ {build.usb_flags}" "src/$2"
-  else
-    arduino-cli compile -b ${fqbn} --build-property "build.extra_flags=-DDOSA_DEBUG=1" "src/$2"
-  fi
+  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "[DEBUG] Uploading $1 to board on port $3.."
     arduino-cli upload -b ${fqbn} -p $3 "src/$2"
@@ -121,7 +123,7 @@ case $1 in
   ;;
 "monitor")
   validatePort $2
-  screen $2 9600
+  cat $2
   ;;
 *)
   syntax

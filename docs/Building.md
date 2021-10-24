@@ -33,6 +33,8 @@ You must always first compile:
 
     ./dosa compile door
 
+> NB: the "door" app is wifi-enabled and will require wifi credentials; see below.
+
 The batch file will select the correct board name to send to the `arduino-cli` binary, but when you upload you need to
 specify the port (you can view ports with `arduino-cli board list`).
 
@@ -41,3 +43,17 @@ specify the port (you can view ports with `arduino-cli board list`).
 You can do these both together with the `install` command:
 
     ./dosa install door /dev/ttyACM0
+
+Wifi Enabled Apps
+-----------------
+To pass Wifi secrets to Wifi-enabled apps, you will need to export the SSID and password:
+
+    export DOSA_NET_SSID="your SSID here"
+    (export DOSA_NET_PW="wifi password here"; ./dosa install someApp /dev/ttyACM0)
+
+> Using a sub-shell will prevent exposing the password to your environment.
+
+Wifi credentials are injected into the application base64 encoded. This is totally for security obfuscation purposes
+and totally nothing to do with being unable to get `-D` flags to work with quotes.
+
+> Burning wifi credentials is a short-term solution which will be replaced by an FRAM/BT solution.

@@ -32,6 +32,8 @@ cc_library(
     deps = [
         "//arduino",
         "//arduino:ArduinoBLE",
+        "//arduino:Base64",
+        "//arduino:WiFiNINA",
         "//lib:dosa",
     ],
 )

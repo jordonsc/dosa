@@ -2,6 +2,7 @@
 
 #include "app.h"
 #include "app_builder.h"
+#include "base64.h"
 #include "bt.h"
 #include "config.h"
 #include "const.h"

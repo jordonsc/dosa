@@ -26,7 +26,7 @@ echo "Installing boards.."
 arduino-cli core install arduino:samd arduino:mbed_nano
 
 # Install required libraries
-arduino-cli lib install ArduinoBLE
+arduino-cli lib install ArduinoBLE WiFiNINA
 
 echo
 echo "Done"

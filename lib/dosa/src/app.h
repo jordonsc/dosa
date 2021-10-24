@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+
 #include "config.h"
 #include "const.h"
 #include "container.h"
@@ -11,8 +13,12 @@ namespace dosa {
 class App
 {
    public:
-    explicit App(Config const& config) : config(config) {}
-    explicit App(Config const& config, char const* bt_svc) : config(config), bt_service(bt_svc) {}
+    explicit App(Config config) : config(std::move(config)), bt_char_version(dosa::bt::char_version, BLERead) {}
+    explicit App(Config config, char const* bt_svc)
+        : config(std::move(config)),
+          bt_char_version(dosa::bt::char_version, BLERead),
+          bt_service(bt_svc)
+    {}
 
     virtual void init()
     {
@@ -43,6 +49,7 @@ class App
                 container.getLights().errorHoldingPattern();
             }
 
+            bt.setDeviceName(config.short_name);
             bt.setConnectionInterval(DOSA_BT_DATA_MIN, DOSA_BT_DATA_MAX);
             if (config.bluetooth_appearance) {
                 bt.setAppearance(config.bluetooth_appearance);
@@ -59,6 +66,11 @@ class App
                 BLE.addService(bt_service);
             }
 
+            // Add a version characteristic
+            bt_service.addCharacteristic(bt_char_version);
+            bt_char_version.writeValue(DOSA_VERSION);
+
+            // Start advertising
             bt.setAdvertise(config.bluetooth_advertise);
         }
 
@@ -110,6 +122,7 @@ class App
     virtual Container& getContainer() = 0;
 
     Config config;
+    BLEUnsignedShortCharacteristic bt_char_version;
 
     BLEDevice bt_central;
     BLEService bt_service;
