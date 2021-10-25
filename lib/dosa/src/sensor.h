@@ -52,9 +52,20 @@ class Sensor : public Loggable
         last_poll = millis();
         device.poll();
 
-        if (sensor && sensor.valueUpdated()) {
-            sensor.readValue(state);
-            return true;
+        if (sensor) {
+            byte new_state;
+            sensor.readValue(new_state);
+            if (new_state == 0) {
+                serial->writeln("Read error on device: " + device.address(), dosa::LogLevel::WARNING);
+                disconnect();
+            } else if (new_state != state) {
+                state = new_state;
+                return true;
+            }
+        } else {
+            // Not sure why this would happen?
+            serial->writeln("Sensor failure on device: " + device.address(), dosa::LogLevel::WARNING);
+            disconnect();
         }
 
         return false;
@@ -100,6 +111,7 @@ class Sensor : public Loggable
                 return false;
             } else {
                 logln(" OK");
+                return true;
                 log("Subscribing..");
                 if (sensor.subscribe()) {
                     logln(" OK");

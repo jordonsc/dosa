@@ -17,5 +17,9 @@ try:
         x = ser.readline()
         if x:
             print(x.decode("utf-8"), end='')
+
+except serial.serialutil.SerialException:
+    print("\n-- Device disconnected --")
+
 except KeyboardInterrupt:
     sys.exit(0)
