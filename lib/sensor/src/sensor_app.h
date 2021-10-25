@@ -21,9 +21,11 @@ class SensorApp final : public dosa::App
    public:
     explicit SensorApp(Config const& config)
         : App(config, dosa::bt::svc_sensor),
-          bt_char_pir(dosa::bt::char_pir, BLERead | BLENotify)
+          bt_char_pir(dosa::bt::char_pir, BLERead | BLENotify),
+          bt_char_battery(dosa::bt::char_battery, BLERead)
     {
         bt_service.addCharacteristic(bt_char_pir);
+        bt_service.addCharacteristic(bt_char_battery);
     }
 
     void init() override
@@ -32,6 +34,9 @@ class SensorApp final : public dosa::App
 
         // Sensor default state is "off" (no motion detected)
         bt_char_pir.writeValue(PIR_SENSOR_INACTIVE);
+
+        // Battery meter (TODO)
+        bt_char_battery.writeValue(0);
 
         // PIR pin init
         pinMode(PIN_PIR, INPUT);
@@ -102,6 +107,9 @@ class SensorApp final : public dosa::App
    private:
     SensorContainer container;
     BLEByteCharacteristic bt_char_pir;
+    BLEUnsignedShortCharacteristic bt_char_battery;
+
+    unsigned long voltage_test = 0;
 
     unsigned long pir_last_hit = 0;      // To time how long between quick hits and/or the length of the active state
     unsigned long pir_last_updated = 0;  // Last time we polled the sensor

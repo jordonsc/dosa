@@ -1,6 +1,10 @@
 #pragma once
 
+//#define DOSA_ENABLE_WIFI
+
+#ifdef DOSA_ENABLE_WIFI
 #include <WiFiNINA.h>
+#endif
 #include <dosa.h>
 
 #include "door_container.h"
@@ -10,6 +14,7 @@
 #define SENSOR_TRIGGER_VALUE 2
 #define MAX_SENSORS 2
 
+#ifdef DOSA_ENABLE_WIFI
 #ifndef DOSA_NET_SSID
 #error Wifi SSID missing from environment (export DOSA_NET_SSID)
 #endif
@@ -17,8 +22,7 @@
 #ifndef DOSA_NET_PW
 #error Wifi password missing from environment (export DOSA_NET_PW)
 #endif
-
-#define DOSA_WIFI_SSID "DOSA_NET_SSID"
+#endif
 
 namespace dosa::door {
 
@@ -42,6 +46,7 @@ class DoorApp final : public dosa::App
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
 
+#ifdef DOSA_ENABLE_WIFI
         auto& serial = container.getSerial();
 
         serial.writeln("Attempting to connect to network: '" + wifi_ssid + "'");
@@ -60,6 +65,7 @@ class DoorApp final : public dosa::App
                 "Connected, local IP: " + String(wifi_ip[0]) + "." + String(wifi_ip[1]) + "." + String(wifi_ip[2]) +
                 "." + String(wifi_ip[3]));
         }
+#endif
     }
 
     void loop() override

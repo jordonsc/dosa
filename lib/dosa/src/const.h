@@ -26,6 +26,9 @@ char const* svc_sensor = "d05a0010-e8f2-537e-4f6c-d104768a1000";
 // Device version
 char const* char_version = "d05a0010-e8f2-537e-4f6c-d104768a1001";
 
+// Device battery level
+char const* char_battery = "00002a19-0000-1000-8000-00805f9b34fb";
+
 // Motion sensor characteristic
 char const* char_pir = "d05a0010-e8f2-537e-4f6c-d104768a1010";
 

@@ -21,7 +21,9 @@
 #define OPEN_HIGH_SPEED_TICKS 14000  // Number of CPR pulses at high-speed, before slowing the motor for safety
 #define MOTOR_CPR_WARMUP 1000        // Grace we give the motor to report CPR pulses before declaring a stall
 #define MOTOR_SLOW_SPEED 100         // Motor speed (1-255) to run when not at full speed (nearing apex)
-#define DOOR_TRIGGER_END_DELAY 2000  // Time we pause when the trigger sequence has completed
+
+#define DOOR_TRIGGER_MIN_DELAY 3000  // Minimum time we delay after closing the door before we allow it to open again
+#define DOOR_TRIGGER_MAX_DELAY 6000  // Maximum time we'll wait for sensors to return to passive before re-triggering
 
 // If defined, the door will continue to open until stopped (else it will open only to OPEN_HIGH_SPEED_TICKS)
 // #define DOOR_FULL_OPEN
@@ -128,7 +130,15 @@ class DoorWinch : public Loggable
             }
         }
 
-        delay(DOOR_TRIGGER_END_DELAY);
+        auto seq_complete_time = millis();
+        while (millis() - seq_complete_time < DOOR_TRIGGER_MAX_DELAY) {
+            if ((interrupt_cb == nullptr || !interrupt_cb(interrupt_cb_ctx)) &&
+                (millis() - seq_complete_time > DOOR_TRIGGER_MIN_DELAY)) {
+                // No movement detected, min delay exceeded - allow exit
+                break;
+            }
+            delay(100);
+        }
     }
 
     /**
