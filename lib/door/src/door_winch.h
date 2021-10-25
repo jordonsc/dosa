@@ -21,10 +21,13 @@
 #define OPEN_HIGH_SPEED_TICKS 14000  // Number of CPR pulses at high-speed, before slowing the motor for safety
 #define MOTOR_CPR_WARMUP 1000        // Grace we give the motor to report CPR pulses before declaring a stall
 #define MOTOR_SLOW_SPEED 100         // Motor speed (1-255) to run when not at full speed (nearing apex)
-#define DOOR_INTERRUPT_DELAY 1000    // Time we pause when the close sequence is interrupted
+#define DOOR_TRIGGER_END_DELAY 2000  // Time we pause when the trigger sequence has completed
 
 // If defined, the door will continue to open until stopped (else it will open only to OPEN_HIGH_SPEED_TICKS)
 // #define DOOR_FULL_OPEN
+
+// If defined, we allow the door to be interrupted during the close sequence
+// #define DOOR_CLOSE_ALLOW_INTERRUPT
 
 namespace dosa::door {
 
@@ -125,7 +128,7 @@ class DoorWinch : public Loggable
             }
         }
 
-        delay(DOOR_INTERRUPT_DELAY);
+        delay(DOOR_TRIGGER_END_DELAY);
     }
 
     /**
@@ -183,9 +186,11 @@ class DoorWinch : public Loggable
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
+#ifdef DOOR_CLOSE_ALLOW_INTERRUPT
             if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
                 break;
             }
+#endif
         }
 
         stopMotor();

@@ -1,5 +1,5 @@
 /**
- * Client class for sensor satellites.
+ * Represents a client Sensor.
  */
 
 #pragma once

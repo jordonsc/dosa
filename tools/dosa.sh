@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+cd ${app}/..
+
 # Update this list to match board to application -
 function getFqbn() {
   case "$1" in
@@ -123,7 +126,7 @@ case $1 in
   ;;
 "monitor")
   validatePort $2
-  cat $2
+  tools/read_serial.py $2
   ;;
 *)
   syntax

@@ -1,10 +1,11 @@
 /**
- * Central sensor pool container.
+ * A pool of Sensor objects.
  */
 
 #pragma once
 
-#include "loggable.h"
+#include <dosa.h>
+
 #include "sensor.h"
 
 namespace dosa {

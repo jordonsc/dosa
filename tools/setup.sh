@@ -28,6 +28,9 @@ arduino-cli core install arduino:samd arduino:mbed_nano
 # Install required libraries
 arduino-cli lib install ArduinoBLE WiFiNINA
 
+# For Python console tool
+pip3 install pySerial
+
 echo
 echo "Done"
 echo
