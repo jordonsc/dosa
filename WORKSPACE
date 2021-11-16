@@ -1,5 +1,7 @@
 workspace(name = "DOSA")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
 http_archive(
     name = "io_bazel_rules_docker",
     sha256 = "95d39fd84ff4474babaf190450ee034d958202043e366b9fc38f438c9e6c3334",
@@ -16,7 +18,14 @@ http_archive(
     ],
 )
 
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")
+load("@io_bazel_rules_docker//repositories:repositories.bzl", container_repositories = "repositories")
+
+rules_pkg_dependencies()
+
 load("@io_bazel_rules_docker//container:container.bzl", "container_pull")
+
+container_repositories()
 
 container_pull(
     name = "img-zookeeper",
@@ -25,3 +34,7 @@ container_pull(
     repository = "library/zookeeper",
     tag = "3.7",
 )
+
+load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
+
+container_deps()
