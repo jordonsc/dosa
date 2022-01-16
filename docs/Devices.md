@@ -1,12 +1,13 @@
 DOSA Device Registry
 ====================
-
 There are two types of devices within DOSA:
-* **Master units**: BLE central; have a primary function and connect to satellite devices
-* **Satellite units**: BLE peripheral; normally provide generic sensory information, advertises itself and allows 
-                       master units to connect at will
+* **Master units**: Have a primary function, listens for events broadcasted by satellites
+* **Satellite units**: Normally provide generic sensory information, dispatches events that master units can listen to
 
 Device design found [here](https://drive.google.com/file/d/1iOGFvSHi1p7XgKmgojp_A2M7-Gj7CR4N/view?usp=sharing) (WIP).
+
+> All devices are now using IoT boards and communicate via WiFi instead of BT. BT is used to configuring the boards
+> only.
 
 Door Driver
 -----------
@@ -28,7 +29,6 @@ Hardware components:
 * [3.3v voltage regulator](https://core-electronics.com.au/pololu-3-3v-500ma-step-down-voltage-regulator-d24v5f3.html) (only used by motor controller, could use board power instead)
 
 Pending:
-* Physical winch
 * [FRAM](https://core-electronics.com.au/adafruit-spi-non-volatile-fram-breakout-64kbit-8kbyte.html) (required for Gen II cloud support)
 
 LED Signals:
@@ -46,9 +46,9 @@ LED Signals:
 Sensor Suite
 ------------
 * Satellite unit
-* Board: `arduino:mbed_nano:nano33ble`
+* Board: `arduino:samd:nano_33_iot`
 * Application: `sensor`
-* State: Gen I complete
+* State: Gen I complete; IR array in development
 
 The sensor device can host an array of sensory functions and transmit them to any master unit listening. Current
 generation only supports a PIR sensor.
@@ -56,8 +56,9 @@ generation only supports a PIR sensor.
 The sensor device is designed to be powered by batteries, thus it contains minimal components that could drain power.
 
 Hardware components:
-* [PIR sensor](https://core-electronics.com.au/pir-motion-sensor-11609.html)
-* 9v battery attachment
+* [PIR sensor](https://core-electronics.com.au/pir-motion-sensor-11609.html); or
+* [IR Array](https://core-electronics.com.au/sparkfun-grid-eye-infrared-array-breakout-amg8833-qwiic.html)
+* 12v DC input
 * Watertight housing
 
 > The sensor suite has Gen II+ plans for solar support.

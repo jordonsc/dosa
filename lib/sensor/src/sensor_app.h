@@ -7,8 +7,9 @@
 #define NO_DEVICE_BLINK_INTERVAL 500  // LED light blink rate when no central is connected
 #define PIR_MIN_ACTIVE 1000           // Length of time we require the sensor to be active before calling it a hit
 #define PIR_SENSITIVITY_DELAY 5000    // If we get 2 quick hits within this time, still consider it a valid trigger
-#define PIR_POLL 10                   // How often we check the PIR sensor for state change
-#define PIN_PIR 2                     // Data pin for PIR sensor
+//#define PIR_POLL 10                 // How often we check the PIR sensor for state change
+#define PIR_POLL 1000  // How often we check the PIR sensor for state change
+#define PIN_PIR 2      // Data pin for PIR sensor
 
 // Never send a value of 0 through BT (0 will occur on read error)
 #define PIR_SENSOR_INACTIVE 1  // PIR state: 'off'
@@ -19,40 +20,60 @@ namespace dosa::sensor {
 class SensorApp final : public dosa::App
 {
    public:
-    explicit SensorApp(Config const& config)
-        : App(config, dosa::bt::svc_sensor),
-          bt_char_pir(dosa::bt::char_pir, BLERead | BLENotify),
-          bt_char_battery(dosa::bt::char_battery, BLERead)
-    {
-        bt_service.addCharacteristic(bt_char_pir);
-        bt_service.addCharacteristic(bt_char_battery);
-    }
+    explicit SensorApp(Config const& config) : App(config) {}
 
     void init() override
     {
         App::init();
 
-        // Sensor default state is "off" (no motion detected)
-        bt_char_pir.writeValue(PIR_SENSOR_INACTIVE);
-
-        // Battery meter (TODO)
-        bt_char_battery.writeValue(0);
-
         // PIR pin init
         pinMode(PIN_PIR, INPUT);
+
+        // For debug, until FRAM is available
+        //setWifi("xxx", "yyy");
     }
 
     void loop() override
     {
-        auto& serial = container.getSerial();
-        auto& bt = container.getBluetooth();
-        auto& pool = container.getDevicePool();
-        auto& lights = container.getLights();
-
-        checkCentral();
+        stdLoop();
 
         // Check state of the PIR sensor
         if (millis() - pir_last_updated > PIR_POLL) {
+            pir_last_updated = millis();
+
+            auto& udp = container.getWiFi().getUdp();
+
+            container.getSerial().write(
+                "Dispatch welcome packet to " + Wifi::ipToString(dosa::wifi::sensorBroadcastIp));
+
+            if (udp.beginPacket(dosa::wifi::sensorBroadcastIp, dosa::wifi::sensorBroadcastPort) != 1) {
+                container.getSerial().writeln(" error creating packet");
+                return;
+            }
+
+            String payload = "hello dosa " + String(random(100, 999));
+            udp.write(payload.c_str());
+
+            if (udp.endPacket() != 1) {
+                container.getSerial().writeln(" error sending packet");
+                return;
+            }
+
+            container.getSerial().writeln(" done");
+
+            if (container.getWiFi().isConnected()) {
+                int packetSize = udp.parsePacket();
+                if (packetSize > 0) {
+                    container.getSerial().writeln("Packet waiting: " + String(packetSize));
+                    container.getSerial().writeln("Data size: " + String(container.getWiFi().getUdp().available()));
+                }
+            } else {
+                container.getSerial().writeln("(Wifi not active)");
+            }
+        }
+
+        if (false) {
+            auto& serial = container.getSerial();
             pir_last_updated = millis();
             byte state = digitalRead(PIN_PIR) == HIGH ? PIR_SENSOR_ACTIVE : PIR_SENSOR_INACTIVE;
 
@@ -68,7 +89,7 @@ class SensorApp final : public dosa::App
                 bt_sensor_value == PIR_SENSOR_INACTIVE && (millis() - pir_last_hit > PIR_MIN_ACTIVE)) {
                 bt_sensor_value = pir_sensor_value = state;
                 serial.writeln("SET: ACTIVE (continuous activity)", dosa::LogLevel::DEBUG);
-                bt_char_pir.writeValue(pir_sensor_value);
+                // TOOD: wifi broadcast
             }
 
             /**
@@ -89,14 +110,14 @@ class SensorApp final : public dosa::App
                     if (bt_sensor_value != PIR_SENSOR_INACTIVE) {
                         bt_sensor_value = pir_sensor_value;
                         serial.writeln("SET: INACTIVE", dosa::LogLevel::DEBUG);
-                        bt_char_pir.writeValue(bt_sensor_value);
+                        // TOOD: wifi broadcast
                     }
                 } else {
                     // TRIGGER ACTIVE STATE FROM SUCCESSIVE HITS
                     if (millis() - pir_last_hit < PIR_SENSITIVITY_DELAY) {
                         bt_sensor_value = pir_sensor_value;
                         serial.writeln("SET: ACTIVE (repeat trigger)", dosa::LogLevel::DEBUG);
-                        bt_char_pir.writeValue(pir_sensor_value);
+                        // TOOD: wifi broadcast
                     }
                     pir_last_hit = millis();
                 }
@@ -106,10 +127,12 @@ class SensorApp final : public dosa::App
 
    private:
     SensorContainer container;
-    BLEByteCharacteristic bt_char_pir;
-    BLEUnsignedShortCharacteristic bt_char_battery;
 
-    unsigned long voltage_test = 0;
+    void onWifiConnect() override
+    {
+        App::onWifiConnect();
+        container.getWiFi().getUdp().begin(random(1024, 65536));
+    }
 
     unsigned long pir_last_hit = 0;      // To time how long between quick hits and/or the length of the active state
     unsigned long pir_last_updated = 0;  // Last time we polled the sensor

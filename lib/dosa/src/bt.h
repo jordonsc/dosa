@@ -109,6 +109,16 @@ class Bluetooth : public Loggable
         BLE.setDeviceName(deviceName.c_str());
     }
 
+    bool setService(BLEService& svc)
+    {
+        if (!BLE.setAdvertisedService(svc)) {
+            return false;
+        }
+
+        BLE.addService(svc);
+        return true;
+    }
+
     /**
      * Toggle the BT advertising & connectability state.
      *

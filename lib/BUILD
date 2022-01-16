@@ -8,7 +8,7 @@ LINKOPTS = [
 # DOSA common library
 cc_library(
     name = "dosa",
-    srcs = glob(["dosa/src/**/*.cc"]),
+    srcs = glob(["dosa/src/**/*.cpp"]),
     hdrs = glob(["dosa/src/**/*.h"]),
     copts = COPTS,
     includes = ["dosa/src"],
@@ -17,13 +17,14 @@ cc_library(
     deps = [
         "//arduino",
         "//arduino:ArduinoBLE",
+        "//arduino:WiFiNINA",
     ],
 )
 
 # Door winch master unit library
 cc_library(
     name = "door",
-    srcs = glob(["door/src/**/*.cc"]),
+    srcs = glob(["door/src/**/*.cpp"]),
     hdrs = glob(["door/src/**/*.h"]),
     copts = COPTS,
     includes = ["door/src"],
@@ -31,9 +32,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino",
-        "//arduino:ArduinoBLE",
-        "//arduino:Base64",
-        "//arduino:WiFiNINA",
         "//lib:dosa",
     ],
 )
@@ -41,7 +39,7 @@ cc_library(
 # Sensor satellite unit library
 cc_library(
     name = "sensor",
-    srcs = glob(["sensor/src/**/*.cc"]),
+    srcs = glob(["sensor/src/**/*.cpp"]),
     hdrs = glob(["sensor/src/**/*.h"]),
     copts = COPTS,
     includes = ["sensor/src"],
@@ -49,7 +47,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino",
-        "//arduino:ArduinoBLE",
         "//lib:dosa",
     ],
 )

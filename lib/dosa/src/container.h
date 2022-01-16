@@ -2,15 +2,15 @@
 
 #include "bt.h"
 #include "lights.h"
-#include "pool.h"
 #include "serial.h"
+#include "wifi.h"
 
 namespace dosa {
 
 class Container
 {
    public:
-    Container() : bluetooth(Bluetooth(&serial)), device_pool(DevicePool(&serial)) {}
+    Container() : bluetooth(&serial), wifi(&serial) {}
 
     SerialComms& getSerial()
     {
@@ -27,16 +27,16 @@ class Container
         return bluetooth;
     }
 
-    DevicePool& getDevicePool()
+    Wifi& getWiFi()
     {
-        return device_pool;
+        return wifi;
     }
 
    protected:
     SerialComms serial;
     Lights lights;
     Bluetooth bluetooth;
-    DevicePool device_pool;
+    Wifi wifi;
 };
 
 }  // namespace dosa

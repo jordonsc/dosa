@@ -20,7 +20,6 @@ void setup()
     cfg.app_name = "DOSA Door Controller";
     cfg.short_name = "DOSA-D";
     cfg.bluetooth_appearance = 0x0741;
-    cfg.bluetooth_advertise = false;
 
     builder.getApp().init();
 }

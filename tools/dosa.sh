@@ -10,7 +10,9 @@ function getFqbn() {
     echo "arduino:samd:nano_33_iot"
     ;;
   "sensor")
-    echo "arduino:mbed_nano:nano33ble"
+    # Formally, the sensor used the Nano 33 BLE board
+    #echo "arduino:mbed_nano:nano33ble"
+    echo "arduino:samd:nano_33_iot"
     ;;
   *) ;;
 
@@ -27,7 +29,7 @@ function syntax() {
   echo "  upload         :  Uploads the last compiled application"
   echo "  install        :  Compiles application, uploads if compile is successful"
   echo "  install-debug  :  Compiles application in debug mode, uploads if compile is successful"
-  echo "  monitor        :  Opens a serial monitor to provided port (wrapper for screen)"
+  echo "  monitor        :  Opens a serial monitor to provided port"
   echo
   echo "Applications:"
   echo "  door           : Master unit for door driver"
