@@ -16,6 +16,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino",
+        "//arduino:Adafruit_FRAM_SPI",
         "//arduino:ArduinoBLE",
         "//arduino:WiFiNINA",
     ],

@@ -45,6 +45,12 @@ class App
 #endif
         serial.writeln("Begin init..");
 
+        // Load settings from FRAM
+        if (readSettings() && (wifi_ssid.length() > 1) && wifiConnect()) {
+            // Don't enable BT if wifi connected with saved settings
+            config.bluetooth_enabled = false;
+        }
+
         // Bluetooth init
         if (config.bluetooth_enabled) {
             auto& bt = container.getBluetooth();
@@ -170,17 +176,73 @@ class App
 
     void setWifi(String const& ssid, String const& password)
     {
-        auto& serial = getContainer().getSerial();
+        auto& container = getContainer();
+        auto& serial = container.getSerial();
 
         wifi_ssid = ssid;
         wifi_password = password;
 
-        getContainer().getBluetooth().setEnabled(false);
-        if (getContainer().getWiFi().connect(wifi_ssid, wifi_password)) {
-            onWifiConnect();
-        } else {
-            getContainer().getBluetooth().setEnabled(true);
+        writeSettings();
+        wifiConnect();
+    }
+
+    bool wifiConnect()
+    {
+        auto& container = getContainer();
+
+        if (container.getBluetooth().isEnabled()) {
+            container.getBluetooth().setEnabled(false);
         }
+
+        if (container.getWiFi().connect(wifi_ssid, wifi_password)) {
+            onWifiConnect();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    bool readSettings()
+    {
+        auto& container = getContainer();
+        auto& serial = container.getSerial();
+        auto settings = container.getFram().read();
+
+        if (settings.length() == 0) {
+            serial.writeln("No stored settings, using defaults");
+            return false;
+        }
+
+        auto delim = settings.indexOf('\n');
+        if (delim < 1) {
+            serial.writeln("Stored settings malformed (1), clearing FRAM", dosa::LogLevel::ERROR);
+            container.getFram().write("");
+            return false;
+        }
+
+        auto stored_pin = settings.substring(0, delim);
+        settings = settings.substring(delim + 1);
+        delim = settings.indexOf('\n');
+
+        if (delim < 1) {
+            serial.writeln("Stored settings malformed (2), clearing FRAM", dosa::LogLevel::ERROR);
+            container.getFram().write("");
+            return false;
+        }
+
+        pin = stored_pin;
+        wifi_ssid = settings.substring(0, delim);
+        wifi_password = settings.substring(delim + 1);
+
+        serial.writeln("Settings loaded from FRAM");
+
+        return true;
+    }
+
+    void writeSettings()
+    {
+        String cfg = pin + "\n" + wifi_ssid + "\n" + wifi_password;
+        getContainer().getFram().write(cfg);
     }
 
    private:
@@ -188,8 +250,8 @@ class App
     unsigned long central_last_health_check = 0;
     unsigned long config_last_checked = 0;
     String pin = "dosa";
-    String wifi_ssid;
-    String wifi_password;
+    String wifi_ssid = "";
+    String wifi_password = "";
 
     bool authCheck(String const& v)
     {
@@ -229,6 +291,7 @@ class App
         if (data_value.length() >= 4) {
             pin = data_value;
             serial.writeln("Set pin to '" + pin + "'");
+            writeSettings();
         } else {
             serial.writeln("New pin too short: '" + data_value + "'", dosa::LogLevel::ERROR);
         }

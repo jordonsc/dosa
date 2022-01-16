@@ -9,12 +9,13 @@
 #define DOSA_QUOTE(x) DOSA_QUOTE_Q(x)
 
 // DOSA platform version
-#define DOSA_VERSION 5
+#define DOSA_VERSION 6
 
 // General configuration
 #define DOSA_MAX_PERIPHERALS 5  // Max number of peripherals that centrals will connect to
 #define DOSA_SCAN_FREQ 5000     // How often we scan for new peripherals
 #define DOSA_POLL_FREQ 1000     // How often we poll the peripherals for updates
+#define FRAM_CS_PIN 10
 
 // Unused
 #define DOSA_BT_DATA_MIN 400   // Bluetooth min comms speed (milliseconds = value * 1.25) - min 6 (7.5 ms)

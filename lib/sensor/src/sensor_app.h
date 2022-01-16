@@ -28,9 +28,6 @@ class SensorApp final : public dosa::App
 
         // PIR pin init
         pinMode(PIN_PIR, INPUT);
-
-        // For debug, until FRAM is available
-        //setWifi("xxx", "yyy");
     }
 
     void loop() override
@@ -38,7 +35,7 @@ class SensorApp final : public dosa::App
         stdLoop();
 
         // Check state of the PIR sensor
-        if (millis() - pir_last_updated > PIR_POLL) {
+        if (container.getWiFi().isConnected() && (millis() - pir_last_updated > PIR_POLL)) {
             pir_last_updated = millis();
 
             auto& udp = container.getWiFi().getUdp();
@@ -89,7 +86,7 @@ class SensorApp final : public dosa::App
                 bt_sensor_value == PIR_SENSOR_INACTIVE && (millis() - pir_last_hit > PIR_MIN_ACTIVE)) {
                 bt_sensor_value = pir_sensor_value = state;
                 serial.writeln("SET: ACTIVE (continuous activity)", dosa::LogLevel::DEBUG);
-                // TOOD: wifi broadcast
+                // TODO: wifi broadcast
             }
 
             /**
@@ -110,14 +107,14 @@ class SensorApp final : public dosa::App
                     if (bt_sensor_value != PIR_SENSOR_INACTIVE) {
                         bt_sensor_value = pir_sensor_value;
                         serial.writeln("SET: INACTIVE", dosa::LogLevel::DEBUG);
-                        // TOOD: wifi broadcast
+                        // TODO: wifi broadcast
                     }
                 } else {
                     // TRIGGER ACTIVE STATE FROM SUCCESSIVE HITS
                     if (millis() - pir_last_hit < PIR_SENSITIVITY_DELAY) {
                         bt_sensor_value = pir_sensor_value;
                         serial.writeln("SET: ACTIVE (repeat trigger)", dosa::LogLevel::DEBUG);
-                        // TOOD: wifi broadcast
+                        // TODO: wifi broadcast
                     }
                     pir_last_hit = millis();
                 }

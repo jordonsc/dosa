@@ -22,9 +22,6 @@ class DoorApp final : public dosa::App
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
-
-        // For debug, until FRAM is available
-        //setWifi("xxx", "yyy");
     }
 
     void loop() override

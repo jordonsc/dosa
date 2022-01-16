@@ -7,6 +7,7 @@
 #include "config.h"
 #include "const.h"
 #include "container.h"
+#include "fram.h"
 #include "lights.h"
 #include "serial.h"
 #include "switch.h"

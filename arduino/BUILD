@@ -24,3 +24,14 @@ cc_library(
     includes = ["WiFiNINA/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "Adafruit_FRAM_SPI",
+    srcs = glob(["Adafruit_FRAM_SPI/*.cpp"]),
+    hdrs = glob(["Adafruit_FRAM_SPI/*.h"]),
+    includes = ["Adafruit_FRAM_SPI"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+    ],
+)
