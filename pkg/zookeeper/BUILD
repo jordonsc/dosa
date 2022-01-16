@@ -1,7 +1,7 @@
 load("//bazel:build.bzl", "app_image")
 
 app_image(
-    base = "",
+    base = "@img-zookeeper//image",
     cmd = [""],
     entrypoint = [
         "/bin/zookeeper",
