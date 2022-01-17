@@ -18,6 +18,7 @@ cc_library(
         "//arduino",
         "//arduino:Adafruit_FRAM_SPI",
         "//arduino:ArduinoBLE",
+        "//arduino:SparkFun_GridEYE",
         "//arduino:WiFiNINA",
     ],
 )

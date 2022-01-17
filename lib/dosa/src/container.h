@@ -11,36 +11,36 @@ namespace dosa {
 class Container
 {
    public:
-    Container() : fram(&serial), bluetooth(&serial), wifi(&serial) {}
+    Container() : ram(&serial), bluetooth(&serial), wifi(&serial) {}
 
-    SerialComms& getSerial()
+    [[nodiscard]] SerialComms& getSerial()
     {
         return serial;
     }
 
-    Fram& getFram()
+    [[nodiscard]] Fram& getFram()
     {
-        return fram;
+        return ram;
     }
 
-    Lights& getLights()
+    [[nodiscard]] Lights& getLights()
     {
         return lights;
     }
 
-    Bluetooth& getBluetooth()
+    [[nodiscard]] Bluetooth& getBluetooth()
     {
         return bluetooth;
     }
 
-    Wifi& getWiFi()
+    [[nodiscard]] Wifi& getWiFi()
     {
         return wifi;
     }
 
    protected:
     SerialComms serial;
-    Fram fram;
+    Fram ram;
     Lights lights;
     Bluetooth bluetooth;
     Wifi wifi;

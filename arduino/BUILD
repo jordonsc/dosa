@@ -35,3 +35,11 @@ cc_library(
         "//arduino",
     ],
 )
+
+cc_library(
+    name = "SparkFun_GridEYE",
+    srcs = glob(["SparkFun_GridEYE_AMG88_Library/src/**/*.cpp"]),
+    hdrs = glob(["SparkFun_GridEYE_AMG88_Library/src/**/*.h"]),
+    includes = ["SparkFun_GridEYE_AMG88_Library/src"],
+    visibility = ["//visibility:public"],
+)

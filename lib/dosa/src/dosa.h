@@ -8,6 +8,7 @@
 #include "const.h"
 #include "container.h"
 #include "fram.h"
+#include "grideye.h"
 #include "lights.h"
 #include "serial.h"
 #include "switch.h"

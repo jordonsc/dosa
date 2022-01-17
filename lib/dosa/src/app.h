@@ -189,6 +189,7 @@ class App
     bool wifiConnect()
     {
         auto& container = getContainer();
+        container.getSerial().writeln("Connecting to wifi..");
 
         if (container.getBluetooth().isEnabled()) {
             container.getBluetooth().setEnabled(false);

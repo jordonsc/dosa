@@ -26,7 +26,7 @@ echo "Installing boards.."
 arduino-cli core install arduino:samd arduino:mbed_nano
 
 # Install required libraries
-arduino-cli lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI"
+arduino-cli lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
 
 # For Python console tool
 pip3 install pySerial

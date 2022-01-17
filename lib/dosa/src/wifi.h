@@ -22,7 +22,6 @@ class Wifi : public Loggable
         }
 
         WiFi.setTimeout(30 * 1000);
-        log("Wifi connecting to '" + ssid + "'..");
         uint8_t attempt = 0;
 
         do {
@@ -35,11 +34,12 @@ class Wifi : public Loggable
             status = WiFi.begin(ssid.c_str(), password.c_str());
 
             if (status != WL_CONNECTED) {
-                logln(" connection failed (" + String(status) + ")");
+                logln("Connection failed (" + String(status) + ")");
                 ++attempt;
             } else {
                 logln(
-                    " connected; local IP: " + ipToString(WiFi.localIP()) + " (" + ipToString(WiFi.subnetMask()) + ")");
+                    "Connected to " + ssid + "; local IP: " + ipToString(WiFi.localIP()) + " netmask " +
+                    ipToString(WiFi.subnetMask()));
                 return true;
             }
         } while (attempt < attempts);

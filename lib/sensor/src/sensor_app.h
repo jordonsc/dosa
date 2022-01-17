@@ -4,16 +4,41 @@
 
 #include "sensor_container.h"
 
-#define NO_DEVICE_BLINK_INTERVAL 500  // LED light blink rate when no central is connected
-#define PIR_MIN_ACTIVE 1000           // Length of time we require the sensor to be active before calling it a hit
-#define PIR_SENSITIVITY_DELAY 5000    // If we get 2 quick hits within this time, still consider it a valid trigger
-//#define PIR_POLL 10                 // How often we check the PIR sensor for state change
-#define PIR_POLL 1000  // How often we check the PIR sensor for state change
-#define PIN_PIR 2      // Data pin for PIR sensor
+/**
+ * Network setting - the number of times we'll send a UDP multicast message without receiving an ack in return before
+ * giving up and assuming nobody is listening. Increase this number to deal with poor network transmission.
+ */
+#define MAX_ACK_RETRIES 5
 
-// Never send a value of 0 through BT (0 will occur on read error)
-#define PIR_SENSOR_INACTIVE 1  // PIR state: 'off'
-#define PIR_SENSOR_ACTIVE 2    // PIR state: 'on'
+/**
+ * Polling time (in ms) to read and compare IR grid numbers. Increasing this number will normally result in larger
+ * changes in the delta, thus increasing sensitivity. Changing this will potentially throw off other calibrations
+ * dramatically.
+ */
+#define IR_POLL 500
+
+/**
+ * Temp change (in Celsius) before considering any single pixel as "changed". This is a de-noising threshold, increase
+ * this number to reduce the amount of noise the algorithm is sensitive to.
+ */
+#define SINGLE_DELTA_THRESHOLD 1.5
+
+/**
+ * The total temperature delta across all pixels before firing a trigger. This is the primary sensitivity metric, it
+ * is also filtered against noise by SINGLE_DELTA_THRESHOLD so it won't show a true full-grid delta.
+ */
+#define TOTAL_DELTA_THRESHOLD 25.0
+
+/**
+ * Minimum number of pixels that are considered 'changed' before we accept a trigger. Increase this to eliminate
+ * single-pixel or edge anomalies.
+ */
+#define MIN_PIXELS_THRESHOLD 1
+
+/**
+ * Time (in ms) before firing a second trigger message.
+ */
+#define REFIRE_DELAY 3000
 
 namespace dosa::sensor {
 
@@ -25,105 +50,128 @@ class SensorApp final : public dosa::App
     void init() override
     {
         App::init();
-
-        // PIR pin init
-        pinMode(PIN_PIR, INPUT);
     }
 
     void loop() override
     {
         stdLoop();
 
-        // Check state of the PIR sensor
-        if (container.getWiFi().isConnected() && (millis() - pir_last_updated > PIR_POLL)) {
-            pir_last_updated = millis();
+        // Check state of the IR grid
+        if (millis() - ir_grid_last_update > IR_POLL) {
+            ir_grid_last_update = millis();
 
-            auto& udp = container.getWiFi().getUdp();
-
-            container.getSerial().write(
-                "Dispatch welcome packet to " + Wifi::ipToString(dosa::wifi::sensorBroadcastIp));
-
-            if (udp.beginPacket(dosa::wifi::sensorBroadcastIp, dosa::wifi::sensorBroadcastPort) != 1) {
-                container.getSerial().writeln(" error creating packet");
-                return;
-            }
-
-            String payload = "hello dosa " + String(random(100, 999));
-            udp.write(payload.c_str());
-
-            if (udp.endPacket() != 1) {
-                container.getSerial().writeln(" error sending packet");
-                return;
-            }
-
-            container.getSerial().writeln(" done");
-
-            if (container.getWiFi().isConnected()) {
-                int packetSize = udp.parsePacket();
-                if (packetSize > 0) {
-                    container.getSerial().writeln("Packet waiting: " + String(packetSize));
-                    container.getSerial().writeln("Data size: " + String(container.getWiFi().getUdp().available()));
-                }
-            } else {
-                container.getSerial().writeln("(Wifi not active)");
-            }
-        }
-
-        if (false) {
+            auto& ir = container.getIrGrid();
             auto& serial = container.getSerial();
-            pir_last_updated = millis();
-            byte state = digitalRead(PIN_PIR) == HIGH ? PIR_SENSOR_ACTIVE : PIR_SENSOR_INACTIVE;
 
-            /**
-             * Long active state trigger.
-             *
-             * This is the preferred way to enter a "HIT" state. We time how long the sensor has detected motion and
-             * if it exceeds a threshold then we move to active state.
-             *
-             * NB: the timer for this is activated by the state-change code.
-             */
-            if (state == PIR_SENSOR_ACTIVE && pir_sensor_value == PIR_SENSOR_ACTIVE &&
-                bt_sensor_value == PIR_SENSOR_INACTIVE && (millis() - pir_last_hit > PIR_MIN_ACTIVE)) {
-                bt_sensor_value = pir_sensor_value = state;
-                serial.writeln("SET: ACTIVE (continuous activity)", dosa::LogLevel::DEBUG);
-                // TODO: wifi broadcast
-            }
+            float new_grid[64] = {0};
+            float max_delta = 0;
+            float ttl_delta = 0;
+            uint8_t changed = 0;
 
-            /**
-             * State change triggers.
-             *
-             * There are two uses for monitoring PIR sensor state change:
-             * 1. Returning to an inactive state
-             * 2. Checking for quick successive hits (small motion detected continuously)
-             */
-            else if (state != pir_sensor_value) {
-                pir_sensor_value = state;
-                serial.writeln(
-                    "sensor: " + String(pir_sensor_value == PIR_SENSOR_ACTIVE ? "active" : "inactive"),
-                    dosa::LogLevel::DEBUG);
+            for (unsigned row = 0; row < 8; ++row) {
+                for (unsigned col = 0; col < 8; ++col) {
+                    auto index = col + (row * 8);
+                    new_grid[index] = ir.getPixelTemp(index);
 
-                if (state == PIR_SENSOR_INACTIVE) {
-                    // RETURN TO PASSIVE STATE
-                    if (bt_sensor_value != PIR_SENSOR_INACTIVE) {
-                        bt_sensor_value = pir_sensor_value;
-                        serial.writeln("SET: INACTIVE", dosa::LogLevel::DEBUG);
-                        // TODO: wifi broadcast
+                    float delta = abs(new_grid[index] - grid[index]);
+                    if (delta >= SINGLE_DELTA_THRESHOLD) {
+                        ++changed;
+                        ttl_delta += delta;
+                        if (delta > max_delta) {
+                            max_delta = delta;
+                        }
                     }
-                } else {
-                    // TRIGGER ACTIVE STATE FROM SUCCESSIVE HITS
-                    if (millis() - pir_last_hit < PIR_SENSITIVITY_DELAY) {
-                        bt_sensor_value = pir_sensor_value;
-                        serial.writeln("SET: ACTIVE (repeat trigger)", dosa::LogLevel::DEBUG);
-                        // TODO: wifi broadcast
-                    }
-                    pir_last_hit = millis();
                 }
             }
+
+            triggerIf(max_delta, ttl_delta, changed);
+            memcpy(grid, new_grid, sizeof(float) * 64);
         }
     }
 
    private:
     SensorContainer container;
+    float grid[64] = {0};
+    unsigned long last_fired = 0;
+
+    /**
+     * Fire a trigger message if rules for comparing IR grid deltas pass.
+     *
+     * Will also consider a cool-down before a second trigger.
+     */
+    bool triggerIf(float max_single_delta, float ttl_delta, uint8_t pixels_changed)
+    {
+        if (grid[0] == 0 || max_single_delta < SINGLE_DELTA_THRESHOLD || ttl_delta < TOTAL_DELTA_THRESHOLD ||
+            pixels_changed < MIN_PIXELS_THRESHOLD || millis() - last_fired < REFIRE_DELAY) {
+            return false;
+        } else {
+            dispatchNotification();
+            return true;
+        }
+    }
+
+    /**
+     * Send a notification via UDP multicast informing of sensor hit.
+     *
+     * This is a recursive function that will retry if we don't receive an ack back from a central device.
+     */
+    void dispatchNotification(uint8_t retries = 0)
+    {
+        auto& udp = container.getWiFi().getUdp();
+        auto& serial = container.getSerial();
+
+        if (retries == 0) {
+            last_fired = millis();
+            serial.writeln("IR trigger", dosa::LogLevel::INFO);
+        }
+
+        if (!container.getWiFi().isConnected()) {
+            return;
+        }
+
+        if (udp.beginPacket(dosa::wifi::sensorBroadcastIp, dosa::wifi::sensorBroadcastPort) != 1) {
+            serial.writeln("WARNING: unable to dispatch sensor trigger notification", dosa::LogLevel::WARNING);
+            return;
+        }
+
+        String payload = "IR HIT";
+        udp.write(payload.c_str());
+
+        if (udp.endPacket() != 1) {
+            serial.writeln("ERROR: unable to dispatch sensor trigger notification", dosa::LogLevel::ERROR);
+            return;
+        }
+
+        // Wait for ack
+        auto start = millis();
+        char buffer[255];
+        do {
+            if (udp.parsePacket()) {
+                auto data_size = min(udp.available(), 255);
+                udp.read(buffer, data_size);
+                buffer[data_size] = 0x0;
+                auto incoming = String(buffer);
+                if (incoming == "ack") {
+                    serial.writeln(
+                        "Trigger acknowledged by " + dosa::Wifi::ipToString(udp.remoteIP()),
+                        dosa::LogLevel::INFO);
+                    return;
+                } else {
+                    serial.writeln(
+                        "Unexpected reply '" + incoming + "' from " + dosa::Wifi::ipToString(udp.remoteIP()),
+                        dosa::LogLevel::WARNING);
+                }
+                break;
+            }
+        } while (millis() - start < 250);
+
+        // Didn't get an ack in a timely manner, retry the notification
+        if (retries < MAX_ACK_RETRIES) {
+            dispatchNotification(retries + 1);
+        } else {
+            serial.writeln("WARNING: trigger has gone unacknowledged", dosa::LogLevel::WARNING);
+        }
+    }
 
     void onWifiConnect() override
     {
@@ -131,10 +179,7 @@ class SensorApp final : public dosa::App
         container.getWiFi().getUdp().begin(random(1024, 65536));
     }
 
-    unsigned long pir_last_hit = 0;      // To time how long between quick hits and/or the length of the active state
-    unsigned long pir_last_updated = 0;  // Last time we polled the sensor
-    byte pir_sensor_value = PIR_SENSOR_INACTIVE;
-    byte bt_sensor_value = PIR_SENSOR_INACTIVE;
+    unsigned long ir_grid_last_update = 0;  // Last time we polled the sensor
 
     Container& getContainer() override
     {
