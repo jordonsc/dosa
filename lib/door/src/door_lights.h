@@ -6,7 +6,7 @@
 
 #include <ArduinoBLE.h>
 
-#define PIN_LED_SWITCH 10
+#define PIN_LED_SWITCH 8
 #define PIN_LED_READY 15
 #define PIN_LED_ACTIVITY 16
 #define PIN_LED_ERROR 17
