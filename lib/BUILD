@@ -20,6 +20,20 @@ cc_library(
         "//arduino:ArduinoBLE",
         "//arduino:SparkFun_GridEYE",
         "//arduino:WiFiNINA",
+        "//lib:messages",
+    ],
+)
+
+# Communication messages
+cc_library(
+    name = "messages",
+    srcs = glob(["messages/src/**/*.cpp"]),
+    hdrs = glob(["messages/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["messages/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
     ],
 )
 

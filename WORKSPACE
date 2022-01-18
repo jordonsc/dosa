@@ -38,3 +38,12 @@ container_pull(
 load("@io_bazel_rules_docker//repositories:deps.bzl", container_deps = "deps")
 
 container_deps()
+
+http_archive(
+    name = "gtest",
+    sha256 = "4d7cd95cdb0ef420eed163696a906cccd70964801ea611b2020f31177432c27d",
+    strip_prefix = "googletest-1.10.x",
+    urls = [
+        "https://github.com/google/googletest/archive/v1.10.x.tar.gz",
+    ],
+)

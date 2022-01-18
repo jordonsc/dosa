@@ -1,6 +1,14 @@
 load("@io_bazel_rules_docker//container:image.bzl", "container_image")
 load("@io_bazel_rules_docker//container:push.bzl", "container_push")
 
+COPTS = [
+    "-std=c++17",
+    "-Ilib",
+]
+LINKOPTS = [
+    "-pthread",
+]
+
 def app_image(tag, base = "@img-ubuntu//image", cmd = [], directory = "/app", entrypoint = [], files = [], ports = ["9000/tcp"], tars = [], layers = []):
     container_image(
         name = tag,

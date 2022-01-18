@@ -1,0 +1,4 @@
+build --cxxopt='-fdiagnostics-color=always'
+build --cxxopt='-std=c++17'
+test --test_output=errors
+test --cxxopt='-Wno-unused-result'

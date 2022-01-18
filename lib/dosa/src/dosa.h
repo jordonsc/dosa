@@ -4,6 +4,7 @@
 #include "app_builder.h"
 #include "base64.h"
 #include "bt.h"
+#include "comms.h"
 #include "config.h"
 #include "const.h"
 #include "container.h"
