@@ -44,3 +44,13 @@ TEST(MessagesTest, AckTest)
     memcpy(&genAckMsgId, genMsg.getMessage(), 2);
     EXPECT_EQ(genAckMsgId, 1000);
 }
+
+TEST(MessagesTest, AckFromPayload)
+{
+    auto t = Trigger(TriggerDevice::IR_GRID, "FE");
+    ASSERT_GT(t.getMessageId(), 0);
+
+    auto ack = Ack(t);
+    EXPECT_EQ(ack.getAckMsgId(), t.getMessageId());
+    EXPECT_NE(ack.getMessageId(), t.getMessageId());
+}
