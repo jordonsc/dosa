@@ -11,6 +11,12 @@ namespace dosa::messages {
 class Ack : public Payload
 {
    public:
+    explicit Ack(Payload& msg) : Payload("ack"), ack_msg_id(msg.getMessageId())
+    {
+        buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
+        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
+    }
+
     explicit Ack(uint16_t ack_msg_id) : Payload("ack"), ack_msg_id(ack_msg_id)
     {
         buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
