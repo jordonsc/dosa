@@ -12,5 +12,6 @@
 #include "grideye.h"
 #include "lights.h"
 #include "serial.h"
+#include "settings.h"
 #include "switch.h"
 #include "wifi.h"

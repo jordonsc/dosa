@@ -3,7 +3,7 @@
 #include <cstring>
 #include <random>
 
-#define DOSA_COMMS_PAYLOAD_BASE_SIZE 7
+#define DOSA_COMMS_PAYLOAD_BASE_SIZE 27
 
 namespace dosa::messages {
 
@@ -15,12 +15,13 @@ namespace dosa::messages {
  *   0      2      Message ID (uint16_t)
  *   2      3      3-byte command code (eg "ack")
  *   5      2      Payload size (uint16_t)
- *   7+     var    Custom payload data
+ *   7      20     Device name (null padded)
+ *   27+    var    Custom payload data
  */
 class Payload
 {
    public:
-    explicit Payload(char const* cmd_code)
+    explicit Payload(char const* cmd_code, char const* dev_name)
     {
         std::random_device rd;
         std::mt19937 mt(rd());
@@ -28,11 +29,13 @@ class Payload
 
         msg_id = dist(mt);
         std::memcpy(cmd, cmd_code, 3);
+        std::memcpy(name, dev_name, 20);
     }
 
-    Payload(uint16_t msgId, char const* cmd_code) : msg_id(msgId)
+    Payload(uint16_t msgId, char const* cmd_code, char const* dev_name) : msg_id(msgId)
     {
         std::memcpy(cmd, cmd_code, 3);
+        std::memcpy(name, dev_name, 20);
     }
 
     /**
@@ -53,9 +56,26 @@ class Payload
      */
     [[nodiscard]] virtual uint16_t getPayloadSize() const = 0;
 
+    /**
+     * 3-byte command code.
+     */
+    [[nodiscard]] virtual char const* getCommandCode() const
+    {
+        return cmd;
+    }
+
+    /**
+     * 20-byte null-padded device name.
+     */
+    [[nodiscard]] virtual char const* getDeviceName() const
+    {
+        return name;
+    }
+
    protected:
     uint16_t msg_id;
     char cmd[3] = {0};
+    char name[20] = {0};
 
     /**
      * Copy the data for the base of the payload to a char* buffer.
@@ -65,6 +85,7 @@ class Payload
         std::memcpy(dest, &msg_id, 2);
         std::memcpy(dest + 2, cmd, 3);
         std::memcpy(dest + 5, &size, 2);
+        std::memcpy(dest + 7, name, 20);
     }
 };
 

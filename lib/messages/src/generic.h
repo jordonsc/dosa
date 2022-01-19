@@ -9,8 +9,8 @@ namespace dosa::messages {
 class GenericMessage final : public Payload
 {
    public:
-    explicit GenericMessage(char const* packet, uint16_t size)
-        : Payload(*(uint16_t*)packet, packet + 2),
+    explicit GenericMessage(char const* packet, uint16_t size, char const* dev_name)
+        : Payload(*(uint16_t*)packet, packet + 2, dev_name),
           packet_size(size)
     {
         payload = new char[size];
@@ -30,11 +30,6 @@ class GenericMessage final : public Payload
     [[nodiscard]] uint16_t getPayloadSize() const override
     {
         return packet_size;
-    }
-
-    [[nodiscard]] std::string getCommandCode() const
-    {
-        return std::string(cmd, 3);
     }
 
     [[nodiscard]] char const* getMessage() const

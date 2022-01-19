@@ -4,7 +4,8 @@ cc_test(
     name = "messages",
     size = "small",
     srcs = [
-        "messages/comms.cc",
+        "messages/ack.cc",
+        "messages/trigger.cc",
         "test.cc",
     ],
     copts = COPTS,
