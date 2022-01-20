@@ -43,7 +43,24 @@ char const* char_set_wifi = "d05a0010-e8f2-537e-4f6c-d104768a1101";
  */
 namespace dosa::comms {
 
-IPAddress const sensorBroadcastIp = IPAddress(239, 1, 1, 69);
-uint16_t const sensorBroadcastPort = 6901;
+struct Node
+{
+    Node(IPAddress ip, uint16_t port) : ip(std::move(ip)), port(port) {}
+
+    IPAddress ip;
+    uint16_t port;
+};
+
+Node const sensorBroadcast(IPAddress(239, 1, 1, 69), 6901);
+
+[[nodiscard]] String ipToString(IPAddress const& ip)
+{
+    return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
+}
+
+[[nodiscard]] String nodeToString(comms::Node const& node)
+{
+    return ipToString(node.ip) + ":" + String(node.port);
+}
 
 }  // namespace dosa::comms

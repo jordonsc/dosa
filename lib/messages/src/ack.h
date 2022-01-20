@@ -15,7 +15,9 @@ class Ack : public Payload
     /**
      * Create an Ack from a message you want to acknowledge.
      */
-    Ack(Payload& msg, char const* dev_name) : Payload(DOSA_COMMS_ACK_MSG_CODE, dev_name), ack_msg_id(msg.getMessageId())
+    Ack(Payload const& msg, char const* dev_name)
+        : Payload(DOSA_COMMS_ACK_MSG_CODE, dev_name),
+          ack_msg_id(msg.getMessageId())
     {
         buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
         std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
@@ -37,7 +39,9 @@ class Ack : public Payload
 
     static Ack fromPacket(char const* packet)
     {
-        return Ack(*(uint16_t*)packet, *(uint16_t*)(packet + DOSA_COMMS_PAYLOAD_BASE_SIZE), packet + 7);
+        uint16_t ack_msg_id;
+        memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
+        return Ack(*(uint16_t*)packet, ack_msg_id, packet + 7);
     }
 
     [[nodiscard]] char const* getPayload() const override

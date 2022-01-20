@@ -6,6 +6,7 @@
 
 #include <WiFiNINA.h>
 
+#include "const.h"
 #include "loggable.h"
 
 namespace dosa {
@@ -15,7 +16,7 @@ class Wifi : public Loggable
    public:
     explicit Wifi(SerialComms* s = nullptr) : Loggable(s) {}
 
-    bool connect(String const& ssid, String const& password, uint8_t attempts = 30)
+    bool connect(String const& ssid, String const& password, uint8_t attempts = 10)
     {
         if (isConnected()) {
             disconnect();
@@ -27,19 +28,38 @@ class Wifi : public Loggable
         do {
             if (attempt > 0) {
                 WiFi.end();
-                log("Retry " + String(attempt + 1) + "/" + String(attempts) + "..");
+                log("Retry " + String(attempt + 1) + "/" + String(attempts) + ".. ");
             }
 
             // Connect to WPA/WPA2 network:
             status = WiFi.begin(ssid.c_str(), password.c_str());
 
             if (status != WL_CONNECTED) {
-                logln("Connection failed (" + String(status) + ")");
+                switch (status) {
+                    case WL_CONNECT_FAILED:
+                        logln("Connection failed");
+                        break;
+                    case WL_AP_FAILED:
+                        logln("Connection failed: AP error");
+                        break;
+                    case WL_CONNECTION_LOST:
+                        logln("Connection lost");
+                        break;
+                    case WL_DISCONNECTED:
+                        logln("Disconnected");
+                        break;
+                    case WL_FAILURE:
+                        logln("Wifi failure");
+                        break;
+                    default:
+                        logln("Unknown connection error: " + String(status));
+                }
+
                 ++attempt;
             } else {
                 logln(
-                    "Connected to " + ssid + "; local IP: " + ipToString(WiFi.localIP()) + " netmask " +
-                    ipToString(WiFi.subnetMask()));
+                    "Connected to " + ssid + "; local IP: " + comms::ipToString(WiFi.localIP()) + " netmask " +
+                    comms::ipToString(WiFi.subnetMask()));
                 return true;
             }
         } while (attempt < attempts);
@@ -67,11 +87,6 @@ class Wifi : public Loggable
     [[nodiscard]] int getStatus() const
     {
         return status;
-    }
-
-    [[nodiscard]] static String ipToString(IPAddress const& ip)
-    {
-        return String(ip[0]) + "." + String(ip[1]) + "." + String(ip[2]) + "." + String(ip[3]);
     }
 
    protected:

@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <messages.h>
 
+#include "const.h"
+
 namespace dosa::comms {
 
 class Handler
@@ -13,12 +15,12 @@ class Handler
     /**
      * The command code this handler responds to.
      */
-    virtual String getCommandCode() = 0;
+    [[nodiscard]] virtual String const& getCommandCode() const = 0;
 
     /**
      * A packet with matching command code has been received, handle appropriately.
      */
-    virtual void handlePacket(char const *packet, uint32_t size) = 0;
+    virtual void handlePacket(char const* packet, uint32_t size, Node const&) = 0;
 };
 
 }  // namespace dosa::comms

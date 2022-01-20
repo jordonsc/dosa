@@ -13,5 +13,6 @@
 #include "lights.h"
 #include "serial.h"
 #include "settings.h"
+#include "standard_handler.h"
 #include "switch.h"
 #include "wifi.h"

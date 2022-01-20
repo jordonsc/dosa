@@ -88,17 +88,20 @@ case $1 in
   validateApp $fqbn
   echo "Compile '$2' against ${fqbn}.."
   arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
+  exit $?
   ;;
 "compile-debug")
   validateApp $fqbn
   echo "[DEBUG] Compile '$2' against ${fqbn}.."
   arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
+  exit $?
   ;;
 "upload")
   validateApp $fqbn
   validatePort $3
   echo "Uploading $2 to board on port $3.."
   arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+  exit $?
   ;;
 "install")
   validateApp $fqbn
@@ -111,6 +114,7 @@ case $1 in
   else
     echo
     echo "Compile error, not uploading"
+    exit 1
   fi
   ;;
 "install-debug")
@@ -124,6 +128,7 @@ case $1 in
   else
     echo
     echo "Compile error, not uploading"
+    exit 1
   fi
   ;;
 "monitor")

@@ -10,7 +10,6 @@ namespace dosa {
 
 #define CENTRAL_CON_CHECK 500  // Time between checking health of central connection (ms)
 #define CONFIG_CHECK 50  // Time between checking if config values updated (ms)
-#define WIFI_CHECK 500  // Wifi polling period (ms)
 
 class App
 {
@@ -27,6 +26,8 @@ class App
 
     virtual void init()
     {
+        randomSeed(analogRead(0));
+
         // DI container
         auto& container = getContainer();
 
@@ -103,21 +104,26 @@ class App
         container.getLights().off();
     }
 
-    virtual void loop() = 0;
+    /**
+     * Main app loop.
+     *
+     * Common tasks included here, derived class should still execute this.
+     */
+    virtual void loop()
+    {
+        // Health-check on BT central device
+        checkCentral();
+
+        // Check if there have been any BT requests to change configuration
+        checkConfigRequests();
+
+        // Check for inbound UDP messages
+        getContainer().getComms().processInbound();
+    };
+
     virtual void onWifiConnect() {}
 
    protected:
-    /**
-     * Runs all common loop tasks.
-     *
-     * Checks the BT central & all configuration updates.
-     */
-    void stdLoop()
-    {
-        checkCentral();
-        checkConfigRequests();
-    }
-
     /**
      * Check the state of the central device.
      *
@@ -262,7 +268,7 @@ class App
         auto data_value = v.substring(brk + 1);
 
         if (data_value.length() >= 4 && data_value.length() < 50) {
-            auto settings = getContainer().getSettings();
+            auto& settings = getContainer().getSettings();
             settings.setPin(data_value);
             settings.save();
             serial.writeln("Pin set to '" + data_value + "'");

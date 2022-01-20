@@ -19,9 +19,19 @@ class SensorApp final : public dosa::App
 
     void loop() override
     {
-        stdLoop();
+        App::loop();
 
         // Check state of the IR grid
+        checkIrGrid();
+    }
+
+   private:
+    SensorContainer container;
+    float grid[64] = {0};
+    unsigned long last_fired = 0;
+
+    void checkIrGrid()
+    {
         if (millis() - ir_grid_last_update > IR_POLL) {
             ir_grid_last_update = millis();
 
@@ -54,11 +64,6 @@ class SensorApp final : public dosa::App
         }
     }
 
-   private:
-    SensorContainer container;
-    float grid[64] = {0};
-    unsigned long last_fired = 0;
-
     /**
      * Fire a trigger message if rules for comparing IR-grid deltas pass.
      *
@@ -70,14 +75,11 @@ class SensorApp final : public dosa::App
             pixels_changed < MIN_PIXELS_THRESHOLD || millis() - last_fired < REFIRE_DELAY) {
             return false;
         } else {
-            container.getSerial().writeln("IR grid motion detected", dosa::LogLevel::DEBUG);
+            container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
             container.getComms().dispatch(
-                dosa::comms::sensorBroadcastIp,
-                dosa::comms::sensorBroadcastIp,
-                dosa::messages::Trigger(
-                    dosa::messages::TriggerDevice::IR_GRID,
-                    container.getSettings().getDeviceNameBytes()),
+                comms::sensorBroadcast,
+                messages::Trigger(messages::TriggerDevice::IR_GRID, container.getSettings().getDeviceNameBytes()),
                 true);
             return true;
         }
@@ -86,7 +88,11 @@ class SensorApp final : public dosa::App
     void onWifiConnect() override
     {
         App::onWifiConnect();
-        container.getWiFi().getUdp().begin(random(1024, 65536));
+
+        // Bind a random UDP port, we'll send triggers from this port and receive ack's here, too
+        if (!container.getComms().bind(random(1024, 65536))) {
+            container.getSerial().writeln("Failed to bind UDP", LogLevel::ERROR);
+        }
     }
 
     unsigned long ir_grid_last_update = 0;  // Last time we polled the sensor

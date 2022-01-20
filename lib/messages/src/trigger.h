@@ -36,7 +36,7 @@ class Trigger : public Payload
     static Trigger fromPacket(char const* packet)
     {
         TriggerDevice d;
-        memcpy(&d, packet + 27, 1);
+        memcpy(&d, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 1);
         return Trigger(*(uint16_t*)packet, d, packet + 7);
     }
 

@@ -18,52 +18,56 @@ class DoorApp final : public dosa::App
     void init() override
     {
         App::init();
+
         container.getDoorLights().ready();
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
+
+        container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
+            DOSA_COMMS_TRIGGER_MSG_CODE,
+            &triggerMessageForwarder,
+            this);
     }
 
     void loop() override
     {
-        stdLoop();
+        App::loop();
 
         // Check the door switch
         container.getDoorSwitch().process();
-
-        // Check for broadcasted sensor signals
-        if (millis() - wifi_last_checked > WIFI_CHECK) {
-            wifi_last_checked = millis();
-            auto& serial = container.getSerial();
-
-            if (container.getWiFi().isConnected()) {
-                auto& udp = container.getWiFi().getUdp();
-                int packetSize = udp.parsePacket();
-                if (packetSize > 0) {
-                    serial.writeln("Message: " + udp.readString());
-                }
-            } else {
-                serial.writeln("(Wifi not active)");
-            }
-        }
     }
 
    private:
     DoorContainer container;
-    unsigned long wifi_last_checked = 0;
 
+    /**
+     * Sensor has broadcasted a trigger event.
+     */
+    void onTrigger(messages::Trigger const& trigger, comms::Node const& sender)
+    {
+        container.getSerial().writeln(
+            "Received trigger message from '" + Comms::getDeviceName(trigger) + "' (" + comms::nodeToString(sender) +
+            "), msg ID: " + String(trigger.getMessageId()));
+
+        // Send reply ack
+        container.getComms().dispatch(sender, messages::Ack(trigger, container.getSettings().getDeviceNameBytes()));
+    }
+
+    /**
+     * Wifi connection established, bind UDP multicast.
+     */
     void onWifiConnect() override
     {
         App::onWifiConnect();
 
-        if (container.getWiFi().getUdp().beginMulticast(
-                dosa::wifi::sensorBroadcastIp,
-                dosa::wifi::sensorBroadcastPort)) {
+        if (container.getComms().bindMulticast(comms::sensorBroadcast)) {
             container.getSerial().writeln("Listening for multicast packets");
         } else {
-            container.getSerial().writeln("Failed to bind multicast");
+            container.getSerial().writeln("Failed to bind multicast", LogLevel::ERROR);
         }
     }
+
     /**
      * Open and close the door, adjust lights in turn.
      */
@@ -212,6 +216,14 @@ class DoorApp final : public dosa::App
     static bool doorInterruptForwarder(void* context)
     {
         return static_cast<DoorApp*>(context)->doorInterruptCheck();
+    }
+
+    /**
+     * Context forwarder for trigger messages.
+     */
+    static void triggerMessageForwarder(messages::Trigger const& trigger, comms::Node const& sender, void* context)
+    {
+        static_cast<DoorApp*>(context)->onTrigger(trigger, sender);
     }
 };
 

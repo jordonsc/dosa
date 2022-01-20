@@ -3,10 +3,12 @@
 #include <messages.h>
 #include <wifi.h>
 
-#include "handler.h"
+#include <utility>
 
-#define DOSA_ACK_MAX_RETRIES 5
-#define DOSA_ACK_WAIT_TIME 100
+#include "standard_handler.h"
+
+#define DOSA_ACK_MAX_RETRIES 3
+#define DOSA_ACK_WAIT_TIME 1000
 #define DOSA_COMMS_MAX_HANDLERS 10
 
 namespace dosa {
@@ -14,7 +16,12 @@ namespace dosa {
 class Comms : public Loggable
 {
    public:
-    explicit Comms(Wifi& wifi, SerialComms* s = nullptr) : Loggable(s), wifi(wifi) {}
+    explicit Comms(Wifi& wifi, SerialComms* s = nullptr) : Loggable(s), wifi(wifi)
+    {
+        // Create an internal handler for Ack messages
+        newHandler<comms::StandardHandler<messages::Ack>>(DOSA_COMMS_ACK_MSG_CODE, &ackMessageForwarder, this);
+    }
+
     virtual ~Comms()
     {
         for (auto& handler : handlers) {
@@ -23,7 +30,28 @@ class Comms : public Loggable
     }
 
     /**
-     * Registers and takes memory ownership of given handler.
+     * Listen on wifi UDP port.
+     */
+    bool bind(uint16_t port)
+    {
+        return wifi.getUdp().begin(port);
+    }
+
+    /**
+     * Listen for UDP multicast message on wifi.
+     */
+    bool bindMulticast(IPAddress const& ip, uint16_t port)
+    {
+        return wifi.getUdp().beginMulticast(ip, port);
+    }
+
+    bool bindMulticast(comms::Node const& node)
+    {
+        return wifi.getUdp().beginMulticast(node.ip, node.port);
+    }
+
+    /**
+     * Registers and takes memory ownership of given message handler.
      *
      * NB: if this returns false, the handler has NOT been registered and is NOT under memory management! (fatal error)
      * Consider `newHandler(...)` instead of this.
@@ -67,6 +95,11 @@ class Comms : public Loggable
      *
      * Returns true if successfully sent [and ack'd], false if not ack'd or not sent successfully.
      */
+    bool dispatch(comms::Node const& recipient, messages::Payload const& payload, bool wait_for_ack = false)
+    {
+        return dispatch(recipient.ip, recipient.port, payload, wait_for_ack);
+    }
+
     bool dispatch(IPAddress const& ip, unsigned long port, messages::Payload const& payload, bool wait_for_ack = false)
     {
         return dispatchMsg(ip, port, payload, wait_for_ack);
@@ -108,7 +141,7 @@ class Comms : public Loggable
         memcpy(cmd_raw, buffer + 2, 3);
         String cmd_code(cmd_raw);
 
-        handlePacket(cmd_code, buffer, data_size);
+        handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()));
     }
 
     /**
@@ -134,15 +167,16 @@ class Comms : public Loggable
    protected:
     Wifi& wifi;
     comms::Handler* handlers[DOSA_COMMS_MAX_HANDLERS] = {nullptr};
+    uint16_t ack_msg_id = 0;
 
     /**
      * Search registered message handlers and tell them to handle any matches.
      */
-    void handlePacket(String const& cmd, char const* packet, uint32_t size)
+    void handlePacket(String const& cmd, char const* packet, uint32_t size, comms::Node const& sender)
     {
         for (auto& handler : handlers) {
             if (handler != nullptr && handler->getCommandCode() == cmd) {
-                handler->handlePacket(packet, size);
+                handler->handlePacket(packet, size, sender);
             }
         }
     }
@@ -162,6 +196,7 @@ class Comms : public Loggable
         }
 
         auto& udp = wifi.getUdp();
+        ack_msg_id = 0;
 
         if (udp.beginPacket(ip, port) != 1) {
             logln("ERROR: UDP begin failed", dosa::LogLevel::ERROR);
@@ -175,9 +210,52 @@ class Comms : public Loggable
             return false;
         }
 
-        logln("Sent packet: " + getCommandCode(payload), dosa::LogLevel::DEBUG);
+        logln("Sent packet: " + getCommandCode(payload) + "(" + String(payload.getMessageId()) + ")", LogLevel::TRACE);
 
-        // if (wait_for_ack)
+        // (semi) block until we receive an ack (non-ack inbound messages will interrupt)
+        if (wait_for_ack) {
+            auto start_time = millis();
+            do {
+                // Process inbound messages, an internal ack handler will set `ack_msg_id` as they come in
+                processInbound();
+
+                if (ack_msg_id == payload.getMessageId()) {
+                    return true;
+                }
+
+            } while (millis() - start_time < DOSA_ACK_WAIT_TIME);
+
+            // Check if we're giving up
+            if (retries == DOSA_ACK_MAX_RETRIES) {
+                logln("Failed to receive ack message for " + getCommandCode(payload), LogLevel::WARNING);
+                return false;
+            }
+
+            // Retry via recursion
+            return dispatchMsg(ip, port, payload, true, retries + 1);
+        }
+    }
+
+    /**
+     * An ack has been received.
+     *
+     * Set a flag, monitored by a loop in the dispatch function.
+     */
+    void onAck(dosa::messages::Ack const& ack, comms::Node const& sender)
+    {
+        logln(
+            "Received ack from '" + Comms::getDeviceName(ack) + "' (" + comms::nodeToString(sender) + ")",
+            LogLevel::DEBUG);
+
+        ack_msg_id = ack.getAckMsgId();
+    }
+
+    /**
+     * Context forwarder for ack messages.
+     */
+    static void ackMessageForwarder(dosa::messages::Ack const& ack, comms::Node const& sender, void* context)
+    {
+        static_cast<Comms*>(context)->onAck(ack, sender);
     }
 };
 
