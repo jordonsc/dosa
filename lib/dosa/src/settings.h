@@ -22,22 +22,24 @@ namespace dosa {
  *   2      uint16    Size of wifi password
  *   ?      char      Wifi password
  */
-class Settings
+class Settings : public Loggable
 {
    public:
-    explicit Settings(Fram& ram) : ram(ram) {}
+    explicit Settings(Fram& ram, SerialComms* serial = nullptr) : Loggable(serial), ram(ram) {}
 
     /**
      * Load values from FRAM.
      *
      * If the header is a mismatch, or any data appears corrupt, default values will be loaded for everything.
+     * Returns true if settings were loaded clean, false if there are issues and defaults were used.
      */
-    void load()
+    bool load()
     {
         if (ram.readHeader() != DOSA_SETTINGS_HEADER) {
             // Settings missing or out-of-date, use default values
+            logln("FRAM header incorrect, using default settings", dosa::LogLevel::WARNING);
             setDefaults();
-            return;
+            return false;
         }
 
         uint32_t ptr = 4;  // Size of header
@@ -53,27 +55,35 @@ class Settings
         };
 
         if (!read_block(pin))
-            return;
+            return false;
 
         if (!read_block(device_name))
-            return;
+            return false;
 
         if (!read_block(wifi_ssid))
-            return;
+            return false;
 
         if (!read_block(wifi_password))
-            return;
+            return false;
 
         // Validate values
+        bool valid = true;
+
         if (pin == "") {
             // Not allowed a blank pin
             pin = "dosa";
+            valid = false;
         }
 
         if (device_name == "") {
             // Not allowed a blank device name
             device_name = "DOSA " + String(random(1000, 9999));
+            valid = false;
         }
+
+        updateDeviceNameBytes();
+
+        return valid;
     }
 
     /**
@@ -102,6 +112,7 @@ class Settings
         write_block(wifi_password);
 
         ram.write(0, payload, size);
+        logln("Settings written to FRAM", dosa::LogLevel::INFO);
     }
 
     void setDefaults()
@@ -110,6 +121,7 @@ class Settings
         device_name = "DOSA " + String(random(1000, 9999));
         wifi_ssid = "";
         wifi_password = "";
+        updateDeviceNameBytes();
     }
 
     [[nodiscard]] String const& getDeviceName() const
@@ -117,13 +129,19 @@ class Settings
         return device_name;
     }
 
+    [[nodiscard]] char const* getDeviceNameBytes() const
+    {
+        return device_name_bytes;
+    }
+
     bool setDeviceName(String const& deviceName)
     {
-        if (deviceName.length() < 2) {
+        if (deviceName.length() < 2 || deviceName.length() > 20) {
             return false;
         }
 
         device_name = deviceName;
+        updateDeviceNameBytes();
 
         return true;
     }
@@ -167,9 +185,19 @@ class Settings
    protected:
     Fram& ram;
     String device_name;
+    char device_name_bytes[20] = {0};
     String pin;
     String wifi_ssid;
     String wifi_password;
+
+    /**
+     * Rebuild the 20x char array for the device name.
+     */
+    void updateDeviceNameBytes()
+    {
+        memset(device_name_bytes, 0, 20);
+        memcpy(device_name_bytes, device_name.c_str(), device_name.length());
+    }
 
     /**
      * Read a 16-bit size and then that many bytes into a string.

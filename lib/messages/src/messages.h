@@ -1,7 +1,6 @@
 #pragma once
 
-#ifndef _BITS_STDINT_UINTN_H
-#define _BITS_STDINT_UINTN_H 1
+#ifndef Arduino_h
 
 #include <bits/types.h>
 

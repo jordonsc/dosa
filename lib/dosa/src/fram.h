@@ -35,7 +35,7 @@ class Fram : public Loggable
     {
         inited = true;
 
-        logln("Begin FRAM init..");
+        logln("Bringing FRAM chip online..");
         if (!ram->begin()) {
             logln("ERROR: FRAM failed to initialise!", dosa::LogLevel::ERROR);
         }

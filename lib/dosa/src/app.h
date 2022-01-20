@@ -20,6 +20,7 @@ class App
           bt_service(dosa::bt::svc_dosa),
           bt_version(dosa::bt::char_version, BLERead),
           bt_error_msg(dosa::bt::char_error_msg, BLERead | BLENotify, 255),
+          bt_device_name(dosa::bt::char_device_name, BLERead | BLEWrite, 20),
           bt_set_pin(dosa::bt::char_set_pin, BLEWrite, 50),
           bt_set_wifi(dosa::bt::char_set_wifi, BLEWrite, 255)
     {}
@@ -46,7 +47,14 @@ class App
         serial.writeln("Begin init..");
 
         // Load settings from FRAM
-        if (readSettings() && (wifi_ssid.length() > 1) && wifiConnect()) {
+        auto& settings = getContainer().getSettings();
+        if (!settings.load()) {
+            // FRAM didn't contain valid settings, write default values to chip -
+            settings.save();
+        }
+        getContainer().getSerial().writeln("Device name: " + settings.getDeviceName());
+
+        if (settings.getWifiSsid().length() > 1 && wifiConnect()) {
             // Don't enable BT if wifi connected with saved settings
             config.bluetooth_enabled = false;
         }
@@ -54,13 +62,12 @@ class App
         // Bluetooth init
         if (config.bluetooth_enabled) {
             auto& bt = container.getBluetooth();
-            if (!bt.setEnabled(true) || !bt.setLocalName(config.short_name + " " + bt.localAddress().substring(15))) {
+            if (!bt.setEnabled(true) || !bt.setLocalName(settings.getDeviceName())) {
                 serial.writeln("Bluetooth init failed", dosa::LogLevel::CRITICAL);
                 container.getLights().errorHoldingPattern();
             }
 
-            bt.setDeviceName(config.short_name);
-            // bt.setConnectionInterval(DOSA_BT_DATA_MIN, DOSA_BT_DATA_MAX);
+            bt.setDeviceName(config.short_name + " " + bt.localAddress().substring(15));
             if (config.bluetooth_appearance) {
                 bt.setAppearance(config.bluetooth_appearance);
             }
@@ -71,6 +78,9 @@ class App
 
             bt_service.addCharacteristic(bt_error_msg);
             bt_error_msg.writeValue("");
+
+            bt_service.addCharacteristic(bt_device_name);
+            bt_device_name.writeValue(settings.getDeviceName());
 
             bt_service.addCharacteristic(bt_set_pin);
             bt_set_pin.writeValue("");
@@ -155,10 +165,11 @@ class App
      */
     void checkConfigRequests()
     {
-        if (millis() - config_last_checked > CONFIG_CHECK) {
+        if (millis() - config_last_checked > CONFIG_CHECK && getContainer().getBluetooth().isEnabled()) {
             config_last_checked = millis();
             checkSetPin();
             checkSetWifi();
+            checkSetDeviceName();
         }
     }
 
@@ -171,31 +182,36 @@ class App
 
     BLEUnsignedShortCharacteristic bt_version;
     BLEStringCharacteristic bt_error_msg;
+    BLEStringCharacteristic bt_device_name;
     BLEStringCharacteristic bt_set_pin;
     BLEStringCharacteristic bt_set_wifi;
 
+    /**
+     * Update wifi settings and write to FRAM.
+     */
     void setWifi(String const& ssid, String const& password)
     {
-        auto& container = getContainer();
-        auto& serial = container.getSerial();
+        auto& settings = getContainer().getSettings();
 
-        wifi_ssid = ssid;
-        wifi_password = password;
-
-        writeSettings();
-        wifiConnect();
+        getContainer().getSerial().writeln("Updating wifi AP to '" + ssid + "'");
+        settings.setWifiSsid(ssid);
+        settings.setWifiPassword(password);
+        settings.save();
     }
 
+    /**
+     * Attempt to connect to the wifi AP.
+     */
     bool wifiConnect()
     {
-        auto& container = getContainer();
-        container.getSerial().writeln("Connecting to wifi..");
+        auto& settings = getContainer().getSettings();
+        getContainer().getSerial().writeln("Connecting to wifi..");
 
-        if (container.getBluetooth().isEnabled()) {
-            container.getBluetooth().setEnabled(false);
+        if (getContainer().getBluetooth().isEnabled()) {
+            getContainer().getBluetooth().setEnabled(false);
         }
 
-        if (container.getWiFi().connect(wifi_ssid, wifi_password)) {
+        if (getContainer().getWiFi().connect(settings.getWifiSsid(), settings.getWifiPassword())) {
             onWifiConnect();
             return true;
         } else {
@@ -203,61 +219,17 @@ class App
         }
     }
 
-    bool readSettings()
-    {
-        auto& container = getContainer();
-        auto& serial = container.getSerial();
-        auto settings = container.getFram().read();
-
-        if (settings.length() == 0) {
-            serial.writeln("No stored settings, using defaults");
-            return false;
-        }
-
-        auto delim = settings.indexOf('\n');
-        if (delim < 1) {
-            serial.writeln("Stored settings malformed (1), clearing FRAM", dosa::LogLevel::ERROR);
-            container.getFram().write("");
-            return false;
-        }
-
-        auto stored_pin = settings.substring(0, delim);
-        settings = settings.substring(delim + 1);
-        delim = settings.indexOf('\n');
-
-        if (delim < 1) {
-            serial.writeln("Stored settings malformed (2), clearing FRAM", dosa::LogLevel::ERROR);
-            container.getFram().write("");
-            return false;
-        }
-
-        pin = stored_pin;
-        wifi_ssid = settings.substring(0, delim);
-        wifi_password = settings.substring(delim + 1);
-
-        serial.writeln("Settings loaded from FRAM");
-
-        return true;
-    }
-
-    void writeSettings()
-    {
-        String cfg = pin + "\n" + wifi_ssid + "\n" + wifi_password;
-        getContainer().getFram().write(cfg);
-    }
-
    private:
     bool central_connected = false;
     unsigned long central_last_health_check = 0;
     unsigned long config_last_checked = 0;
-    String pin = "dosa";
-    String wifi_ssid = "";
-    String wifi_password = "";
 
     bool authCheck(String const& v)
     {
-        if (v != pin) {
-            getContainer().getSerial().writeln("BT auth error: '" + v + "'", dosa::LogLevel::ERROR);
+        if (v != getContainer().getSettings().getPin()) {
+            getContainer().getSerial().writeln(
+                "BT auth error: '" + v + "', should be: '" + getContainer().getSettings().getPin() + "'",
+                dosa::LogLevel::ERROR);
             return false;
         } else {
             return true;
@@ -289,12 +261,54 @@ class App
 
         auto data_value = v.substring(brk + 1);
 
-        if (data_value.length() >= 4) {
-            pin = data_value;
-            serial.writeln("Set pin to '" + pin + "'");
-            writeSettings();
+        if (data_value.length() >= 4 && data_value.length() < 50) {
+            auto settings = getContainer().getSettings();
+            settings.setPin(data_value);
+            settings.save();
+            serial.writeln("Pin set to '" + data_value + "'");
         } else {
-            serial.writeln("New pin too short: '" + data_value + "'", dosa::LogLevel::ERROR);
+            serial.writeln("Pin must be between 4 and 50 chars: '" + data_value + "'", dosa::LogLevel::ERROR);
+        }
+    }
+
+    /**
+     * Check for BT device name-set requests.
+     */
+    void checkSetDeviceName()
+    {
+        auto& serial = getContainer().getSerial();
+        auto& settings = getContainer().getSettings();
+
+        auto v = bt_device_name.value();
+        if (v == settings.getDeviceName()) {
+            return;
+        }
+
+        // Set the device name back immediately to remove pin from value
+        bt_device_name.writeValue(settings.getDeviceName());
+
+        auto brk = v.indexOf('\n');
+        if (brk < 1) {
+            serial.writeln("Malformed device name-set request: '" + v + "'", dosa::LogLevel::ERROR);
+            return;
+        }
+
+        if (!authCheck(v.substring(0, brk))) {
+            return;
+        }
+
+        auto data_value = v.substring(brk + 1);
+
+        if (data_value.length() >= 2 && data_value.length() <= 20) {
+            if (settings.setDeviceName(data_value)) {
+                serial.writeln("Device name set to '" + data_value + "'");
+                settings.save();
+                bt_device_name.writeValue(settings.getDeviceName());  // update BT value to new value
+            } else {
+                serial.writeln("Error updating device name: '" + data_value + "'", dosa::LogLevel::ERROR);
+            }
+        } else {
+            serial.writeln("Device name must be between 2 and 20 chars: '" + data_value + "'", dosa::LogLevel::ERROR);
         }
     }
 
@@ -329,6 +343,9 @@ class App
         }
 
         setWifi(data_wifi.substring(0, brk), data_wifi.substring(brk + 1));
+        if (data_wifi.substring(0, brk).length() > 0) {
+            wifiConnect();
+        }
     }
 };
 

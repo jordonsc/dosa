@@ -32,17 +32,18 @@ char const* svc_dosa = "d05a0010-e8f2-537e-4f6c-d104768a1000";
 // Characteristics
 char const* char_version = "d05a0010-e8f2-537e-4f6c-d104768a1001";
 char const* char_error_msg = "d05a0010-e8f2-537e-4f6c-d104768a1001";
+char const* char_device_name = "d05a0010-e8f2-537e-4f6c-d104768a1002";
 char const* char_set_pin = "d05a0010-e8f2-537e-4f6c-d104768a1100";
 char const* char_set_wifi = "d05a0010-e8f2-537e-4f6c-d104768a1101";
 
 }  // namespace dosa::bt
 
 /**
- * Wifi consts.
+ * Comms addresses.
  */
-namespace dosa::wifi {
+namespace dosa::comms {
 
 IPAddress const sensorBroadcastIp = IPAddress(239, 1, 1, 69);
 uint16_t const sensorBroadcastPort = 6901;
 
-}  // namespace dosa::wifi
+}  // namespace dosa::comms

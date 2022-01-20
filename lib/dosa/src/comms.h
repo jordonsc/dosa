@@ -1,6 +1,13 @@
 #pragma once
 
 #include <messages.h>
+#include <wifi.h>
+
+#include "handler.h"
+
+#define DOSA_ACK_MAX_RETRIES 5
+#define DOSA_ACK_WAIT_TIME 100
+#define DOSA_COMMS_MAX_HANDLERS 10
 
 namespace dosa {
 
@@ -8,10 +15,148 @@ class Comms : public Loggable
 {
    public:
     explicit Comms(Wifi& wifi, SerialComms* s = nullptr) : Loggable(s), wifi(wifi) {}
+    virtual ~Comms()
+    {
+        for (auto& handler : handlers) {
+            delete handler;
+        }
+    }
 
-    bool dispatch(IPAddress const& ip, unsigned long port, messages::Payload const& payload, bool wait_for_ack = false) {
-        static int retries = 0;
+    /**
+     * Registers and takes memory ownership of given handler.
+     *
+     * NB: if this returns false, the handler has NOT been registered and is NOT under memory management! (fatal error)
+     * Consider `newHandler(...)` instead of this.
+     */
+    bool registerHandler(comms::Handler* h)
+    {
+        for (auto& handler : handlers) {
+            if (handler == nullptr) {
+                handler = h;
+                return true;
+            }
+        }
 
+        logln("CRITICAL: no free space for new comms handler!", dosa::LogLevel::CRITICAL);
+        return false;
+    }
+
+    /**
+     * Ideal way to register a new handler, will construct on the spot and fully manage memory.
+     *
+     * Returns a pointer to the new object if successful, a nullptr if there isn't space.
+     */
+    template <class T, class... Args>
+    comms::Handler* newHandler(Args... args)
+    {
+        T* handler = new T(args...);
+
+        if (registerHandler(handler)) {
+            return handler;
+        } else {
+            delete handler;
+            return nullptr;
+        }
+    }
+
+    /**
+     * Dispatch a message.
+     *
+     * If `wait_for_ack` is true, this call will block until a return `ack` packet is received and re-send the message
+     * every DOSA_ACK_WAIT_TIME ms until DOSA_ACK_MAX_RETRIES is exhausted.
+     *
+     * Returns true if successfully sent [and ack'd], false if not ack'd or not sent successfully.
+     */
+    bool dispatch(IPAddress const& ip, unsigned long port, messages::Payload const& payload, bool wait_for_ack = false)
+    {
+        return dispatchMsg(ip, port, payload, wait_for_ack);
+    }
+
+    /**
+     * Process inbound packets.
+     *
+     * Fires events if a packet is received.
+     */
+    void processInbound()
+    {
+        if (!wifi.isConnected()) {
+            return;
+        }
+
+        auto& udp = wifi.getUdp();
+
+        if (!udp.parsePacket()) {
+            return;
+        }
+
+        auto data_size = uint32_t(udp.available());
+        if (data_size < DOSA_COMMS_PAYLOAD_BASE_SIZE) {
+            logln("Inbound packet under min size, flushing", dosa::LogLevel::WARNING);
+            udp.flush();
+            return;
+        } else if (data_size > DOSA_COMMS_MAX_PAYLOAD_SIZE) {
+            logln("Inbound packet exceeds max capacity, flushing", dosa::LogLevel::WARNING);
+            udp.flush();
+            return;
+        }
+
+        char buffer[data_size];
+        udp.read(buffer, data_size);
+
+        // Convert command code bytes into Arduino string format
+        char cmd_raw[4] = {0};
+        memcpy(cmd_raw, buffer + 2, 3);
+        String cmd_code(cmd_raw);
+
+        handlePacket(cmd_code, buffer, data_size);
+    }
+
+    /**
+     * Get the command code from a payload as a String.
+     */
+    static String getCommandCode(messages::Payload const& payload)
+    {
+        char buffer[4] = {0};
+        memcpy(buffer, payload.getCommandCode(), 3);
+        return String(buffer);
+    }
+
+    /**
+     * Get the device name from a payload as a String.
+     */
+    static String getDeviceName(messages::Payload const& payload)
+    {
+        char buffer[21] = {0};
+        memcpy(buffer, payload.getDeviceName(), 20);
+        return String(buffer);
+    }
+
+   protected:
+    Wifi& wifi;
+    comms::Handler* handlers[DOSA_COMMS_MAX_HANDLERS] = {nullptr};
+
+    /**
+     * Search registered message handlers and tell them to handle any matches.
+     */
+    void handlePacket(String const& cmd, char const* packet, uint32_t size)
+    {
+        for (auto& handler : handlers) {
+            if (handler != nullptr && handler->getCommandCode() == cmd) {
+                handler->handlePacket(packet, size);
+            }
+        }
+    }
+
+    /**
+     * Recursive dispatch, retrying until an ack is received or attempts expire.
+     */
+    bool dispatchMsg(
+        IPAddress const& ip,
+        unsigned long port,
+        messages::Payload const& payload,
+        bool wait_for_ack,
+        size_t retries = 0)
+    {
         if (!wifi.isConnected()) {
             return false;
         }
@@ -30,39 +175,10 @@ class Comms : public Loggable
             return false;
         }
 
-        // Wait for ack
-        auto start = millis();
-        char buffer[255];
-        do {
-            if (udp.parsePacket()) {
-                auto data_size = min(udp.available(), 255);
-                udp.read(buffer, data_size);
-                buffer[data_size] = 0x0;
-                auto incoming = String(buffer);
-                if (incoming == "ack") {
-                    serial.writeln(
-                        "Trigger acknowledged by " + dosa::Wifi::ipToString(udp.remoteIP()),
-                        dosa::LogLevel::INFO);
-                    return;
-                } else {
-                    serial.writeln(
-                        "Unexpected reply '" + incoming + "' from " + dosa::Wifi::ipToString(udp.remoteIP()),
-                        dosa::LogLevel::WARNING);
-                }
-                break;
-            }
-        } while (millis() - start < 250);
+        logln("Sent packet: " + getCommandCode(payload), dosa::LogLevel::DEBUG);
 
-        // Didn't get an ack in a timely manner, retry the notification
-        if (retries < MAX_ACK_RETRIES) {
-            dispatchNotification(retries + 1);
-        } else {
-            serial.writeln("WARNING: trigger has gone unacknowledged", dosa::LogLevel::WARNING);
-        }
+        // if (wait_for_ack)
     }
-
-   protected:
-    Wifi& wifi;
 };
 
 }  // namespace dosa

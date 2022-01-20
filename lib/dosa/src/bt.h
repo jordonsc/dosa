@@ -88,7 +88,7 @@ class Bluetooth : public Loggable
      */
     bool setLocalName(String const& name)
     {
-        logln("Local name: " + name);
+        logln("BT local name: " + name);
 
         // IMPORTANT: updating or invalidating the reference passed will update (or break) the BLE local name, so it's
         // important to store in a local variable.
@@ -101,7 +101,7 @@ class Bluetooth : public Loggable
      */
     void setDeviceName(String const& name)
     {
-        logln("Device name: " + name);
+        logln("BT device name: " + name);
 
         // IMPORTANT: updating or invalidating the reference passed will update (or break) the BLE device name, so it's
         // important to store in a local variable.

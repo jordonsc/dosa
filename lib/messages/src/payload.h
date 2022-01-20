@@ -1,9 +1,12 @@
 #pragma once
 
 #include <cstring>
+#ifndef Arduino_h
 #include <random>
+#endif
 
 #define DOSA_COMMS_PAYLOAD_BASE_SIZE 27
+#define DOSA_COMMS_MAX_PAYLOAD_SIZE 10240  // 10kib
 
 namespace dosa::messages {
 
@@ -23,11 +26,15 @@ class Payload
    public:
     explicit Payload(char const* cmd_code, char const* dev_name)
     {
+#ifdef Arduino_h
+        msg_id = random(1, 65535);
+#else
         std::random_device rd;
         std::mt19937 mt(rd());
         std::uniform_int_distribution<uint16_t> dist(1, 65535);
 
         msg_id = dist(mt);
+#endif
         std::memcpy(cmd, cmd_code, 3);
         std::memcpy(name, dev_name, 20);
     }

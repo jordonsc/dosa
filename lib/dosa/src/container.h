@@ -1,6 +1,7 @@
 #pragma once
 
 #include "bt.h"
+#include "comms.h"
 #include "fram.h"
 #include "lights.h"
 #include "serial.h"
@@ -12,16 +13,11 @@ namespace dosa {
 class Container
 {
    public:
-    Container() : ram(&serial), bluetooth(&serial), wifi(&serial), settings(ram) {}
+    Container() : ram(&serial), bluetooth(&serial), wifi(&serial), comms(wifi, &serial), settings(ram, &serial) {}
 
     [[nodiscard]] SerialComms& getSerial()
     {
         return serial;
-    }
-
-    [[nodiscard]] Fram& getFram()
-    {
-        return ram;
     }
 
     [[nodiscard]] Lights& getLights()
@@ -39,6 +35,11 @@ class Container
         return wifi;
     }
 
+    [[nodiscard]] Comms& getComms()
+    {
+        return comms;
+    }
+
     [[nodiscard]] Settings& getSettings()
     {
         return settings;
@@ -50,6 +51,7 @@ class Container
     Lights lights;
     Bluetooth bluetooth;
     Wifi wifi;
+    Comms comms;
     Settings settings;
 };
 
