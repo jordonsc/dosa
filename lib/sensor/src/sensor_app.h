@@ -78,7 +78,7 @@ class SensorApp final : public dosa::App
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
             container.getComms().dispatch(
-                comms::sensorBroadcast,
+                comms::multicastAddr,
                 messages::Trigger(messages::TriggerDevice::IR_GRID, container.getSettings().getDeviceNameBytes()),
                 true);
             return true;
@@ -89,8 +89,8 @@ class SensorApp final : public dosa::App
     {
         App::onWifiConnect();
 
-        // Bind a random UDP port, we'll send triggers from this port and receive ack's here, too
-        if (!container.getComms().bind(random(1024, 65536))) {
+        // Bind a UDP port, we'll send triggers from this port and receive ack's here, too
+        if (!container.getComms().bind(comms::udpPort)) {
             container.getSerial().writeln("Failed to bind UDP", LogLevel::ERROR);
         }
     }

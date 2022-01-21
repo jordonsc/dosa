@@ -11,6 +11,7 @@ namespace dosa::messages {
 
 enum class TriggerDevice : uint8_t
 {
+    NONE = 0,  // for error conditions
     BUTTON = 1,
     PIR = 10,
     IR_GRID = 11,
@@ -33,8 +34,13 @@ class Trigger : public Payload
         std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &device, 1);
     }
 
-    static Trigger fromPacket(char const* packet)
+    static Trigger fromPacket(char const* packet, uint32_t size)
     {
+        if (size != DOSA_COMMS_ACK_SIZE) {
+            // cannot log or throw an exception, so create a null Trigger packet
+            return Trigger(0, TriggerDevice::NONE, bad_dev_name);
+        }
+
         TriggerDevice d;
         memcpy(&d, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 1);
         return Trigger(*(uint16_t*)packet, d, packet + 7);

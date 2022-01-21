@@ -34,7 +34,7 @@ class StandardHandler : public dosa::comms::Handler
             return;
         }
 
-        cb(PayloadClass::fromPacket(packet), sender, ctx);
+        cb(PayloadClass::fromPacket(packet, size), sender, ctx);
     }
 
     void setCallback(handlerCallback callback, void* context = nullptr)

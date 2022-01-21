@@ -37,8 +37,13 @@ class Ack : public Payload
         std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
     }
 
-    static Ack fromPacket(char const* packet)
+    static Ack fromPacket(char const* packet, uint32_t size)
     {
+        if (size != DOSA_COMMS_ACK_SIZE) {
+            // cannot log or throw an exception, so create a null Ack packet
+            return Ack(0, 0, bad_dev_name);
+        }
+
         uint16_t ack_msg_id;
         memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
         return Ack(*(uint16_t*)packet, ack_msg_id, packet + 7);

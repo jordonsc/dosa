@@ -61,7 +61,7 @@ class DoorApp final : public dosa::App
     {
         App::onWifiConnect();
 
-        if (container.getComms().bindMulticast(comms::sensorBroadcast)) {
+        if (container.getComms().bindMulticast(comms::multicastAddr)) {
             container.getSerial().writeln("Listening for multicast packets");
         } else {
             container.getSerial().writeln("Failed to bind multicast", LogLevel::ERROR);

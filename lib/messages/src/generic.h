@@ -17,9 +17,29 @@ class GenericMessage final : public Payload
         std::memcpy(payload, packet, size);
     }
 
+    explicit GenericMessage(uint16_t msg_id, char const* cmd_code, char const* dev_name)
+        : Payload(msg_id, cmd_code, dev_name),
+          packet_size(DOSA_COMMS_PAYLOAD_BASE_SIZE)
+    {
+        payload = new char[DOSA_COMMS_PAYLOAD_BASE_SIZE];
+        buildBasePayload(payload, DOSA_COMMS_PAYLOAD_BASE_SIZE);
+    }
+
     virtual ~GenericMessage()
     {
         delete payload;
+    }
+
+    static GenericMessage fromPacket(char const* packet, uint32_t size)
+    {
+        if (size < DOSA_COMMS_PAYLOAD_BASE_SIZE) {
+            // cannot log or throw an exception, so create a null packet
+            return GenericMessage(0, bad_cmd_code, bad_dev_name);
+        }
+
+        uint16_t ack_msg_id;
+        memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
+        return GenericMessage(packet, size, packet + 7);
     }
 
     [[nodiscard]] char const* getPayload() const override

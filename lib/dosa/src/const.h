@@ -51,7 +51,8 @@ struct Node
     uint16_t port;
 };
 
-Node const sensorBroadcast(IPAddress(239, 1, 1, 69), 6901);
+Node const multicastAddr(IPAddress(239, 1, 1, 69), 6901);
+uint16_t const udpPort = 6902;
 
 [[nodiscard]] String ipToString(IPAddress const& ip)
 {

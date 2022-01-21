@@ -9,32 +9,37 @@
 #include "const.h"
 #include "loggable.h"
 
+#define DOSA_WIFI_CONNECT_TIMEOUT 15000
+
 namespace dosa {
 
 class Wifi : public Loggable
 {
    public:
-    explicit Wifi(SerialComms* s = nullptr) : Loggable(s) {}
+    explicit Wifi(SerialComms* s = nullptr) : Loggable(s), ctrl(WiFi) {}
 
     bool connect(String const& ssid, String const& password, uint8_t attempts = 10)
     {
         if (isConnected()) {
+            logln("Wifi online, disconnecting..");
             disconnect();
         }
 
-        WiFi.setTimeout(30 * 1000);
+        ctrl.setTimeout(DOSA_WIFI_CONNECT_TIMEOUT);
         uint8_t attempt = 0;
 
         do {
             if (attempt > 0) {
-                WiFi.end();
+                ctrl.end();
                 log("Retry " + String(attempt + 1) + "/" + String(attempts) + ".. ");
             }
 
             // Connect to WPA/WPA2 network:
-            status = WiFi.begin(ssid.c_str(), password.c_str());
+            int status = ctrl.begin(ssid.c_str(), password.c_str());
 
             if (status != WL_CONNECTED) {
+                wifi_online = false;
+
                 switch (status) {
                     case WL_CONNECT_FAILED:
                         logln("Connection failed");
@@ -57,20 +62,24 @@ class Wifi : public Loggable
 
                 ++attempt;
             } else {
+                wifi_online = true;
+                logln("Wifi connected");
                 logln(
-                    "Connected to " + ssid + "; local IP: " + comms::ipToString(WiFi.localIP()) + " netmask " +
-                    comms::ipToString(WiFi.subnetMask()));
+                    "Local IP: " + comms::ipToString(ctrl.localIP()) + " netmask " +
+                    comms::ipToString(ctrl.subnetMask()));
+
                 return true;
             }
         } while (attempt < attempts);
 
+        ctrl.end();
         return false;
     }
 
     void disconnect()
     {
-        WiFi.disconnect();
-        status = WL_DISCONNECTED;
+        ctrl.disconnect();
+        wifi_online = false;
         logln("Wifi disconnected");
     }
 
@@ -79,18 +88,19 @@ class Wifi : public Loggable
         return udp;
     }
 
-    [[nodiscard]] bool isConnected() const
+    [[nodiscard]] bool isConnected()
     {
-        return status == WL_CONNECTED;
+        return wifi_online && (getStatus() == WL_CONNECTED);
     }
 
-    [[nodiscard]] int getStatus() const
+    [[nodiscard]] int getStatus()
     {
-        return status;
+        return wifi_online ? ctrl.status() : WL_DISCONNECTED;
     }
 
    protected:
-    int status = WL_DISCONNECTED;
+    bool wifi_online = false;
+    WiFiClass& ctrl;
     WiFiUDP udp;
 };
 
