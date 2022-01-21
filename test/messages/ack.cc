@@ -49,7 +49,7 @@ TEST_F(AckTest, BasicTest)
 
     EXPECT_EQ(strncmp(payload, ack.getPayload(), ASSUMED_ACK_SIZE), 0);
 
-    auto ackPacket = Ack::fromPacket(payload);
+    auto ackPacket = Ack::fromPacket(payload, ASSUMED_ACK_SIZE);
     EXPECT_EQ(ackPacket.getMessageId(), ack.getMessageId());
     EXPECT_EQ(ackPacket.getAckMsgId(), ack.getAckMsgId());
     EXPECT_EQ(strcmp(ackPacket.getDeviceName(), device_name), 0);  // works because of null-padding

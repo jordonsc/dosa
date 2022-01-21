@@ -49,7 +49,7 @@ TEST_F(TriggerTest, BasicTest)
 
     EXPECT_EQ(strncmp(payload, trigger.getPayload(), ASSUMED_TRIGGER_SIZE), 0);
 
-    auto triggerPacket = Trigger::fromPacket(payload);
+    auto triggerPacket = Trigger::fromPacket(payload, ASSUMED_TRIGGER_SIZE);
     EXPECT_EQ(triggerPacket.getMessageId(), trigger.getMessageId());
     EXPECT_EQ(triggerPacket.getDeviceType(), trigger.getDeviceType());
     EXPECT_EQ(strcmp(trigger.getDeviceName(), device_name), 0);  // works because of null-padding

@@ -36,7 +36,7 @@ class Trigger : public Payload
 
     static Trigger fromPacket(char const* packet, uint32_t size)
     {
-        if (size != DOSA_COMMS_ACK_SIZE) {
+        if (size != DOSA_COMMS_TRIGGER_SIZE) {
             // cannot log or throw an exception, so create a null Trigger packet
             return Trigger(0, TriggerDevice::NONE, bad_dev_name);
         }
