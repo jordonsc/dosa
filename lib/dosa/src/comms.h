@@ -5,11 +5,8 @@
 
 #include <utility>
 
+#include "const.h"
 #include "standard_handler.h"
-
-#define DOSA_ACK_MAX_RETRIES 3
-#define DOSA_ACK_WAIT_TIME 1000
-#define DOSA_COMMS_MAX_HANDLERS 10
 
 namespace dosa {
 
@@ -245,7 +242,7 @@ class Comms : public Loggable
     {
         logln(
             "Received ack from '" + Comms::getDeviceName(ack) + "' (" + comms::nodeToString(sender) + ")",
-            LogLevel::DEBUG);
+            LogLevel::TRACE);
 
         ack_msg_id = ack.getAckMsgId();
     }

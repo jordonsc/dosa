@@ -8,18 +8,31 @@
 #define DOSA_QUOTE_Q(x) #x
 #define DOSA_QUOTE(x) DOSA_QUOTE_Q(x)
 
-// DOSA platform version
-#define DOSA_VERSION 6
+/**
+ * DOSA Application Version.
+ */
+#define DOSA_VERSION 20
 
-// General configuration
-#define DOSA_MAX_PERIPHERALS 5  // Max number of peripherals that centrals will connect to
-#define DOSA_SCAN_FREQ 5000     // How often we scan for new peripherals
-#define DOSA_POLL_FREQ 1000     // How often we poll the peripherals for updates
+/**
+ * Pin used for CS on FRAM.
+ */
 #define FRAM_CS_PIN 10
 
-// Unused
-#define DOSA_BT_DATA_MIN 400   // Bluetooth min comms speed (milliseconds = value * 1.25) - min 6 (7.5 ms)
-#define DOSA_BT_DATA_MAX 3200  // Bluetooth max comms speed (milliseconds = value * 1.25) - max 3200 (4 seconds)
+/**
+ * Network settings - the number of times we'll send a UDP multicast message without receiving an ack in return before
+ * giving up and assuming nobody is listening. Increase this number to deal with poor network transmission.
+ */
+#define DOSA_ACK_MAX_RETRIES 3
+
+/**
+ * Time in milliseconds to wait for an ack.
+ */
+#define DOSA_ACK_WAIT_TIME 750
+
+/**
+ * Array size of comms handlers
+ */
+#define DOSA_COMMS_MAX_HANDLERS 10
 
 /**
  * Bluetooth signatures.
