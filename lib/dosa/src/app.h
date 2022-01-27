@@ -31,6 +31,8 @@ namespace dosa {
  */
 #define WIFI_CON_CHECK 500  // Time between checking health of wifi connection (ms)
 #define WIFI_RECONNECT_WAIT 60000  // Time before reattempting to connect wifi (ms)
+#define WIFI_INITIAL_ATTEMPTS 5  // Default number of attempts to connect wifi (first-run uses default)
+#define WIFI_RETRY_ATTEMPTS 5  // Number of attempts to connect wifi after init
 
 /**
  * Abstract App class that all devices should inherit.
@@ -95,6 +97,9 @@ class App
             DOSA_COMMS_CONFIG_MSG_CODE,
             &configMessageForwarder,
             this);
+
+        wifi_last_checked = millis();
+        wifi_last_reconnected = millis();
 
         // Init completed
         logln("Init complete\n");
@@ -233,9 +238,6 @@ class App
 
         auto& wifi = getContainer().getWiFi();
 
-        static unsigned long wifi_last_checked = 0;
-        static unsigned long wifi_last_reconnected = 0;
-
         // We probe the wifi chip every WIFI_CON_CHECK ms..
         if (millis() - wifi_last_checked > WIFI_CON_CHECK) {
             wifi_last_checked = millis();
@@ -251,7 +253,7 @@ class App
 
                 // Attempt to reconnect
                 if (millis() - wifi_last_reconnected > WIFI_RECONNECT_WAIT) {
-                    connectWifiOrBluetooth(3);
+                    connectWifiOrBluetooth(WIFI_RETRY_ATTEMPTS);
                     wifi_last_reconnected = millis();
                 }
             }
@@ -306,7 +308,7 @@ class App
      * This is normally the way you should try to connect the wifi. If wifi fails, we need BLE enabled so that the
      * wifi can be reconfigured.
      */
-    void connectWifiOrBluetooth(uint8_t attempts = 10)
+    void connectWifiOrBluetooth(uint8_t attempts = WIFI_INITIAL_ATTEMPTS)
     {
         if (!connectWifi(attempts)) {
             delay(NINA_CHIP_SWITCH_DELAY);
@@ -317,7 +319,7 @@ class App
     /**
      * Attempt to connect to the wifi AP.
      */
-    bool connectWifi(uint8_t attempts = 10)
+    bool connectWifi(uint8_t attempts = WIFI_INITIAL_ATTEMPTS)
     {
         auto& settings = getContainer().getSettings();
 
@@ -342,6 +344,8 @@ class App
     bool central_connected = false;
     bool wifi_connected = false;
     unsigned long config_last_checked = 0;
+    unsigned long wifi_last_checked = 0;
+    unsigned long wifi_last_reconnected = 0;
 
     bool authCheck(String const& v)
     {
