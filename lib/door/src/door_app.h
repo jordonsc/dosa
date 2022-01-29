@@ -36,22 +36,49 @@ class DoorApp final : public dosa::App
 
         // Check the door switch
         container.getDoorSwitch().process();
+
+        // Check if the wifi handler has picked up an trigger request
+        if (door_fire_from_udp && !error_state) {
+            doorSequence();
+
+            // Clear out any pending trigger messages
+            while (getContainer().getComms().processInbound()) {
+            }
+            door_fire_from_udp = false;
+        }
     }
 
    private:
     DoorContainer container;
+    uint16_t last_msg_id = 0;
+    bool error_state = false;  // If there has been an error, don't trigger from wifi until the button has been pressed
+    bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
 
     /**
      * Sensor has broadcasted a trigger event.
      */
     void onTrigger(messages::Trigger const& trigger, comms::Node const& sender)
     {
+        // Don't open the door if this message is duplicate
+        if (last_msg_id == trigger.getMessageId()) {
+            logln(
+                "Duplicate trigger detected from '" + Comms::getDeviceName(trigger) + "' (" +
+                    comms::nodeToString(sender) + "), msg ID: " + String(trigger.getMessageId()),
+                LogLevel::DEBUG);
+            return;
+        } else {
+            last_msg_id = trigger.getMessageId();
+        }
+
         container.getSerial().writeln(
             "Received trigger message from '" + Comms::getDeviceName(trigger) + "' (" + comms::nodeToString(sender) +
             "), msg ID: " + String(trigger.getMessageId()));
 
         // Send reply ack
         container.getComms().dispatch(sender, messages::Ack(trigger, container.getSettings().getDeviceNameBytes()));
+
+        // Set a flag that informs the main loop to open the door, or the interrupt handler
+        door_fire_from_udp = true;
     }
 
     /**
@@ -63,6 +90,7 @@ class DoorApp final : public dosa::App
 
         if (container.getComms().bindMulticast(comms::multicastAddr)) {
             container.getSerial().writeln("Listening for multicast packets");
+            dispatchGenericMessage(DOSA_COMMS_ONLINE);
         } else {
             container.getSerial().writeln("Failed to bind multicast", LogLevel::ERROR);
         }
@@ -73,9 +101,11 @@ class DoorApp final : public dosa::App
      */
     void doorSequence()
     {
+        dispatchGenericMessage(DOSA_COMMS_BEGIN);
         container.getDoorLights().activity();
         container.getDoorWinch().trigger();
         container.getDoorLights().ready();
+        dispatchGenericMessage(DOSA_COMMS_END);
     }
 
     Container& getContainer() override
@@ -93,6 +123,7 @@ class DoorApp final : public dosa::App
         }
 
         container.getSerial().writeln("Door switch pressed");
+        error_state = false;  // button will reset error state
         doorSequence();
     }
 
@@ -133,62 +164,37 @@ class DoorApp final : public dosa::App
     /**
      * Creates a holding pattern when the door winch fails.
      */
-    void doorErrorHoldingPattern(DoorErrorCode error)
+    void setDoorErrorCondition(DoorErrorCode error)
     {
         auto& lights = container.getDoorLights();
+
         lights.error();
+        error_state = true;
+
+        container.getComms().dispatch(
+            comms::multicastAddr,
+            messages::GenericMessage(DOSA_COMMS_ERROR, container.getSettings().getDeviceNameBytes()),
+            false);
 
         switch (error) {
             default:
                 // Unknown error sequence: all lights blink together
-                while (true) {
-                    lights.set(false, true, true, true);
-                    delay(500);
-                    lights.off();
-                    delay(500);
-                    if (container.getDoorSwitch().getStatePassiveProcess()) {
-                        reset();
-                        return;
-                    }
-                }
+                bt_error_msg.setValue("Door unknown error");
+
             case DoorErrorCode::OPEN_TIMEOUT:
                 // Open timeout sequence: error solid; activity blinks
-                while (true) {
-                    lights.setActivity(true);
-                    delay(500);
-                    lights.setActivity(false);
-                    delay(500);
-                    if (container.getDoorSwitch().getStatePassiveProcess()) {
-                        reset();
-                        return;
-                    }
-                }
+                bt_error_msg.setValue("Door OPEN timeout");
+                break;
+
             case DoorErrorCode::CLOSE_TIMEOUT:
                 // Close timeout sequence: error solid; ready blinks
-                while (true) {
-                    lights.setReady(true);
-                    delay(500);
-                    lights.setReady(false);
-                    delay(500);
-                    if (container.getDoorSwitch().getStatePassiveProcess()) {
-                        reset();
-                        return;
-                    }
-                }
+                bt_error_msg.setValue("Door CLOSE timeout");
+                break;
+
             case DoorErrorCode::JAMMED:
                 // Jam sequence: error solid; activity/ready alternate
-                while (true) {
-                    lights.setReady(true);
-                    lights.setActivity(false);
-                    delay(500);
-                    lights.setReady(false);
-                    lights.setActivity(true);
-                    delay(500);
-                    if (container.getDoorSwitch().getStatePassiveProcess()) {
-                        reset();
-                        return;
-                    }
-                }
+                bt_error_msg.setValue("Door JAMMED");
+                break;
         }
     }
 
@@ -197,8 +203,17 @@ class DoorApp final : public dosa::App
      */
     bool doorInterruptCheck()
     {
-        // return container.getDoorSwitch().getStatePassiveProcess() ||
-        //        container.getDevicePool().passiveStateCheck(SENSOR_TRIGGER_VALUE);
+        // Check for UDP 'trg' packets - we'll disable the open flag and instead return an interrupt
+        if (isWifiConnected()) {
+            getContainer().getComms().processInbound();
+
+            if (door_fire_from_udp) {
+                door_fire_from_udp = false;
+                return true;
+            }
+        }
+
+        // else check the door switch
         return container.getDoorSwitch().getStatePassiveProcess();
     }
 
@@ -207,7 +222,7 @@ class DoorApp final : public dosa::App
      */
     static void doorWinchErrorForwarder(DoorErrorCode error, void* context)
     {
-        static_cast<DoorApp*>(context)->doorErrorHoldingPattern(error);
+        static_cast<DoorApp*>(context)->setDoorErrorCondition(error);
     }
 
     /**

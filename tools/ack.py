@@ -27,7 +27,6 @@ def send_ack(msg_id, tgt):
 
 print("Listening for messages..")
 while True:
-    # For Python 3, change next line to "print(sock.recv(10240))"
     packet, addr = mc_sock.recvfrom(10240)
 
     if len(packet) < 27:

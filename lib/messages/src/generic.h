@@ -25,6 +25,14 @@ class GenericMessage final : public Payload
         buildBasePayload(payload, DOSA_COMMS_PAYLOAD_BASE_SIZE);
     }
 
+    explicit GenericMessage(char const* cmd_code, char const* dev_name)
+        : Payload(cmd_code, dev_name),
+          packet_size(DOSA_COMMS_PAYLOAD_BASE_SIZE)
+    {
+        payload = new char[DOSA_COMMS_PAYLOAD_BASE_SIZE];
+        buildBasePayload(payload, DOSA_COMMS_PAYLOAD_BASE_SIZE);
+    }
+
     virtual ~GenericMessage()
     {
         delete payload;

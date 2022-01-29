@@ -107,27 +107,27 @@ class Comms : public Loggable
      *
      * Fires events if a packet is received.
      */
-    void processInbound()
+    bool processInbound()
     {
         if (!wifi.isConnected()) {
-            return;
+            return false;
         }
 
         auto& udp = wifi.getUdp();
 
         if (!udp.parsePacket()) {
-            return;
+            return false;
         }
 
         auto data_size = uint32_t(udp.available());
         if (data_size < DOSA_COMMS_PAYLOAD_BASE_SIZE) {
             logln("Inbound packet under min size, flushing", dosa::LogLevel::WARNING);
             udp.flush();
-            return;
+            return false;
         } else if (data_size > DOSA_COMMS_MAX_PAYLOAD_SIZE) {
             logln("Inbound packet exceeds max capacity, flushing", dosa::LogLevel::WARNING);
             udp.flush();
-            return;
+            return false;
         }
 
         char buffer[data_size];
@@ -139,6 +139,7 @@ class Comms : public Loggable
         String cmd_code(cmd_raw);
 
         handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()));
+        return true;
     }
 
     /**

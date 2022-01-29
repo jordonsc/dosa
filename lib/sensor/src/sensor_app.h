@@ -90,7 +90,9 @@ class SensorApp final : public dosa::App
         App::onWifiConnect();
 
         // Bind a UDP port, we'll send triggers from this port and receive ack's here, too
-        if (!container.getComms().bind(comms::udpPort)) {
+        if (container.getComms().bind(comms::udpPort)) {
+            dispatchOnlineMsg();
+        } else {
             container.getSerial().writeln("Failed to bind UDP", LogLevel::ERROR);
         }
     }

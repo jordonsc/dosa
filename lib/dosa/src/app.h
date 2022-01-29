@@ -134,6 +134,17 @@ class App
 
    protected:
     /**
+     * Dispatch a generic message on the UDP multicast address.
+     */
+    void dispatchGenericMessage(char const* cmd_code)
+    {
+        getContainer().getComms().dispatch(
+            comms::multicastAddr,
+            messages::GenericMessage(cmd_code, getContainer().getSettings().getDeviceNameBytes()),
+            false);
+    }
+
+    /**
      * Bring the Bluetooth chip online.
      */
     bool enableBluetooth()
@@ -340,6 +351,26 @@ class App
         }
     }
 
+    void log(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
+    {
+        getContainer().getSerial().write(s, lvl);
+    }
+
+    void logln(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
+    {
+        getContainer().getSerial().writeln(s, lvl);
+    }
+
+    [[nodiscard]] bool isWifiConnected() const
+    {
+        return wifi_connected;
+    }
+
+    [[nodiscard]] bool isCentralConnected() const
+    {
+        return central_connected;
+    }
+
    private:
     bool central_connected = false;
     bool wifi_connected = false;
@@ -497,16 +528,6 @@ class App
     static void configMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onConfigModeRequest(msg, sender);
-    }
-
-    void log(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
-    {
-        getContainer().getSerial().write(s, lvl);
-    }
-
-    void logln(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
-    {
-        getContainer().getSerial().writeln(s, lvl);
     }
 };
 
