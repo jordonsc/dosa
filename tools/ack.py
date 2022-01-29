@@ -18,16 +18,14 @@ mc_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
 
 def send_ack(msg_id, tgt):
-    print("Received trigger from " + tgt[0] + "..", end="")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     payload = bytearray(base_payload)
     payload[0:2] = secrets.token_bytes(2)
-    payload[28:2] = msg_id
+    payload[28:30] = msg_id
     sock.sendto(payload, tgt)
-    print(" ack'd")
 
 
-print("Listening for triggers..")
+print("Listening for messages..")
 while True:
     # For Python 3, change next line to "print(sock.recv(10240))"
     packet, addr = mc_sock.recvfrom(10240)
@@ -35,6 +33,10 @@ while True:
     if len(packet) < 27:
         continue
 
-    if packet[2:5] == b"trg":
-        msg_id = packet[0:2]
-        send_ack(msg_id, addr)
+    msg_id = packet[0:2]
+    msg_code = packet[2:5].decode("utf-8")
+    device_name = packet[5:25].decode("utf-8")
+
+    print("Message: '" + msg_code + "' from " + device_name + " (" + addr[0] + ")..", end="")
+    send_ack(msg_id, addr)
+    print(" ack'd")
