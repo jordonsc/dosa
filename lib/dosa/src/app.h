@@ -130,7 +130,15 @@ class App
         }
     };
 
-    virtual void onWifiConnect() {}
+    virtual void onWifiConnect()
+    {
+        if (getContainer().getComms().bindMulticast(comms::multicastAddr)) {
+            logln("Listening for multicast packets", LogLevel::DEBUG);
+            dispatchGenericMessage(DOSA_COMMS_ONLINE);
+        } else {
+            logln("Failed to bind multicast", LogLevel::ERROR);
+        }
+    }
 
    protected:
     /**
@@ -140,8 +148,26 @@ class App
     {
         getContainer().getComms().dispatch(
             comms::multicastAddr,
-            messages::GenericMessage(cmd_code, getContainer().getSettings().getDeviceNameBytes()),
+            messages::GenericMessage(cmd_code, getDeviceNameBytes()),
             false);
+    }
+
+    /**
+     * Dispatch a specific message on the UDP multicast address.
+     */
+    void dispatchMessage(messages::Payload const& payload, bool wait_for_ack = false)
+    {
+        getContainer().getComms().dispatch(comms::multicastAddr, payload, wait_for_ack);
+    }
+
+    /**
+     * Get a 20 byte array containing the local device name.
+     *
+     * This should be used for message creation.
+     */
+    char const* getDeviceNameBytes()
+    {
+        return getContainer().getSettings().getDeviceNameBytes();
     }
 
     /**

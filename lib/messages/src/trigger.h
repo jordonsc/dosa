@@ -4,7 +4,7 @@
 
 #include "payload.h"
 
-#define DOSA_COMMS_TRIGGER_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 1
+#define DOSA_COMMS_TRIGGER_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 65
 #define DOSA_COMMS_TRIGGER_MSG_CODE "trg"
 
 namespace dosa::messages {
@@ -20,30 +20,32 @@ enum class TriggerDevice : uint8_t
 class Trigger : public Payload
 {
    public:
-    Trigger(TriggerDevice device, char const* dev_name) : Payload(DOSA_COMMS_TRIGGER_MSG_CODE, dev_name), device(device)
-    {
-        buildBasePayload(payload, DOSA_COMMS_TRIGGER_SIZE);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &device, 1);
-    }
-
-    Trigger(uint16_t message_id, TriggerDevice device, char const* dev_name)
-        : Payload(message_id, DOSA_COMMS_TRIGGER_MSG_CODE, dev_name),
+    Trigger(TriggerDevice device, uint8_t const* map, char const* dev_name)
+        : Payload(DOSA_COMMS_TRIGGER_MSG_CODE, dev_name),
           device(device)
     {
         buildBasePayload(payload, DOSA_COMMS_TRIGGER_SIZE);
         std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &device, 1);
+        if (map != nullptr) {
+            std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1, map, 64);
+        }
     }
 
     static Trigger fromPacket(char const* packet, uint32_t size)
     {
         if (size != DOSA_COMMS_TRIGGER_SIZE) {
             // cannot log or throw an exception, so create a null Trigger packet
-            return Trigger(0, TriggerDevice::NONE, bad_dev_name);
+            return Trigger(TriggerDevice::NONE, nullptr, bad_dev_name);
         }
 
         TriggerDevice d;
         memcpy(&d, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 1);
-        return Trigger(*(uint16_t*)packet, d, packet + 7);
+
+        auto trg = Trigger(d, (uint8_t*)packet + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1, packet + 7);
+        trg.msg_id = *(uint16_t*)packet;
+        trg.buildBasePayload(trg.payload, DOSA_COMMS_TRIGGER_SIZE);
+
+        return trg;
     }
 
     [[nodiscard]] char const* getPayload() const override
@@ -59,6 +61,11 @@ class Trigger : public Payload
     [[nodiscard]] TriggerDevice getDeviceType() const
     {
         return device;
+    }
+
+    [[nodiscard]] uint8_t const* getSensorMap() const
+    {
+        return (uint8_t*)payload + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1;
     }
 
     bool operator==(Trigger const& a)

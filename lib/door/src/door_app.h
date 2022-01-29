@@ -6,6 +6,11 @@
 
 #define SENSOR_TRIGGER_VALUE 2  // "active" state for sensors
 
+#define DOSA_DOOR_ERR_UNKNOWN "Door unknown error"
+#define DOSA_DOOR_ERR_OPEN "Door OPEN timeout"
+#define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
+#define DOSA_DOOR_ERR_JAM "Door JAMMED"
+
 namespace dosa::door {
 
 class DoorApp final : public dosa::App
@@ -79,21 +84,6 @@ class DoorApp final : public dosa::App
 
         // Set a flag that informs the main loop to open the door, or the interrupt handler
         door_fire_from_udp = true;
-    }
-
-    /**
-     * Wifi connection established, bind UDP multicast.
-     */
-    void onWifiConnect() override
-    {
-        App::onWifiConnect();
-
-        if (container.getComms().bindMulticast(comms::multicastAddr)) {
-            container.getSerial().writeln("Listening for multicast packets");
-            dispatchGenericMessage(DOSA_COMMS_ONLINE);
-        } else {
-            container.getSerial().writeln("Failed to bind multicast", LogLevel::ERROR);
-        }
     }
 
     /**
@@ -179,21 +169,23 @@ class DoorApp final : public dosa::App
         switch (error) {
             default:
                 // Unknown error sequence: all lights blink together
-                bt_error_msg.setValue("Door unknown error");
+                bt_error_msg.setValue(DOSA_DOOR_ERR_UNKNOWN);
+                dispatchMessage(messages::Error(DOSA_DOOR_ERR_UNKNOWN, getDeviceNameBytes()));
 
             case DoorErrorCode::OPEN_TIMEOUT:
                 // Open timeout sequence: error solid; activity blinks
-                bt_error_msg.setValue("Door OPEN timeout");
+                bt_error_msg.setValue(DOSA_DOOR_ERR_OPEN);
+                dispatchMessage(messages::Error(DOSA_DOOR_ERR_OPEN, getDeviceNameBytes()));
                 break;
 
             case DoorErrorCode::CLOSE_TIMEOUT:
                 // Close timeout sequence: error solid; ready blinks
-                bt_error_msg.setValue("Door CLOSE timeout");
+                bt_error_msg.setValue(DOSA_DOOR_ERR_CLOSE);
                 break;
 
             case DoorErrorCode::JAMMED:
                 // Jam sequence: error solid; activity/ready alternate
-                bt_error_msg.setValue("Door JAMMED");
+                bt_error_msg.setValue(DOSA_DOOR_ERR_JAM);
                 break;
         }
     }

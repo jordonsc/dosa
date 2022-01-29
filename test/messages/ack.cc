@@ -71,7 +71,8 @@ TEST_F(AckTest, BasicTest)
 
 TEST_F(AckTest, AckFromPayload)
 {
-    auto t = Trigger(TriggerDevice::IR_GRID, "FE");
+    uint8_t map[64] = {0};
+    auto t = Trigger(TriggerDevice::IR_GRID, map, "FE");
     ASSERT_GT(t.getMessageId(), 0);
 
     auto ack = Ack(t, device_name);

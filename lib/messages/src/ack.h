@@ -29,24 +29,20 @@ class Ack : public Payload
         std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
     }
 
-    Ack(uint16_t msgId, uint16_t ack_msg_id, char const* dev_name)
-        : Payload(msgId, DOSA_COMMS_ACK_MSG_CODE, dev_name),
-          ack_msg_id(ack_msg_id)
-    {
-        buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
-    }
-
     static Ack fromPacket(char const* packet, uint32_t size)
     {
         if (size != DOSA_COMMS_ACK_SIZE) {
             // cannot log or throw an exception, so create a null Ack packet
-            return Ack(0, 0, bad_dev_name);
+            return Ack(0, bad_dev_name);
         }
 
         uint16_t ack_msg_id;
         memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
-        return Ack(*(uint16_t*)packet, ack_msg_id, packet + 7);
+        auto ack = Ack(ack_msg_id, packet + 7);
+        ack.msg_id = *(uint16_t*)packet;
+        ack.buildBasePayload(ack.payload, DOSA_COMMS_ACK_SIZE);
+
+        return ack;
     }
 
     [[nodiscard]] char const* getPayload() const override

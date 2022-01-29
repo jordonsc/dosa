@@ -42,6 +42,7 @@ class SensorApp final : public dosa::App
             float max_delta = 0;
             float ttl_delta = 0;
             uint8_t changed = 0;
+            uint8_t map[64] = {0};
 
             for (unsigned row = 0; row < 8; ++row) {
                 for (unsigned col = 0; col < 8; ++col) {
@@ -55,11 +56,14 @@ class SensorApp final : public dosa::App
                         if (delta > max_delta) {
                             max_delta = delta;
                         }
+                        map[index] = delta * 10;  // truncated precision
+                    } else {
+                        map[index] = 0;
                     }
                 }
             }
 
-            triggerIf(max_delta, ttl_delta, changed);
+            triggerIf(max_delta, ttl_delta, changed, map);
             memcpy(grid, new_grid, sizeof(float) * 64);
         }
     }
@@ -69,7 +73,7 @@ class SensorApp final : public dosa::App
      *
      * Will also consider a cool-down before a second trigger.
      */
-    bool triggerIf(float max_single_delta, float ttl_delta, uint8_t pixels_changed)
+    bool triggerIf(float max_single_delta, float ttl_delta, uint8_t pixels_changed, uint8_t const* map)
     {
         if (grid[0] == 0 || max_single_delta < SINGLE_DELTA_THRESHOLD || ttl_delta < TOTAL_DELTA_THRESHOLD ||
             pixels_changed < MIN_PIXELS_THRESHOLD || millis() - last_fired < REFIRE_DELAY) {
@@ -77,23 +81,8 @@ class SensorApp final : public dosa::App
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
-            container.getComms().dispatch(
-                comms::multicastAddr,
-                messages::Trigger(messages::TriggerDevice::IR_GRID, container.getSettings().getDeviceNameBytes()),
-                true);
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::IR_GRID, map, getDeviceNameBytes()), true);
             return true;
-        }
-    }
-
-    void onWifiConnect() override
-    {
-        App::onWifiConnect();
-
-        // Bind a UDP port, we'll send triggers from this port and receive ack's here, too
-        if (container.getComms().bind(comms::udpPort)) {
-            dispatchOnlineMsg();
-        } else {
-            container.getSerial().writeln("Failed to bind UDP", LogLevel::ERROR);
         }
     }
 

@@ -11,7 +11,7 @@
 /**
  * DOSA Application Version.
  */
-#define DOSA_VERSION 20
+#define DOSA_VERSION 21
 
 /**
  * Pin used for CS on FRAM.

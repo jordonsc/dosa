@@ -5,7 +5,7 @@ using namespace dosa::messages;
 
 // This is the size the tests are expecting an ack message to be, if it does not match DOSA_COMMS_ACK_SIZE then the
 // tests are out of date.
-#define ASSUMED_TRIGGER_SIZE 28
+#define ASSUMED_TRIGGER_SIZE 92
 
 #define TEST_DEVICE_NAME "Trigger-App"
 
@@ -30,7 +30,8 @@ TEST_F(TriggerTest, BasicTest)
 {
     ASSERT_EQ(DOSA_COMMS_TRIGGER_SIZE, ASSUMED_TRIGGER_SIZE);
 
-    auto trigger = Trigger(TriggerDevice::IR_GRID, device_name);
+    uint8_t map[64] = {0};
+    auto trigger = Trigger(TriggerDevice::IR_GRID, map, device_name);
     EXPECT_NE(trigger.getMessageId(), 0);
     ASSERT_EQ(trigger.getPayloadSize(), ASSUMED_TRIGGER_SIZE);
     EXPECT_EQ(strcmp(trigger.getDeviceName(), TEST_DEVICE_NAME), 0);  // only works if name < 20 chars
