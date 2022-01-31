@@ -29,6 +29,7 @@ function syntax() {
   echo "  upload         :  Uploads the last compiled application"
   echo "  install        :  Compiles application, uploads if compile is successful"
   echo "  install-debug  :  Compiles application in debug mode, uploads if compile is successful"
+  echo "  debug          :  Runs install-debug followed by monitor for the same device"
   echo "  monitor        :  Opens a serial monitor to provided port"
   echo
   echo "Applications:"
@@ -125,6 +126,23 @@ case $1 in
   if [[ $? -eq 0 ]]; then
     echo "[DEBUG] Uploading $1 to board on port $3.."
     arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+  else
+    echo
+    echo "Compile error, not uploading"
+    exit 1
+  fi
+  ;;
+"debug")
+  validateApp $fqbn
+  validatePort $3
+  echo "[DEBUG] Compile $1 against ${fqbn}.."
+  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
+  if [[ $? -eq 0 ]]; then
+    echo "[DEBUG] Uploading $1 to board on port $3.."
+    arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+    sleep 2
+    echo
+    tools/read_serial.py $3
   else
     echo
     echo "Compile error, not uploading"
