@@ -138,6 +138,7 @@ class Comms : public Loggable
         memcpy(cmd_raw, buffer + 2, 3);
         String cmd_code(cmd_raw);
 
+        logln("packet: " + cmd_code);
         handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()));
         return true;
     }
@@ -208,7 +209,9 @@ class Comms : public Loggable
             return false;
         }
 
-        logln("Sent packet: " + getCommandCode(payload) + "(" + String(payload.getMessageId()) + ")", LogLevel::TRACE);
+        logln(
+            "SEND: " + getCommandCode(payload) + " to " + comms::ipToString(ip) + ":" + String(port),
+            LogLevel::TRACE);
 
         // (semi) block until we receive an ack (non-ack inbound messages will interrupt)
         if (wait_for_ack) {

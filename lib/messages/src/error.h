@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "const.h"
 #include "payload.h"
 
 #define DOSA_COMMS_ERR_MSG_CODE "err"

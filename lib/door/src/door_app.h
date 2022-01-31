@@ -43,7 +43,7 @@ class DoorApp final : public dosa::App
         container.getDoorSwitch().process();
 
         // Check if the wifi handler has picked up an trigger request
-        if (door_fire_from_udp && !error_state) {
+        if (door_fire_from_udp && !isErrorState()) {
             doorSequence();
 
             // Clear out any pending trigger messages
@@ -56,7 +56,6 @@ class DoorApp final : public dosa::App
    private:
     DoorContainer container;
     uint16_t last_msg_id = 0;
-    bool error_state = false;  // If there has been an error, don't trigger from wifi until the button has been pressed
     bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
 
     /**
@@ -91,11 +90,13 @@ class DoorApp final : public dosa::App
      */
     void doorSequence()
     {
-        dispatchGenericMessage(DOSA_COMMS_BEGIN);
+        setDeviceState(messages::DeviceState::WORKING);
+        dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
         container.getDoorLights().activity();
         container.getDoorWinch().trigger();
         container.getDoorLights().ready();
-        dispatchGenericMessage(DOSA_COMMS_END);
+        setDeviceState(messages::DeviceState::OK);
+        dispatchGenericMessage(DOSA_COMMS_MSG_END);
     }
 
     Container& getContainer() override
@@ -113,7 +114,6 @@ class DoorApp final : public dosa::App
         }
 
         container.getSerial().writeln("Door switch pressed");
-        error_state = false;  // button will reset error state
         doorSequence();
     }
 
@@ -126,32 +126,6 @@ class DoorApp final : public dosa::App
     }
 
     /**
-     * Resets device state from an error state.
-     */
-    void reset()
-    {
-        auto& lights = container.getDoorLights();
-        for (unsigned short i = 0; i < 3; ++i) {
-            lights.set(false, false, false, true);
-            delay(100);
-            lights.set(false, false, true, false);
-            delay(100);
-            lights.set(false, true, false, false);
-            delay(100);
-        }
-
-        while (container.getDoorSwitch().getStatePassiveProcess()) {
-            lights.off();
-            delay(100);
-            lights.set(false, true, false, false);
-            delay(100);
-        }
-
-        container.getSerial().writeln("Reset from error state");
-        lights.setSwitch(true);
-    }
-
-    /**
      * Creates a holding pattern when the door winch fails.
      */
     void setDoorErrorCondition(DoorErrorCode error)
@@ -159,12 +133,7 @@ class DoorApp final : public dosa::App
         auto& lights = container.getDoorLights();
 
         lights.error();
-        error_state = true;
-
-        container.getComms().dispatch(
-            comms::multicastAddr,
-            messages::GenericMessage(DOSA_COMMS_ERROR, container.getSettings().getDeviceNameBytes()),
-            false);
+        setDeviceState(messages::DeviceState::CRITICAL);
 
         switch (error) {
             default:

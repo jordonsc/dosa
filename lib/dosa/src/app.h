@@ -1,5 +1,7 @@
 #pragma once
 
+#include <messages.h>
+
 #include <utility>
 
 #include "config.h"
@@ -78,6 +80,7 @@ class App
         logln("// Debug Mode //");
 #endif
         logln("Begin init..");
+        device_type = config.device_type;
 
         // Load settings from FRAM
         auto& settings = getContainer().getSettings();
@@ -94,8 +97,14 @@ class App
 
         // This is a wifi "config mode" request packet handler -
         getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
-            DOSA_COMMS_CONFIG_MSG_CODE,
+            DOSA_COMMS_MSG_CONFIG,
             &configMessageForwarder,
+            this);
+
+        // Ping-Pong auto-responder
+        getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_PING,
+            &pingMessageForwarder,
             this);
 
         wifi_last_checked = millis();
@@ -134,7 +143,7 @@ class App
     {
         if (getContainer().getComms().bindMulticast(comms::multicastAddr)) {
             logln("Listening for multicast packets", LogLevel::DEBUG);
-            dispatchGenericMessage(DOSA_COMMS_ONLINE);
+            dispatchGenericMessage(DOSA_COMMS_MSG_ONLINE);
         } else {
             logln("Failed to bind multicast", LogLevel::ERROR);
         }
@@ -397,12 +406,29 @@ class App
         return central_connected;
     }
 
+    [[nodiscard]] messages::DeviceState getDeviceState() const
+    {
+        return device_state;
+    }
+
+    [[nodiscard]] bool isErrorState() const
+    {
+        return device_state >= messages::DeviceState::MINOR_FAULT;
+    }
+
+    void setDeviceState(messages::DeviceState ds)
+    {
+        device_state = ds;
+    }
+
    private:
     bool central_connected = false;
     bool wifi_connected = false;
     unsigned long config_last_checked = 0;
     unsigned long wifi_last_checked = 0;
     unsigned long wifi_last_reconnected = 0;
+    messages::DeviceType device_type = messages::DeviceType::UNSPECIFIED;
+    messages::DeviceState device_state = messages::DeviceState::OK;
 
     bool authCheck(String const& v)
     {
@@ -549,11 +575,32 @@ class App
     }
 
     /**
+     * Ping message received, automatically send a pong.
+     */
+    void onPing(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        logln("Ping: '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+
+        // Send reply pong
+        getContainer().getComms().dispatch(
+            sender,
+            messages::Pong(device_type, device_state, getContainer().getSettings().getDeviceNameBytes()));
+    }
+
+    /**
      * Context forwarder for config-mode request messages.
      */
     static void configMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onConfigModeRequest(msg, sender);
+    }
+
+    /**
+     * Context forwarder for ping request messages.
+     */
+    static void pingMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onPing(msg, sender);
     }
 };
 

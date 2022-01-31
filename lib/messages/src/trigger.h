@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "const.h"
 #include "payload.h"
 
 #define DOSA_COMMS_TRIGGER_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 65

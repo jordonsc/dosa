@@ -20,6 +20,7 @@ void setup()
     cfg.app_name = "DOSA Door Controller";
     cfg.short_name = "DOSA-D";
     cfg.bluetooth_appearance = 0x0741;
+    cfg.device_type = dosa::messages::DeviceType::MOTOR_WINCH;
 
     builder.getApp().init();
 }

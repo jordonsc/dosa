@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "const.h"
 #include "payload.h"
 
 namespace dosa::messages {

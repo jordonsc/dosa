@@ -22,4 +22,5 @@ except serial.serialutil.SerialException:
     print("\n-- Device disconnected --")
 
 except KeyboardInterrupt:
+    print()
     sys.exit(0)
