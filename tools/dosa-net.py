@@ -36,8 +36,7 @@ try:
     if args.cfg:
         cfg = dosa.Config(comms=comms)
         print("Scanning for devices..")
-        cfg.run_scan()
-        print("done")
+        cfg.run()
     else:
         snoop = dosa.Snoop(comms=comms, map=args.map, ignore=args.ignore, ack=args.ack)
         print("Listening..")

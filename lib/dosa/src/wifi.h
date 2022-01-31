@@ -25,7 +25,8 @@ class Wifi : public Loggable
             disconnect();
         }
 
-        ctrl.setHostname("DOSA");
+        reset();
+        ctrl.setHostname("dosa");
         ctrl.setTimeout(DOSA_WIFI_CONNECT_TIMEOUT);
         uint8_t attempt = 0;
 
@@ -76,7 +77,7 @@ class Wifi : public Loggable
             }
         } while (attempt < attempts);
 
-        ctrl.end();
+        ctrl.disconnect();
         return false;
     }
 
@@ -100,6 +101,15 @@ class Wifi : public Loggable
     [[nodiscard]] int getStatus()
     {
         return wifi_online ? ctrl.status() : WL_DISCONNECTED;
+    }
+
+    /**
+     * Do a hard reset on the wifi driver, required after switching back from Bluetooth.
+     */
+    static void reset()
+    {
+        WiFiDrv::wifiDriverDeinit();
+        WiFiDrv::wifiDriverInit();
     }
 
    protected:

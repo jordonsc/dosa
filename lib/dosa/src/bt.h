@@ -59,6 +59,7 @@ class Bluetooth : public Loggable
             enabled = BLE.begin() == 1;
         } else {
             logln("Disabling BLE..", LogLevel::DEBUG);
+            BLE.disconnect();
             BLE.end();
             enabled = false;
         }

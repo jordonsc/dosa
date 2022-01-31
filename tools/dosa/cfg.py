@@ -1,5 +1,4 @@
 import time
-import struct
 import dosa
 
 
@@ -25,20 +24,25 @@ class Config:
             print("No devices detected")
             return
 
-        device_id = self.user_select_device()
-        if device_id is None:
-            print("Exiting")
+        device = self.user_select_device()
+        if device is None:
             return
 
-    def user_select_device(self):
-        return 0
+        opt = self.user_select_opt()
+        if opt == 1:
+            self.exec_config_mode(device)
+
+    def exec_config_mode(self, device):
+        print("Sending config mode request..")
+        self.comms.send(self.comms.build_payload(dosa.Messages.REQUEST_CFG_MODE), tgt=device.address)
+        print("Done")
 
     def run_scan(self):
         ping = self.comms.build_payload(dosa.Messages.PING)
 
-        retries = 3
+        retries = 2
         timeout = 1.0
-        self.devices = {}
+        self.devices = []
 
         for attempt in range(retries):
             self.comms.send(ping)
@@ -53,23 +57,85 @@ class Config:
                 if msg.msg_code != dosa.Messages.PONG:
                     continue
 
-                if msg.addr[0] in self.devices:
-                    continue
+                for d in self.devices:
+                    if d.address[0] == msg.addr[0]:
+                        continue
 
                 d = Device(
                     msg.payload[self.comms.BASE_PAYLOAD_SIZE],
                     msg.payload[self.comms.BASE_PAYLOAD_SIZE + 1],
                     msg.addr)
-                self.devices[msg.addr[0]] = d
+                self.devices.append(d)
 
-                print("[" + str(self.device_count) + "]: " + msg.device_name + " (" + msg.addr[0] + ") " +
-                      str(d.device_type) + "/" + str(d.device_state))
+                print("[" + str(self.device_count + 1) + "]: " + msg.device_name + " (" + msg.addr[0] + ") // " +
+                      self.device_type_str(d) + "::" + self.device_status_str(d))
 
                 self.device_count += 1
 
-    def display_cfg_menu(self):
-        print("Select option:")
-        print("[0] Order device into Bluetooth configuration mode")
-        print("[1] Set device name")
-        print("[2] Set wifi configuration")
-        print("[3] Set sensor calibration")
+    @staticmethod
+    def device_type_str(dvc):
+        if dvc.device_type == 0:
+            return "UNSPECIFIED"
+        elif dvc.device_type == 10:
+            return "MOTION SENSOR"
+        elif dvc.device_type == 11:
+            return "TRIP SENSOR"
+        elif dvc.device_type == 50:
+            return "SWITCH"
+        elif dvc.device_type == 51:
+            return "MOTORISED WINCH"
+        else:
+            return "UNKNOWN DEVICE"
+
+    @staticmethod
+    def device_status_str(dvc):
+        if dvc.device_state == 0:
+            return "OK"
+        elif dvc.device_state == 1:
+            return "ACTIVE"
+        elif dvc.device_state == 10:
+            return "MINOR FAULT"
+        elif dvc.device_state == 11:
+            return "MAJOR FAULT"
+        elif dvc.device_state == 12:
+            return "CRITICAL"
+        else:
+            return "UNKNOWN STATE"
+
+    def user_select_device(self):
+        while True:
+            try:
+                opt = int(input("> "))
+            except ValueError:
+                opt = None
+
+            if opt is None or opt == 0:
+                return None
+
+            if 0 < opt <= len(self.devices):
+                print()
+                return self.devices[opt - 1]
+            else:
+                print("Invalid device")
+
+    @staticmethod
+    def user_select_opt():
+        print("[1] Order device into Bluetooth configuration mode")
+        print("[2] Set device name")
+        print("[3] Set wifi configuration")
+        print("[4] Set sensor calibration")
+
+        while True:
+            try:
+                opt = int(input("> "))
+            except ValueError:
+                opt = None
+
+            if opt is None or opt == 0:
+                return None
+
+            if 0 < opt <= 4:
+                print()
+                return opt
+            else:
+                print("Invalid option")
