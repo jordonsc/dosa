@@ -52,9 +52,12 @@ class Snoop:
             elif msg.msg_code == dosa.Messages.PONG:
                 aux = " // PONG"
 
+            # Timestamp of message
             t = time.strftime("%H:%M:%S", time.localtime())
-            print(t + " [" + str(msg.msg_id).rjust(5, ' ') + "] " + msg.addr[0] + ":" + str(msg.addr[1]) + " (" +
-                  msg.device_name + "): " + msg.msg_code.decode("utf-8") + aux)
+
+            print(t + " [" + str(msg.msg_id).rjust(5, ' ') + "] " + msg.addr[0] + ":" + str(msg.addr[1]) +
+                  " (" + msg.device_name + "): " + msg.msg_code.decode("utf-8") + aux)
+
             self.last_msg_id = msg.msg_id
 
     @staticmethod

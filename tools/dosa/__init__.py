@@ -24,13 +24,12 @@ class Messages:
 
 
 class Message:
-    def __init__(self, packet, addr, multicast):
+    def __init__(self, packet, addr):
         if len(packet) < Comms.BASE_PAYLOAD_SIZE:
             raise NotDosaPacketException("Not a valid DOSA message")
 
         self.payload = packet
         self.addr = addr
-        self.multicast = multicast
 
         self.msg_id = struct.unpack("<H", packet[0:2])[0]
         self.msg_code = packet[2:5]
@@ -48,12 +47,15 @@ class Comms:
     MULTICAST_MAX_HOPS = 32
 
     def __init__(self, device_name=b"Python Script"):
+        # For binding all IPs on MC port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        self.mc_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-        self.device_name = device_name
-
         self.sock.settimeout(0.01)
+
+        # For binding MC group
+        self.mc_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.mc_sock.settimeout(0.01)
+
+        self.device_name = device_name
 
         if len(device_name) > 20:
             raise Exception("Device name cannot exceed 20 bytes")
@@ -61,25 +63,21 @@ class Comms:
         self.bind()
 
     def bind(self):
-        self._bind_local()
-        self._bind_multicast()
-
-    def _bind_local(self):
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.MULTICAST_MAX_HOPS)
-        self.sock.bind(('', self.MULTICAST_PORT))
-
-    def _bind_multicast(self):
         """
         Bind the multicast port.
 
-        This must happen before sending or receiving any UDP comms.
+        This will create a bind to all IPs on the MC port, along with the MC group in two different sockets.
         """
+        # to receive multicast messages -
         self.mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.mc_sock.bind((self.MULTICAST_GROUP, self.MULTICAST_PORT))
-
         mreq = struct.pack("4sl", socket.inet_aton(self.MULTICAST_GROUP), socket.INADDR_ANY)
         self.mc_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+
+        # to send messages, and receive direct messages -
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, self.MULTICAST_MAX_HOPS)
+        self.sock.bind(('', self.MULTICAST_PORT))
 
     def build_payload(self, cmd, aux_data=b''):
         """
@@ -135,17 +133,9 @@ class Comms:
         start_time = time.perf_counter()
 
         while timeout is None or (time.perf_counter() - start_time < timeout):
-            # Standard socket
             try:
                 r = self.sock.recvfrom(max_size)
-                return Message(r[0], r[1], False)
-            except (socket.timeout, NotDosaPacketException):
-                pass
-
-            # Multicast socket
-            try:
-                r = self.mc_sock.recvfrom(max_size)
-                return Message(r[0], r[1], True)
+                return Message(r[0], r[1])
             except (socket.timeout, NotDosaPacketException):
                 pass
 

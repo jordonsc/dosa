@@ -138,7 +138,6 @@ class Comms : public Loggable
         memcpy(cmd_raw, buffer + 2, 3);
         String cmd_code(cmd_raw);
 
-        logln("packet: " + cmd_code);
         handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()));
         return true;
     }

@@ -25,6 +25,7 @@ class Wifi : public Loggable
             disconnect();
         }
 
+        ctrl.setHostname("DOSA");
         ctrl.setTimeout(DOSA_WIFI_CONNECT_TIMEOUT);
         uint8_t attempt = 0;
 
@@ -55,6 +56,9 @@ class Wifi : public Loggable
                         break;
                     case WL_FAILURE:
                         logln("Wifi failure");
+                        break;
+                    case WL_NO_SSID_AVAIL:
+                        logln("No SSID available");
                         break;
                     default:
                         logln("Unknown connection error: " + String(status));

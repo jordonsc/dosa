@@ -375,7 +375,7 @@ class App
             delay(NINA_CHIP_SWITCH_DELAY);
         }
 
-        getContainer().getSerial().writeln("Connecting to wifi..");
+        getContainer().getSerial().writeln("Connecting to wifi (" + settings.getWifiSsid() + ")..");
         if (getContainer().getWiFi().connect(settings.getWifiSsid(), settings.getWifiPassword(), attempts)) {
             wifi_connected = true;
             onWifiConnect();
@@ -579,7 +579,15 @@ class App
      */
     void onPing(messages::GenericMessage const& msg, comms::Node const& sender)
     {
-        logln("Ping: '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+        static uint16_t last_ping = 0;
+
+        if (msg.getMessageId() == last_ping) {
+            return;
+        } else {
+            last_ping = msg.getMessageId();
+        }
+
+        logln("Ping from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
 
         // Send reply pong
         getContainer().getComms().dispatch(
