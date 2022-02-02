@@ -7,36 +7,34 @@
 
 namespace dosa::messages {
 
+/**
+ * Some messages just need a command code, without any additional information. These can use a single class.
+ *
+ * This class also permits the use of additional, unknown generic information. However it's preferable to use a
+ * dedicated class for anything with ancillary information.
+ *
+ * See const.h for a list of generic command codes.
+ */
 class GenericMessage final : public Payload
 {
    public:
     explicit GenericMessage(char const* packet, uint16_t size, char const* dev_name)
         : Payload(*(uint16_t*)packet, packet + 2, dev_name),
-          packet_size(size)
-    {
-        payload = new char[size];
-        std::memcpy(payload, packet, size);
-    }
+          payload(size, packet)
+    {}
 
     explicit GenericMessage(uint16_t msg_id, char const* cmd_code, char const* dev_name)
         : Payload(msg_id, cmd_code, dev_name),
-          packet_size(DOSA_COMMS_PAYLOAD_BASE_SIZE)
+          payload(DOSA_COMMS_PAYLOAD_BASE_SIZE)
     {
-        payload = new char[DOSA_COMMS_PAYLOAD_BASE_SIZE];
-        buildBasePayload(payload, DOSA_COMMS_PAYLOAD_BASE_SIZE);
+        buildBasePayload(payload);
     }
 
     explicit GenericMessage(char const* cmd_code, char const* dev_name)
         : Payload(cmd_code, dev_name),
-          packet_size(DOSA_COMMS_PAYLOAD_BASE_SIZE)
+          payload(DOSA_COMMS_PAYLOAD_BASE_SIZE)
     {
-        payload = new char[DOSA_COMMS_PAYLOAD_BASE_SIZE];
-        buildBasePayload(payload, DOSA_COMMS_PAYLOAD_BASE_SIZE);
-    }
-
-    virtual ~GenericMessage()
-    {
-        delete payload;
+        buildBasePayload(payload);
     }
 
     static GenericMessage fromPacket(char const* packet, uint32_t size)
@@ -46,34 +44,31 @@ class GenericMessage final : public Payload
             return GenericMessage(0, bad_cmd_code, bad_dev_name);
         }
 
-        uint16_t ack_msg_id;
-        memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
         return GenericMessage(packet, size, packet + 7);
     }
 
     [[nodiscard]] char const* getPayload() const override
     {
-        return payload;
+        return payload.getPayload();
     }
 
     [[nodiscard]] uint16_t getPayloadSize() const override
     {
-        return packet_size;
+        return payload.getPayloadSize();
     }
 
     [[nodiscard]] char const* getMessage() const
     {
-        return payload + DOSA_COMMS_PAYLOAD_BASE_SIZE;
+        return payload.getPayload(DOSA_COMMS_PAYLOAD_BASE_SIZE);
     }
 
     [[nodiscard]] uint16_t getMessageSize() const
     {
-        return packet_size - DOSA_COMMS_PAYLOAD_BASE_SIZE;
+        return payload.getPayloadSize() - DOSA_COMMS_PAYLOAD_BASE_SIZE;
     }
 
    private:
-    uint16_t const packet_size;
-    char* payload = nullptr;
+    VariablePayload payload;
 };
 
 }  // namespace dosa::messages

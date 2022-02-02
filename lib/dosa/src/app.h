@@ -84,9 +84,9 @@ class App
 
         // Load settings from FRAM
         auto& settings = getContainer().getSettings();
-        if (!settings.load()) {
+        if (!settings.load(false)) {
             // FRAM didn't contain valid settings, write default values to chip -
-            settings.save();
+            settings.save(false);
         }
         logln("Device name: " + settings.getDeviceName());
 
@@ -95,16 +95,22 @@ class App
             enableBluetooth();
         }
 
-        // This is a wifi "config mode" request packet handler -
+        // Handler for requests to drop back into Bluetooth mode for manual configuration
         getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
-            DOSA_COMMS_MSG_CONFIG,
-            &configMessageForwarder,
+            DOSA_COMMS_MSG_BT_MODE,
+            &btMessageForwarder,
             this);
 
         // Ping-Pong auto-responder
         getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
             DOSA_COMMS_MSG_PING,
             &pingMessageForwarder,
+            this);
+
+        // Config setting handler
+        getContainer().getComms().newHandler<comms::StandardHandler<messages::Configuration>>(
+            DOSA_COMMS_MSG_CONFIG,
+            &configMessageForwarder,
             this);
 
         wifi_last_checked = millis();
@@ -556,7 +562,7 @@ class App
     /**
      * UDP packet received requesting we disconnect wifi and bring BT back online for config changes.
      */
-    void onConfigModeRequest(messages::GenericMessage const& msg, comms::Node const& sender)
+    void onBtModeRequest(messages::GenericMessage const& msg, comms::Node const& sender)
     {
         logln(
             "Received config-mode request message from '" + Comms::getDeviceName(msg) + "' (" +
@@ -581,13 +587,11 @@ class App
     {
         static uint16_t last_ping = 0;
 
-        if (msg.getMessageId() == last_ping) {
-            return;
-        } else {
+        if (msg.getMessageId() != last_ping) {
+            // Reply to retries, but don't log them
             last_ping = msg.getMessageId();
+            logln("Ping from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
         }
-
-        logln("Ping from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
 
         // Send reply pong
         getContainer().getComms().dispatch(
@@ -595,12 +599,137 @@ class App
             messages::Pong(device_type, device_state, getContainer().getSettings().getDeviceNameBytes()));
     }
 
-    /**
-     * Context forwarder for config-mode request messages.
-     */
-    static void configMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    void settingPassword(String const& value)
     {
-        static_cast<App*>(context)->onConfigModeRequest(msg, sender);
+        auto& settings = getContainer().getSettings();
+        logln("SET PASSWORD: '" + value + "'");
+
+        if (settings.setPin(value)) {
+            settings.save();
+        } else {
+            logln("ERROR: failed to update device pin", LogLevel::ERROR);
+        }
+    }
+
+    void settingDeviceName(String const& value)
+    {
+        auto& settings = getContainer().getSettings();
+        logln("SET DEVICE NAME: '" + value + "'");
+
+        if (settings.setDeviceName(value)) {
+            bt_device_name.writeValue(settings.getDeviceName());  // update BT value to new value
+            settings.save();
+        } else {
+            logln("ERROR: failed to update device name", LogLevel::ERROR);
+        }
+    }
+
+    void settingWifiAp(String const& value)
+    {
+        auto pos = value.indexOf("\n");
+        if (pos == -1) {
+            logln("ERROR: malformed wifi data", LogLevel::ERROR);
+            return;
+        } else if (pos == 0) {
+            logln("CLEAR WIFI AP");
+
+            auto& settings = getContainer().getSettings();
+            settings.setWifiSsid("");
+            settings.setWifiPassword("");
+            settings.save();
+
+            // Wifi settings cleared, fallback into BT mode
+            getContainer().getWiFi().disconnect();
+            wifi_connected = false;
+            enableBluetooth();
+
+        } else {
+            String ap = value.substring(0, pos);
+            String pw = value.substring(pos + 1);
+
+            logln("SET WIFI AP: '" + ap + "' / '" + pw + "'");
+
+            auto& settings = getContainer().getSettings();
+            settings.setWifiSsid(ap);
+            settings.setWifiPassword(pw);
+            settings.save();
+
+            // Connect to new wifi
+            getContainer().getWiFi().disconnect();
+            wifi_connected = false;
+            connectWifiOrBluetooth(WIFI_RETRY_ATTEMPTS);
+            wifi_last_reconnected = millis();
+        }
+    }
+
+    void settingSensorCalibration(uint8_t const* data, uint16_t size)
+    {
+        if (size != 9) {
+            logln("ERROR: incorrect payload size for sensor calibration data", LogLevel::ERROR);
+            return;
+        }
+
+        uint8_t min_pixels;
+        float pixel_delta, total_delta;
+
+        memcpy(&min_pixels, data, 1);
+        memcpy(&pixel_delta, data + 1, 4);
+        memcpy(&total_delta, data + 5, 4);
+
+        logln("SENSOR CALIBRATION");
+
+        auto& settings = getContainer().getSettings();
+        settings.setSensorMinPixels(min_pixels);
+        settings.setSensorPixelDelta(pixel_delta);
+        settings.setSensorTotalDelta(total_delta);
+        settings.save();
+    }
+
+    /**
+     * Config setting packet received, update FRAM.
+     */
+    void onConfig(messages::Configuration const& msg, comms::Node const& sender)
+    {
+        static uint16_t last_message_id = 0;
+
+        // Send reply ack even for retries, but we won't double-set the config for duplicate message
+        getContainer().getComms().dispatch(
+            sender,
+            messages::Ack(msg, getContainer().getSettings().getDeviceNameBytes()));
+
+        if (msg.getMessageId() == last_message_id) {
+            return;
+        } else {
+            last_message_id = msg.getMessageId();
+        }
+
+        log("Config setting from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ") // ");
+
+        switch (msg.getConfigItem()) {
+            case messages::Configuration::ConfigItem::PASSWORD:
+                settingPassword(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                break;
+            case messages::Configuration::ConfigItem::DEVICE_NAME:
+                settingDeviceName(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                break;
+            case messages::Configuration::ConfigItem::WIFI_AP:
+                settingWifiAp(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                break;
+            case messages::Configuration::ConfigItem::SENSOR_CALIBRATION:
+                settingSensorCalibration(msg.getConfigData(), msg.getConfigSize());
+                break;
+            default:
+                logln("UNKNOWN SETTING");
+                break;
+        }
+    }
+
+    /**
+     * Context forwarder for Bluetooth config-mode request messages.
+     */
+    static void btMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onBtModeRequest(msg, sender);
     }
 
     /**
@@ -609,6 +738,14 @@ class App
     static void pingMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onPing(msg, sender);
+    }
+
+    /**
+     * Context forwarder for config settings messages.
+     */
+    static void configMessageForwarder(messages::Configuration const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onConfig(msg, sender);
     }
 };
 

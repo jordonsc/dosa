@@ -5,8 +5,6 @@
 #include "const.h"
 #include "payload.h"
 
-#define DOSA_COMMS_ERR_MSG_CODE "err"
-
 namespace dosa::messages {
 
 class Error : public Payload
@@ -15,17 +13,12 @@ class Error : public Payload
     /**
      * Create an Error alert.
      */
-    Error(char const* err_msg, char const* dev_name) : Payload(DOSA_COMMS_ERR_MSG_CODE, dev_name)
+    Error(char const* err_msg, char const* dev_name)
+        : Payload(DOSA_COMMS_MSG_ERROR, dev_name),
+          payload(DOSA_COMMS_PAYLOAD_BASE_SIZE + strlen(err_msg))
     {
-        payload_size = DOSA_COMMS_PAYLOAD_BASE_SIZE + strlen(err_msg);
-        payload = new char[payload_size];
-        buildBasePayload(payload, payload_size);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, err_msg, strlen(err_msg));
-    }
-
-    virtual ~Error()
-    {
-        delete payload;
+        buildBasePayload(payload);
+        payload.set(DOSA_COMMS_PAYLOAD_BASE_SIZE, err_msg, strlen(err_msg));
     }
 
     static Error fromPacket(char const* packet, uint32_t size)
@@ -37,34 +30,33 @@ class Error : public Payload
 
         auto err = Error(packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, packet + 7);
         err.msg_id = *(uint16_t*)packet;
-        err.buildBasePayload(err.payload, size);
+        err.buildBasePayload(err.payload);
 
         return err;
     }
 
     [[nodiscard]] char const* getPayload() const override
     {
-        return payload;
+        return payload.getPayload();
     }
 
     [[nodiscard]] uint16_t getPayloadSize() const override
     {
-        return payload_size;
+        return payload.getPayloadSize();
     }
 
     [[nodiscard]] char const* getErrorMessage() const
     {
-        return payload + DOSA_COMMS_PAYLOAD_BASE_SIZE;
+        return payload.getPayload(DOSA_COMMS_PAYLOAD_BASE_SIZE);
     }
 
     [[nodiscard]] uint16_t getErrorMessageSize() const
     {
-        return payload_size - DOSA_COMMS_PAYLOAD_BASE_SIZE;
+        return payload.getPayloadSize() - DOSA_COMMS_PAYLOAD_BASE_SIZE;
     }
 
    private:
-    uint16_t payload_size;
-    char* payload;
+    VariablePayload payload;
 };
 
 }  // namespace dosa::messages

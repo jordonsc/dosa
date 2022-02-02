@@ -18,44 +18,38 @@ class IrGrid : public Loggable
    public:
     explicit IrGrid(SerialComms* s = nullptr) : Loggable(s)
     {
-        ir = new GridEYE();
         Wire.begin();
-        ir->begin();
-    }
-
-    virtual ~IrGrid()
-    {
-        delete ir;
+        ir.begin();
     }
 
     [[nodiscard]] float getPixelTemp(unsigned char i)
     {
-        return ir->getPixelTemperature(i);
+        return ir.getPixelTemperature(i);
     }
 
     [[nodiscard]] int16_t getPixelTempRaw(unsigned char i)
     {
-        return ir->getPixelTemperatureRaw(i);
+        return ir.getPixelTemperatureRaw(i);
     }
 
     [[nodiscard]] float getDeviceTemp()
     {
-        return ir->getDeviceTemperature();
+        return ir.getDeviceTemperature();
     }
 
     [[nodiscard]] int16_t getDeviceTempRaw()
     {
-        return ir->getDeviceTemperatureRaw();
+        return ir.getDeviceTemperatureRaw();
     }
 
     [[nodiscard]] GridEYE& getGridEye()
     {
-        return *ir;
+        return ir;
     }
 
    protected:
     bool inited = false;
-    GridEYE* ir;
+    GridEYE ir;
 };
 
 }  // namespace dosa

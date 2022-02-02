@@ -5,6 +5,7 @@
 //
 
 #include "ack.h"
+#include "config.h"
 #include "error.h"
 #include "generic.h"
 #include "health.h"

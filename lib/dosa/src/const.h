@@ -51,6 +51,16 @@ char const* char_set_wifi = "d05a0010-e8f2-537e-4f6c-d104768a1101";
 
 }  // namespace dosa::bt
 
+namespace dosa {
+[[nodiscard]] String stringFromBytes(void const* bytes, size_t length)
+{
+    char buffer[length + 1];
+    memcpy(buffer, bytes, length);
+    buffer[length] = 0;
+    return String(buffer);
+}
+}  // namespace dosa
+
 /**
  * Comms addresses.
  */

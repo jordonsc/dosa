@@ -37,9 +37,9 @@ class SensorApp final : public dosa::App
 
             auto& ir = container.getIrGrid();
             auto& serial = container.getSerial();
+            auto& settings = container.getSettings();
 
             float new_grid[64] = {0};
-            float max_delta = 0;
             float ttl_delta = 0;
             uint8_t changed = 0;
             uint8_t map[64] = {0};
@@ -50,20 +50,17 @@ class SensorApp final : public dosa::App
                     new_grid[index] = ir.getPixelTemp(index);
 
                     float delta = abs(new_grid[index] - grid[index]);
-                    if (delta >= SINGLE_DELTA_THRESHOLD) {
+                    if (delta >= settings.getSensorPixelDelta()) {
                         ++changed;
                         ttl_delta += delta;
-                        if (delta > max_delta) {
-                            max_delta = delta;
-                        }
-                        map[index] = delta * 10;  // truncated precision
+                        map[index] = delta * 10;  // NB: truncated precision
                     } else {
                         map[index] = 0;
                     }
                 }
             }
 
-            triggerIf(max_delta, ttl_delta, changed, map);
+            triggerIf(ttl_delta, changed, map);
             memcpy(grid, new_grid, sizeof(float) * 64);
         }
     }
@@ -73,10 +70,12 @@ class SensorApp final : public dosa::App
      *
      * Will also consider a cool-down before a second trigger.
      */
-    bool triggerIf(float max_single_delta, float ttl_delta, uint8_t pixels_changed, uint8_t const* map)
+    bool triggerIf(float ttl_delta, uint8_t pixels_changed, uint8_t const* map)
     {
-        if (grid[0] == 0 || max_single_delta < SINGLE_DELTA_THRESHOLD || ttl_delta < TOTAL_DELTA_THRESHOLD ||
-            pixels_changed < MIN_PIXELS_THRESHOLD || millis() - last_fired < REFIRE_DELAY) {
+        auto& settings = container.getSettings();
+
+        if (grid[0] == 0 || ttl_delta < settings.getSensorTotalDelta() ||
+            pixels_changed < settings.getSensorMinPixels() || millis() - last_fired < REFIRE_DELAY) {
             return false;
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);

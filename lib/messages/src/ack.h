@@ -18,16 +18,20 @@ class Ack : public Payload
      */
     Ack(Payload const& msg, char const* dev_name)
         : Payload(DOSA_COMMS_ACK_MSG_CODE, dev_name),
+          payload(DOSA_COMMS_ACK_SIZE),
           ack_msg_id(msg.getMessageId())
     {
-        buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
+        buildBasePayload(payload);
+        payload.set(DOSA_COMMS_PAYLOAD_BASE_SIZE, ack_msg_id);
     }
 
-    Ack(uint16_t ack_msg_id, char const* dev_name) : Payload(DOSA_COMMS_ACK_MSG_CODE, dev_name), ack_msg_id(ack_msg_id)
+    Ack(uint16_t ack_msg_id, char const* dev_name)
+        : Payload(DOSA_COMMS_ACK_MSG_CODE, dev_name),
+          payload(DOSA_COMMS_ACK_SIZE),
+          ack_msg_id(ack_msg_id)
     {
-        buildBasePayload(payload, DOSA_COMMS_ACK_SIZE);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &ack_msg_id, 2);
+        buildBasePayload(payload);
+        payload.set(DOSA_COMMS_PAYLOAD_BASE_SIZE, ack_msg_id);
     }
 
     static Ack fromPacket(char const* packet, uint32_t size)
@@ -39,21 +43,22 @@ class Ack : public Payload
 
         uint16_t ack_msg_id;
         memcpy(&ack_msg_id, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE, 2);
+
         auto ack = Ack(ack_msg_id, packet + 7);
         ack.msg_id = *(uint16_t*)packet;
-        ack.buildBasePayload(ack.payload, DOSA_COMMS_ACK_SIZE);
+        ack.buildBasePayload(ack.payload);
 
         return ack;
     }
 
     [[nodiscard]] char const* getPayload() const override
     {
-        return payload;
+        return payload.getPayload();
     }
 
     [[nodiscard]] uint16_t getPayloadSize() const override
     {
-        return DOSA_COMMS_ACK_SIZE;
+        return payload.getPayloadSize();
     }
 
     [[nodiscard]] uint16_t getAckMsgId() const
@@ -72,8 +77,8 @@ class Ack : public Payload
     }
 
    private:
+    VariablePayload payload;
     uint16_t ack_msg_id;
-    char payload[DOSA_COMMS_ACK_SIZE] = {0};
 };
 
 }  // namespace dosa::messages

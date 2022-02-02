@@ -6,7 +6,6 @@
 #include "payload.h"
 
 #define DOSA_COMMS_TRIGGER_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 65
-#define DOSA_COMMS_TRIGGER_MSG_CODE "trg"
 
 namespace dosa::messages {
 
@@ -22,7 +21,7 @@ class Trigger : public Payload
 {
    public:
     Trigger(TriggerDevice device, uint8_t const* map, char const* dev_name)
-        : Payload(DOSA_COMMS_TRIGGER_MSG_CODE, dev_name),
+        : Payload(DOSA_COMMS_MSG_TRIGGER, dev_name),
           device(device)
     {
         buildBasePayload(payload, DOSA_COMMS_TRIGGER_SIZE);

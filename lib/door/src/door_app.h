@@ -30,7 +30,7 @@ class DoorApp final : public dosa::App
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
 
         container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
-            DOSA_COMMS_TRIGGER_MSG_CODE,
+            DOSA_COMMS_MSG_TRIGGER,
             &triggerMessageForwarder,
             this);
     }

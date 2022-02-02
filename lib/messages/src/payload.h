@@ -1,14 +1,118 @@
 #pragma once
 
+#include <algorithm>
 #include <cstring>
 #ifndef Arduino_h
 #include <random>
 #endif
 
+#include "const.h"
+
 #define DOSA_COMMS_PAYLOAD_BASE_SIZE 27
 #define DOSA_COMMS_MAX_PAYLOAD_SIZE 10240  // 10kib
 
 namespace dosa::messages {
+
+/**
+ * Contains a payload of variable size.
+ *
+ * Copy & movable.
+ */
+class VariablePayload final
+{
+   public:
+    VariablePayload(uint16_t payload_size, void const* src) : payload_size(payload_size)
+    {
+        payload = new char[payload_size];
+        memcpy(payload, src, payload_size);
+    }
+
+    explicit VariablePayload(uint16_t payload_size) : payload_size(payload_size)
+    {
+        payload = new char[payload_size];
+    }
+
+    VariablePayload(VariablePayload const& p) : payload_size(p.payload_size)
+    {
+        payload_size = p.payload_size;
+        payload = new char[payload_size];
+        memcpy(payload, p.payload, payload_size);
+    }
+
+    VariablePayload& operator=(VariablePayload p)
+    {
+        swap(*this, p);
+        return *this;
+    }
+
+    friend void swap(VariablePayload& first, VariablePayload& second)
+    {
+        using std::swap;
+
+        swap(first.payload, second.payload);
+        swap(first.payload_size, second.payload_size);
+    }
+
+    virtual ~VariablePayload()
+    {
+        delete payload;
+    }
+
+    [[nodiscard]] char* getPayload(uint16_t offset = 0) const
+    {
+        return payload + offset;
+    }
+
+    [[nodiscard]] uint16_t getPayloadSize() const
+    {
+        return payload_size;
+    }
+
+    [[nodiscard]] uint8_t uint8At(uint16_t pos) const
+    {
+        uint8_t value;
+        memcpy(&value, payload + pos, 1);
+        return value;
+    }
+
+    [[nodiscard]] uint16_t uint16At(uint16_t pos) const
+    {
+        uint16_t value;
+        memcpy(&value, payload + pos, 2);
+        return value;
+    }
+
+    [[nodiscard]] uint32_t uint32At(uint16_t pos) const
+    {
+        uint32_t value;
+        memcpy(&value, payload + pos, 4);
+        return value;
+    }
+
+    void set(uint16_t pos, uint8_t value)
+    {
+        memcpy(payload + pos, &value, 1);
+    }
+
+    void set(uint16_t pos, uint16_t value)
+    {
+        memcpy(payload + pos, &value, 2);
+    }
+
+    void set(uint16_t pos, uint32_t value)
+    {
+        memcpy(payload + pos, &value, 4);
+    }
+
+    void set(uint16_t pos, void const* value, uint16_t size)
+    {
+        memcpy(payload + pos, value, size);
+    }
+
+   private:
+    char* payload;
+    uint16_t payload_size;
+};
 
 /**
  * Payload for binary transport packet.
@@ -24,7 +128,7 @@ namespace dosa::messages {
 class Payload
 {
    public:
-    explicit Payload(char const* cmd_code, char const* dev_name)
+    Payload(char const* cmd_code, char const* dev_name)
     {
 #ifdef Arduino_h
         msg_id = random(1, 65535);
@@ -84,6 +188,13 @@ class Payload
     char cmd[3] = {0};
     char name[20] = {0};
 
+    void copyFrom(Payload const& p)
+    {
+        msg_id = p.msg_id;
+        std::copy(p.cmd, p.cmd + 3, cmd);
+        std::copy(p.name, p.name + 20, name);
+    }
+
     /**
      * Copy the data for the base of the payload to a char* buffer.
      */
@@ -93,6 +204,11 @@ class Payload
         std::memcpy(dest + 2, cmd, 3);
         std::memcpy(dest + 5, &size, 2);
         std::memcpy(dest + 7, name, 20);
+    }
+
+    void buildBasePayload(VariablePayload& p)
+    {
+        buildBasePayload(p.getPayload(), p.getPayloadSize());
     }
 };
 

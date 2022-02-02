@@ -8,6 +8,12 @@
 
 namespace dosa {
 
+/**
+ * Application-level configuration.
+ *
+ * This should be used to construct the device application, it contains details unique to an implementation of a DOSA
+ * device. It does NOT represent the configuration in FRAM - see Settings for that.
+ */
 struct Config
 {
     String app_name;

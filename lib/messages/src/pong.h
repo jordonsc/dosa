@@ -6,7 +6,6 @@
 #include "payload.h"
 
 #define DOSA_COMMS_PONG_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 2
-#define DOSA_COMMS_PONG_MSG_CODE "pon"
 
 namespace dosa::messages {
 
@@ -14,13 +13,14 @@ class Pong : public Payload
 {
    public:
     Pong(DeviceType dt, DeviceState dh, char const* dev_name)
-        : Payload(DOSA_COMMS_PONG_MSG_CODE, dev_name),
+        : Payload(DOSA_COMMS_MSG_PONG, dev_name),
+          payload(DOSA_COMMS_PONG_SIZE),
           device_type(dt),
           device_health(dh)
     {
-        buildBasePayload(payload, DOSA_COMMS_PONG_SIZE);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE, &device_type, 1);
-        std::memcpy(payload + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1, &device_health, 1);
+        buildBasePayload(payload);
+        std::memcpy(payload.getPayload() + DOSA_COMMS_PAYLOAD_BASE_SIZE, &device_type, 1);
+        std::memcpy(payload.getPayload() + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1, &device_health, 1);
     }
 
     static Pong fromPacket(char const* packet, uint32_t size)
@@ -36,14 +36,14 @@ class Pong : public Payload
         memcpy(&dh, packet + DOSA_COMMS_PAYLOAD_BASE_SIZE + 1, 1);
 
         auto pong = Pong(dt, dh, packet + 7);
-        pong.buildBasePayload(pong.payload, DOSA_COMMS_PONG_SIZE);
+        pong.buildBasePayload(pong.payload);
 
         return pong;
     }
 
     [[nodiscard]] char const* getPayload() const override
     {
-        return payload;
+        return payload.getPayload();
     }
 
     [[nodiscard]] uint16_t getPayloadSize() const override
@@ -52,9 +52,9 @@ class Pong : public Payload
     }
 
    private:
+    VariablePayload payload;
     DeviceType device_type;
     DeviceState device_health;
-    char payload[DOSA_COMMS_PONG_SIZE] = {0};
 };
 
 }  // namespace dosa::messages

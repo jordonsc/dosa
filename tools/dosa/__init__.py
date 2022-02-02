@@ -18,9 +18,10 @@ class Messages:
     TRIGGER = b"trg"
     BEGIN = b"bgn"
     END = b"end"
-    REQUEST_CFG_MODE = b"cfg"
+    REQUEST_BT_CFG_MODE = b"btc"
     PING = b"pin"
     PONG = b"pon"
+    CONFIG_SETTING = b"cfg"
 
 
 class Message:
@@ -71,8 +72,8 @@ class Comms:
         # to receive multicast messages -
         self.mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.mc_sock.bind((self.MULTICAST_GROUP, self.MULTICAST_PORT))
-        mreq = struct.pack("4sl", socket.inet_aton(self.MULTICAST_GROUP), socket.INADDR_ANY)
-        self.mc_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        self.mc_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
+                                struct.pack("4sl", socket.inet_aton(self.MULTICAST_GROUP), socket.INADDR_ANY))
 
         # to send messages, and receive direct messages -
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

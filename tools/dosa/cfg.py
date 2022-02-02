@@ -1,5 +1,6 @@
 import time
 import dosa
+import struct
 
 
 class Device:
@@ -31,11 +32,104 @@ class Config:
         opt = self.user_select_opt()
         if opt == 1:
             self.exec_config_mode(device)
+        elif opt == 2:
+            self.exec_device_password(device, self.get_values(["New password"]))
+        elif opt == 3:
+            self.exec_device_name(device, self.get_values(["Device name"]))
+        elif opt == 4:
+            self.exec_wifi_ap(device, self.get_values(["Wifi SSID", "Wifi Password"]))
+        elif opt == 5:
+            self.exec_calibration(device, self.get_values(
+                ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
+            ))
 
     def exec_config_mode(self, device):
-        print("Sending config mode request..")
-        self.comms.send(self.comms.build_payload(dosa.Messages.REQUEST_CFG_MODE), tgt=device.address)
-        print("Done")
+        print("Sending Bluetooth fallback mode request..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.REQUEST_BT_CFG_MODE), tgt=device.address)
+        print(" done")
+
+    def exec_device_password(self, device, values):
+        if values is None:
+            print("Aborting")
+            exit()
+
+        if 4 > len(values[0]) > 50:
+            print("Bad password size (4-50 chars)")
+            exit()
+
+        print("Sending new password..", end="")
+        aux = bytearray()
+        aux[0:0] = struct.pack("<B", 0)
+        aux[1:] = values[0].encode()
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        print(" done")
+
+    def exec_device_name(self, device, values):
+        if values is None:
+            print("Aborting")
+            exit()
+
+        if 2 > len(values[0]) > 20:
+            print("Bad device name (2-20 chars)")
+            exit()
+
+        print("Sending new device name..", end="")
+        aux = bytearray()
+        aux[0:0] = struct.pack("<B", 1)
+        aux[1:] = values[0].encode()
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        print(" done")
+
+    def exec_wifi_ap(self, device, values):
+        aux = bytearray()
+        aux[0:0] = struct.pack("<B", 2)
+
+        if values is None:
+            print("Clearing wifi details..", end="")
+            aux[1:] = "\n".encode()
+        else:
+            print("Sending new wifi details..", end="")
+            aux[1:] = (values[0] + "\n" + values[1]).encode()
+
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        print(" done")
+
+    def exec_calibration(self, device, values):
+        aux = bytearray()
+        aux[0:0] = struct.pack("<B", 3)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:1] = struct.pack("<B", int(values[0]))  # Min pixels
+                aux[2:6] = struct.pack("<f", float(values[1]))  # Single delta
+                aux[6:10] = struct.pack("<f", float(values[2]))  # Total delta
+            except ValueError:
+                print("Malformed calibration data, aborting")
+                exit()
+
+        print("Sending new calibration data..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        print(" done")
+
+    @staticmethod
+    def get_values(vals):
+        """
+        Retrieve an array of user inputs.
+        """
+        r_vals = []
+        for v in vals:
+            r = input(v + ": ")
+
+            # If the first input value is blank, we'll return None
+            if len(r) == 0 and len(r_vals) == 0:
+                return None
+
+            r_vals.append(r)
+
+        return r_vals
 
     def run_scan(self):
         ping = self.comms.build_payload(dosa.Messages.PING)
@@ -51,15 +145,16 @@ class Config:
             while time.perf_counter() - start_time < timeout:
                 msg = self.comms.receive(timeout=timeout)
 
-                if msg is None:
-                    break
-
-                if msg.msg_code != dosa.Messages.PONG:
+                if msg is None or msg.msg_code != dosa.Messages.PONG:
                     continue
 
                 for d in self.devices:
                     if d.address[0] == msg.addr[0]:
-                        continue
+                        msg = None
+                        break
+
+                if msg is None:
+                    continue
 
                 d = Device(
                     msg.payload[self.comms.BASE_PAYLOAD_SIZE],
@@ -121,9 +216,10 @@ class Config:
     @staticmethod
     def user_select_opt():
         print("[1] Order device into Bluetooth configuration mode")
-        print("[2] Set device name")
-        print("[3] Set wifi configuration")
-        print("[4] Set sensor calibration")
+        print("[2] Set device password")
+        print("[3] Set device name")
+        print("[4] Set wifi configuration")
+        print("[5] Set sensor calibration")
 
         while True:
             try:
@@ -134,7 +230,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt <= 4:
+            if 0 < opt < 6:
                 print()
                 return opt
             else:

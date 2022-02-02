@@ -33,6 +33,30 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino",
+        "//arduino:Adafruit_BusIO",
+        "//arduino:SPI",
+    ],
+)
+
+cc_library(
+    name = "Adafruit_BusIO",
+    srcs = glob(["Adafruit_BusIO/*.cpp"]),
+    hdrs = glob(["Adafruit_BusIO/*.h"]),
+    includes = ["Adafruit_BusIO"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+    ],
+)
+
+cc_library(
+    name = "SPI",
+    srcs = glob(["SPI/*.cpp"]),
+    hdrs = glob(["SPI/*.h"]),
+    includes = ["SPI"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
     ],
 )
 
