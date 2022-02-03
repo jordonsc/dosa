@@ -7,7 +7,9 @@ from dosa.exc import *
 from dosa.cfg import Config
 from dosa.snoop import Snoop
 from dosa.ping import Ping
+from dosa.trigger import Trigger
 from dosa import device
+
 
 class Messages:
     """

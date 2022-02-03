@@ -1,5 +1,4 @@
 import dosa
-import struct
 import time
 
 
@@ -7,7 +6,6 @@ class Ping:
     def __init__(self, comms=None):
         if comms is None:
             comms = dosa.Comms()
-            comms.bind_multicast()
 
         self.comms = comms
 

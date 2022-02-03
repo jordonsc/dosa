@@ -95,7 +95,7 @@ class DoorWinch : public Loggable
     void trigger()
     {
         // Number of ticks the close sequence didn't complete before it was interrupted
-        unsigned long deficit = 0;
+        uint32_t deficit = 0;
 
         // Put the sequence in a loop as the door might re-open during the closing sequence
         while (true) {

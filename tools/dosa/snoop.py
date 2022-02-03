@@ -7,7 +7,6 @@ class Snoop:
     def __init__(self, comms=None, ignore=False, ack=False, map=False):
         if comms is None:
             comms = dosa.Comms()
-            comms.bind_multicast()
 
         self.last_msg_id = 0
         self.comms = comms
