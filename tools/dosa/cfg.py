@@ -19,15 +19,18 @@ class Config:
         self.device_count = 0
         self.devices = []
 
-    def run(self):
-        self.run_scan()
-        if len(self.devices) == 0:
-            print("No devices detected")
-            return
+    def run(self, target=None):
+        if target is None:
+            self.run_scan()
+            if len(self.devices) == 0:
+                print("No devices detected")
+                return
 
-        device = self.user_select_device()
-        if device is None:
-            return
+            device = self.user_select_device()
+            if device is None:
+                return
+        else:
+            device = Device(0, 0, (target, 6901))
 
         opt = self.user_select_opt()
         if opt == 1:
@@ -49,7 +52,8 @@ class Config:
 
     def exec_config_mode(self, device):
         print("Sending Bluetooth fallback mode request..", end="")
-        self.comms.send(self.comms.build_payload(dosa.Messages.REQUEST_BT_CFG_MODE), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.REQUEST_BT_CFG_MODE), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     def exec_device_password(self, device, values):
@@ -65,7 +69,8 @@ class Config:
         aux = bytearray()
         aux[0:1] = struct.pack("<B", 0)
         aux[1:] = values[0].encode()
-        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     def exec_device_name(self, device, values):
@@ -81,7 +86,8 @@ class Config:
         aux = bytearray()
         aux[0:1] = struct.pack("<B", 1)
         aux[1:] = values[0].encode()
-        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     def exec_wifi_ap(self, device, values):
@@ -95,7 +101,8 @@ class Config:
             print("Sending new wifi details..", end="")
             aux[1:] = (values[0] + "\n" + values[1]).encode()
 
-        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     def exec_sensor_calibration(self, device, values):
@@ -115,7 +122,8 @@ class Config:
                 exit()
 
         print("Sending new calibration data..", end="")
-        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     def exec_door_calibration(self, device, values):
@@ -135,7 +143,8 @@ class Config:
                 exit()
 
         print("Sending new calibration data..", end="")
-        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
         print(" done")
 
     @staticmethod
@@ -187,39 +196,9 @@ class Config:
                 self.devices.append(d)
 
                 print("[" + str(self.device_count + 1) + "]: " + msg.device_name + " (" + msg.addr[0] + ") // " +
-                      self.device_type_str(d) + "::" + self.device_status_str(d))
+                      dosa.device.device_type_str(d.device_type) + "::" + dosa.device.device_status_str(d.device_state))
 
                 self.device_count += 1
-
-    @staticmethod
-    def device_type_str(dvc):
-        if dvc.device_type == 0:
-            return "UNSPECIFIED"
-        elif dvc.device_type == 10:
-            return "MOTION SENSOR"
-        elif dvc.device_type == 11:
-            return "TRIP SENSOR"
-        elif dvc.device_type == 50:
-            return "SWITCH"
-        elif dvc.device_type == 51:
-            return "MOTORISED WINCH"
-        else:
-            return "UNKNOWN DEVICE"
-
-    @staticmethod
-    def device_status_str(dvc):
-        if dvc.device_state == 0:
-            return "OK"
-        elif dvc.device_state == 1:
-            return "ACTIVE"
-        elif dvc.device_state == 10:
-            return "MINOR FAULT"
-        elif dvc.device_state == 11:
-            return "MAJOR FAULT"
-        elif dvc.device_state == 12:
-            return "CRITICAL"
-        else:
-            return "UNKNOWN STATE"
 
     def user_select_device(self):
         while True:

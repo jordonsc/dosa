@@ -6,7 +6,8 @@ import time
 from dosa.exc import *
 from dosa.cfg import Config
 from dosa.snoop import Snoop
-
+from dosa.ping import Ping
+from dosa import device
 
 class Messages:
     """
@@ -105,7 +106,7 @@ class Comms:
 
         return payload
 
-    def send(self, payload, tgt=None):
+    def send(self, payload, tgt=None, wait_for_ack=False):
         """
         Send a byte-array message to tgt.
 
@@ -117,6 +118,17 @@ class Comms:
             raise Exception("Message target must be a tuple")
 
         self.sock.sendto(payload, tgt)
+
+        if wait_for_ack:
+            msg_id = struct.unpack("<H", payload[0:2])[0]
+            start_time = time.perf_counter()
+            while time.perf_counter() - start_time < 1.5:
+                msg = self.receive(timeout=0.1)
+                if msg is not None and msg.msg_code == Messages.ACK:
+                    ack_id = struct.unpack("<H", msg.payload[27:29])[0]
+                    if ack_id == msg_id:
+                        return
+            print(" -- no acknowledgement -- ", end="")
 
     def send_ack(self, msg_id, tgt):
         """
