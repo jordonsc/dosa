@@ -32,11 +32,18 @@ class Configuration : public Payload
         WIFI_AP = 2,
 
         /**
-         * uint  (1 byte):   min number of pixels changed before triggering
-         * float (4 bytes):  min temperature change before consider pixel changed
-         * float (4 bytes):  overall required temperature change
+         * uint8  (1 byte):   min number of pixels changed before triggering
+         * float  (4 bytes):  min temperature change before consider pixel changed
+         * float  (4 bytes):  overall required temperature change
          */
         SENSOR_CALIBRATION = 3,
+
+        /**
+         * uint32 (4 bytes):  Open ticks
+         * uint32 (4 bytes):  Open-wait time (ms)
+         * uint32 (4 bytes):  Cool-down time (ms)
+         */
+        DOOR_CALIBRATION = 4,
     };
 
     /**

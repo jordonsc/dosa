@@ -12,7 +12,7 @@ namespace dosa::door {
 class DoorContainer : public Container
 {
    public:
-    DoorContainer() : Container(), door_winch(&serial), door_switch(PIN_SWITCH_DOOR, true) {}
+    DoorContainer() : Container(), door_winch(&serial, settings), door_switch(PIN_SWITCH_DOOR, true) {}
 
     DoorWinch& getDoorWinch()
     {

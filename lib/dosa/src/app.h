@@ -685,6 +685,28 @@ class App
         settings.save();
     }
 
+    void settingDoorCalibration(uint8_t const* data, uint16_t size)
+    {
+        if (size != 12) {
+            logln("ERROR: incorrect payload size for door calibration data", LogLevel::ERROR);
+            return;
+        }
+
+        uint32_t open_ticks, open_wait, cool_down;
+
+        memcpy(&open_ticks, data, 4);
+        memcpy(&open_wait, data + 4, 4);
+        memcpy(&cool_down, data + 8, 4);
+
+        logln("DOOR CALIBRATION");
+
+        auto& settings = getContainer().getSettings();
+        settings.setDoorOpenTicks(open_ticks);
+        settings.setDoorOpenWait(open_wait);
+        settings.setDoorCoolDown(cool_down);
+        settings.save();
+    }
+
     /**
      * Config setting packet received, update FRAM.
      */
@@ -717,6 +739,9 @@ class App
                 break;
             case messages::Configuration::ConfigItem::SENSOR_CALIBRATION:
                 settingSensorCalibration(msg.getConfigData(), msg.getConfigSize());
+                break;
+            case messages::Configuration::ConfigItem::DOOR_CALIBRATION:
+                settingDoorCalibration(msg.getConfigData(), msg.getConfigSize());
                 break;
             default:
                 logln("UNKNOWN SETTING");

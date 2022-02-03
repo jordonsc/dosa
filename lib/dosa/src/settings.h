@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS13"
+#define DOSA_SETTINGS_HEADER "DS14"
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -20,9 +20,25 @@
 
 /**
  * The total temperature delta across all pixels before firing a trigger. This is the primary sensitivity metric, it
- * is also filtered against noise by SINGLE_DELTA_THRESHOLD so it won't show a true full-grid delta.
+ * is also filtered against noise by SENSOR_SINGLE_DELTA_THRESHOLD so it won't show a true full-grid delta.
  */
 #define SENSOR_TOTAL_DELTA_THRESHOLD 10.0
+
+/**
+ * Number of CPR pulses the door will open for, before holding in the DOOR_OPEN_WAIT_TIME and then closing for the
+ * same number of ticks.
+ */
+#define DOOR_OPEN_TICKS 14000
+
+/**
+ * Time in milliseconds the door spends in then open-wait status, holding in an open position before closing again.
+ */
+#define DOOR_OPEN_WAIT_TIME 2000
+
+/**
+ * Time in milliseconds we wait before allowing further action after a trigger sequence.
+ */
+#define DOOR_COOL_DOWN 3000
 
 namespace dosa {
 
@@ -42,6 +58,9 @@ namespace dosa {
  *   1      uint8     Sensor cfg: SENSOR_MIN_PIXELS_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_SINGLE_DELTA_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_TOTAL_DELTA_THRESHOLD
+ *   4      uint32    Door cfg: Open-ticks
+ *   4      uint32    Door cfg: Open-wait time (ms)
+ *   4      uint32    Door cfg: Cool-down time (ms)
  */
 class Settings : public Loggable
 {
@@ -106,6 +125,10 @@ class Settings : public Loggable
         read_var(&sensor_pixel_delta, 4);
         read_var(&sensor_total_delta, 4);
 
+        read_var(&door_open_ticks, 4);
+        read_var(&door_open_wait, 4);
+        read_var(&door_cool_down, 4);
+
         // Validate values
         bool valid = true;
 
@@ -116,7 +139,7 @@ class Settings : public Loggable
         }
 
         if (device_name == "") {
-            // Not allowed a blank device name
+            // Device name cannot be blank
             device_name = "DOSA " + String(random(1000, 9999));
             valid = false;
         }
@@ -137,8 +160,17 @@ class Settings : public Loggable
             reInitRam();
         }
 
-        // header size (4) + 4x 2-byte size markers + value lengths + 9-bytes for sensor calibration
-        size_t size = 12 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() + 9;
+        /**
+         * Fixed length sizes:
+         *      4  Header
+         *   4x 2  Variable size markers
+         *      9  Sensor calibration
+         *     12  Door calibration
+         * ---------------------------
+         *     33  Total
+         */
+        size_t size = 33 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+
         uint8_t payload[size];
         uint8_t* ptr = payload;
 
@@ -161,9 +193,14 @@ class Settings : public Loggable
         write_block(device_name);
         write_block(wifi_ssid);
         write_block(wifi_password);
+
         write_var(&sensor_min_pixels, 1);
         write_var(&sensor_pixel_delta, 4);
         write_var(&sensor_total_delta, 4);
+
+        write_var(&door_open_ticks, 4);
+        write_var(&door_open_wait, 4);
+        write_var(&door_cool_down, 4);
 
         ram.write(0, payload, size);
         logln("Settings written to FRAM", dosa::LogLevel::INFO);
@@ -178,6 +215,9 @@ class Settings : public Loggable
         sensor_min_pixels = SENSOR_MIN_PIXELS_THRESHOLD;
         sensor_pixel_delta = SENSOR_SINGLE_DELTA_THRESHOLD;
         sensor_total_delta = SENSOR_TOTAL_DELTA_THRESHOLD;
+        door_open_ticks = DOOR_OPEN_TICKS;
+        door_open_wait = DOOR_OPEN_WAIT_TIME;
+        door_cool_down = DOOR_COOL_DOWN;
         updateDeviceNameBytes();
     }
 
@@ -269,6 +309,36 @@ class Settings : public Loggable
         sensor_total_delta = sensorTotalDelta;
     }
 
+    [[nodiscard]] uint32_t getDoorOpenTicks() const
+    {
+        return door_open_ticks;
+    }
+
+    void setDoorOpenTicks(uint32_t doorOpenTicks)
+    {
+        door_open_ticks = doorOpenTicks;
+    }
+
+    [[nodiscard]] uint32_t getDoorOpenWait() const
+    {
+        return door_open_wait;
+    }
+
+    void setDoorOpenWait(uint32_t doorOpenWait)
+    {
+        door_open_wait = doorOpenWait;
+    }
+
+    [[nodiscard]] uint32_t getDoorCoolDown() const
+    {
+        return door_cool_down;
+    }
+
+    void setDoorCoolDown(uint32_t doorCoolDown)
+    {
+        door_cool_down = doorCoolDown;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -288,6 +358,9 @@ class Settings : public Loggable
     uint8_t sensor_min_pixels = 0;
     float sensor_pixel_delta = 0;
     float sensor_total_delta = 0;
+    uint32_t door_open_ticks = 0;
+    uint32_t door_open_wait = 0;
+    uint32_t door_cool_down = 0;
 
     /**
      * Rebuild the 20x char array for the device name.

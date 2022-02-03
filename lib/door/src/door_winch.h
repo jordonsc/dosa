@@ -15,15 +15,10 @@
 #define PIN_MOTOR_CPR 2  // Motor CPR encoder pulse
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
-// All times in milliseconds
-#define MAX_DOOR_SEQ_TIME 20000      // Max time to open or close the door before declaring a system error
-#define OPEN_WAIT_TIME 2000          // Time door spends in then open-wait status
-#define OPEN_HIGH_SPEED_TICKS 14000  // Number of CPR pulses at high-speed, before slowing the motor for safety
-#define MOTOR_CPR_WARMUP 1000        // Grace we give the motor to report CPR pulses before declaring a stall
-#define MOTOR_SLOW_SPEED 100         // Motor speed (1-255) to run when not at full speed (nearing apex)
-
-#define DOOR_TRIGGER_MIN_DELAY 3000  // Minimum time we delay after closing the door before we allow it to open again
-#define DOOR_TRIGGER_MAX_DELAY 6000  // Maximum time we'll wait for sensors to return to passive before re-triggering
+// All times in milliseconds, see also dosa::settings.h for configurable values
+#define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
+#define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
+#define MOTOR_SLOW_SPEED 100     // Motor speed (1-255) to run when not at full speed (nearing apex)
 
 // If defined, the door will continue to open until stopped (else it will open only to OPEN_HIGH_SPEED_TICKS)
 // #define DOOR_FULL_OPEN
@@ -62,7 +57,7 @@ class DoorWinch : public Loggable
 {
    protected:
    public:
-    explicit DoorWinch(SerialComms* s) : Loggable(s), kill_sw(PIN_REED_SW, true)
+    explicit DoorWinch(SerialComms* s, Settings& settings) : Loggable(s), kill_sw(PIN_REED_SW, true), settings(settings)
     {
         pinMode(PIN_MOTOR_A, OUTPUT);
         pinMode(PIN_MOTOR_B, OUTPUT);
@@ -109,7 +104,7 @@ class DoorWinch : public Loggable
             open_ticks += deficit;
 
             auto openWaitTimer = millis();
-            while (millis() - openWaitTimer < OPEN_WAIT_TIME) {
+            while (millis() - openWaitTimer < settings.getDoorOpenWait()) {
                 if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
                     // Callback has asked us to reset open-wait timer (activity near door)
                     openWaitTimer = millis();
@@ -130,10 +125,11 @@ class DoorWinch : public Loggable
             }
         }
 
+        uint32_t max_delay = settings.getDoorCoolDown() * 2;
         auto seq_complete_time = millis();
-        while (millis() - seq_complete_time < DOOR_TRIGGER_MAX_DELAY) {
+        while (millis() - seq_complete_time < max_delay) {
             if ((interrupt_cb == nullptr || !interrupt_cb(interrupt_cb_ctx)) &&
-                (millis() - seq_complete_time > DOOR_TRIGGER_MIN_DELAY)) {
+                (millis() - seq_complete_time > settings.getDoorCoolDown())) {
                 // No movement detected, min delay exceeded - allow exit
                 break;
             }
@@ -146,14 +142,14 @@ class DoorWinch : public Loggable
      *
      * Returns the number of CPR pulses throughout the sequence.
      */
-    unsigned long open(unsigned long deficit = 0)
+    uint32_t open(unsigned long deficit = 0)
     {
         logln("Door: OPEN");
         seq_start_time = millis();
         resetCprTimer();
         kill_sw.process();
 
-        long high_speed_ticks = OPEN_HIGH_SPEED_TICKS - deficit;
+        uint32_t high_speed_ticks = settings.getDoorOpenTicks() - deficit;
 
         if (high_speed_ticks > 0) {
             logln("Running at full-speed for " + String(high_speed_ticks) + " ticks", dosa::LogLevel::DEBUG);
@@ -236,7 +232,8 @@ class DoorWinch : public Loggable
     }
 
    protected:
-    dosa::Switch kill_sw;
+    Switch kill_sw;
+    Settings& settings;
 
     unsigned long seq_start_time = 0;  // Time that an open/close sequence started
     unsigned long cpr_last_time = 0;   // For calculating motor speed

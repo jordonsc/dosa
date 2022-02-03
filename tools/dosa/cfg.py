@@ -39,8 +39,12 @@ class Config:
         elif opt == 4:
             self.exec_wifi_ap(device, self.get_values(["Wifi SSID", "Wifi Password"]))
         elif opt == 5:
-            self.exec_calibration(device, self.get_values(
+            self.exec_sensor_calibration(device, self.get_values(
                 ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
+            ))
+        elif opt == 6:
+            self.exec_door_calibration(device, self.get_values(
+                ["Open ticks", "Open-wait time (ms)", "Cool-down (ms)"]
             ))
 
     def exec_config_mode(self, device):
@@ -59,7 +63,7 @@ class Config:
 
         print("Sending new password..", end="")
         aux = bytearray()
-        aux[0:0] = struct.pack("<B", 0)
+        aux[0:1] = struct.pack("<B", 0)
         aux[1:] = values[0].encode()
         self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
         print(" done")
@@ -75,14 +79,14 @@ class Config:
 
         print("Sending new device name..", end="")
         aux = bytearray()
-        aux[0:0] = struct.pack("<B", 1)
+        aux[0:1] = struct.pack("<B", 1)
         aux[1:] = values[0].encode()
         self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
         print(" done")
 
     def exec_wifi_ap(self, device, values):
         aux = bytearray()
-        aux[0:0] = struct.pack("<B", 2)
+        aux[0:1] = struct.pack("<B", 2)
 
         if values is None:
             print("Clearing wifi details..", end="")
@@ -94,18 +98,38 @@ class Config:
         self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
         print(" done")
 
-    def exec_calibration(self, device, values):
+    def exec_sensor_calibration(self, device, values):
         aux = bytearray()
-        aux[0:0] = struct.pack("<B", 3)
+        aux[0:1] = struct.pack("<B", 3)
 
         if values is None:
             print("Aborting")
             exit()
         else:
             try:
-                aux[1:1] = struct.pack("<B", int(values[0]))  # Min pixels
+                aux[1:2] = struct.pack("<B", int(values[0]))  # Min pixels
                 aux[2:6] = struct.pack("<f", float(values[1]))  # Single delta
                 aux[6:10] = struct.pack("<f", float(values[2]))  # Total delta
+            except ValueError:
+                print("Malformed calibration data, aborting")
+                exit()
+
+        print("Sending new calibration data..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address)
+        print(" done")
+
+    def exec_door_calibration(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 4)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:5] = struct.pack("<L", int(values[0]))  # Open ticks
+                aux[5:11] = struct.pack("<L", int(values[1]))  # Open-wait time (ms)
+                aux[11:16] = struct.pack("<L", int(values[2]))  # Cool-down (ms)
             except ValueError:
                 print("Malformed calibration data, aborting")
                 exit()
@@ -219,7 +243,8 @@ class Config:
         print("[2] Set device password")
         print("[3] Set device name")
         print("[4] Set wifi configuration")
-        print("[5] Set sensor calibration")
+        print("[5] Sensor calibration")
+        print("[6] Door calibration")
 
         while True:
             try:
@@ -230,7 +255,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 6:
+            if 0 < opt < 7:
                 print()
                 return opt
             else:
