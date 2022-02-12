@@ -1,28 +1,13 @@
 #pragma once
 
-#include <Uart.h>
-#include <wiring_private.h>
-
-#define DOSA_SONAR_SERIAL &sercom0
-#define DOSA_SONAR_RX_PIN 5
-#define DOSA_SONAR_TX_PIN 6
-#define DOSA_SONAR_RX_PAD SERCOM_RX_PAD_1
-#define DOSA_SONAR_TX_PAD UART_TX_PAD_0
-
 namespace dosa {
 
 class Sonar
 {
    public:
     Sonar()
-        : sonar_serial(DOSA_SONAR_SERIAL, DOSA_SONAR_RX_PIN, DOSA_SONAR_TX_PIN, DOSA_SONAR_RX_PAD, DOSA_SONAR_TX_PAD)
     {
-        pinPeripheral(DOSA_SONAR_RX_PIN, PIO_SERCOM_ALT);
-        pinPeripheral(DOSA_SONAR_TX_PIN, PIO_SERCOM_ALT);
-
-        sonar_serial.begin(9600);
-
-        instance = this;
+        Serial1.begin(9600);
     }
 
     /**
@@ -32,8 +17,8 @@ class Sonar
      */
     bool process()
     {
-        if (sonar_serial.available()) {
-            uint8_t c = sonar_serial.read();
+        if (Serial1.available()) {
+            uint8_t c = Serial1.read();
 
             if (idx == 0 && c == 0xFF) {
                 // Header byte should be 0xFF
@@ -60,33 +45,10 @@ class Sonar
         return distance;
     }
 
-    [[nodiscard]] static Sonar* getInstance()
-    {
-        return instance;
-    }
-
-    void serialInterrupt()
-    {
-        sonar_serial.IrqHandler();
-    }
-
    private:
-    Uart sonar_serial;
     uint16_t distance = 0;
     uint8_t buffer[4] = {0};  // serial read buffer
     uint8_t idx = 0;          // serial read index
-
-    static Sonar* instance;
 };
 
-Sonar* Sonar::instance = nullptr;
-
 }  // namespace dosa
-
-void SERCOM0_Handler()
-{
-    auto* instance = dosa::Sonar::getInstance();
-    if (instance != nullptr) {
-        instance->serialInterrupt();
-    }
-}
