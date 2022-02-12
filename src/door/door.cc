@@ -1,7 +1,5 @@
 /**
  * DOSA Door Driver
- *
- * MASTER DEVICE
  * arduino:samd:nano_33_iot
  *
  * This programme will operate a powered winch triggered by either button press or a signal from a satellite device.
@@ -17,7 +15,7 @@ dosa::AppBuilder<dosa::door::DoorApp> builder;
 void setup()
 {
     auto& cfg = builder.getConfig();
-    cfg.app_name = "DOSA Door Controller";
+    cfg.app_name = "DOSA Winch Driver";
     cfg.short_name = "DOSA-D";
     cfg.bluetooth_appearance = 0x0741;
     cfg.device_type = dosa::messages::DeviceType::MOTOR_WINCH;

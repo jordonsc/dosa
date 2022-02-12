@@ -61,6 +61,17 @@ cc_library(
 )
 
 cc_library(
+    name = "Wire",
+    srcs = glob(["Wire/*.cpp"]),
+    hdrs = glob(["Wire/*.h"]),
+    includes = ["Wire"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+    ],
+)
+
+cc_library(
     name = "SparkFun_GridEYE",
     srcs = glob(["SparkFun_GridEYE_AMG88_Library/src/**/*.cpp"]),
     hdrs = glob(["SparkFun_GridEYE_AMG88_Library/src/**/*.h"]),

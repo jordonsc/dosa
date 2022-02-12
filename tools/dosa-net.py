@@ -24,7 +24,7 @@ parser.add_argument('-t', '--trigger', dest='trigger', default=False, nargs='?',
 
 # Snoop options
 parser.add_argument('-m', '--map', dest='map', action='store_const', const=True, default=False,
-                    help='display an IR grid map with triggers')
+                    help='display an IR grid map or distance readouts with triggers')
 parser.add_argument('-i', '--ignore', dest='ignore', action='store_const', const=True, default=False,
                     help='ignore retry messages')
 parser.add_argument('-a', '--ack', dest='ack', action='store_const', const=True, default=False,

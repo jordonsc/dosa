@@ -30,3 +30,16 @@ cc_binary(
         "//lib:sensor",
     ],
 )
+
+cc_binary(
+    name = "sonar",
+    srcs = glob(["sonar/sonar.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+        "//arduino:ArduinoBLE",
+        "//lib:sonar",
+    ],
+)

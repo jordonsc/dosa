@@ -15,6 +15,7 @@ enum class TriggerDevice : uint8_t
     BUTTON = 1,
     PIR = 10,
     IR_GRID = 11,
+    SONAR = 12,
 };
 
 class Trigger : public Payload

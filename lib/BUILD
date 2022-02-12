@@ -20,6 +20,7 @@ cc_library(
         "//arduino:ArduinoBLE",
         "//arduino:SparkFun_GridEYE",
         "//arduino:WiFiNINA",
+        "//arduino:Wire",
         "//lib:messages",
     ],
 )
@@ -52,13 +53,28 @@ cc_library(
     ],
 )
 
-# Sensor satellite unit library
+# IR grid motion sensor
 cc_library(
     name = "sensor",
     srcs = glob(["sensor/src/**/*.cpp"]),
     hdrs = glob(["sensor/src/**/*.h"]),
     copts = COPTS,
     includes = ["sensor/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+        "//lib:dosa",
+    ],
+)
+
+# Sonar trip sensor
+cc_library(
+    name = "sonar",
+    srcs = glob(["sonar/src/**/*.cpp"]),
+    hdrs = glob(["sonar/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["sonar/src"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [

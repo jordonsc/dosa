@@ -8,9 +8,10 @@ enum class DeviceType : uint8_t
 {
     UNSPECIFIED = 0,  // for error conditions only
 
-    // Sensor devices
+    // Trigger devices
     SENSOR_MOTION = 10,
-    SENSOR_TRIP = 11,
+    SENSOR_SONAR = 11,
+    BUTTON = 12,
 
     // Action devices
     SWITCH = 50,

@@ -29,15 +29,23 @@ class Snoop:
                     self.comms.send_ack(msg.msg_id_bytes(), msg.addr)
                     aux += " (replied)"
                 if self.print_map:
-                    aux += "\n+--------+\n"
-                    index = 0
-                    for row in range(8):
-                        aux += "|"
-                        for col in range(8):
-                            aux += self.print_pixel(struct.unpack("<B", msg.payload[28 + index:29 + index])[0])
-                            index += 1
-                        aux += "|\n"
-                    aux += "+--------+"
+                    trigger_type = struct.unpack("<B", msg.payload[27:28])[0]
+                    if trigger_type == 11:
+                        # IR grid, display map
+                        aux += "\n+--------+\n"
+                        index = 0
+                        for row in range(8):
+                            aux += "|"
+                            for col in range(8):
+                                aux += self.print_pixel(struct.unpack("<B", msg.payload[28 + index:29 + index])[0])
+                                index += 1
+                            aux += "|\n"
+                        aux += "+--------+"
+                    elif trigger_type == 12:
+                        # Sonar sensor, show distances
+                        dist_prev = struct.unpack("<H", msg.payload[28:30])[0]
+                        dist_new = struct.unpack("<H", msg.payload[30:32])[0]
+                        aux += " // distance: " + str(dist_prev) + " -> " + str(dist_new)
             elif msg.msg_code == dosa.Messages.ERROR:
                 aux = " // ERROR: " + msg.payload[27:msg.payload_size].decode("utf-8")
             elif msg.msg_code == dosa.Messages.ONLINE:

@@ -27,8 +27,10 @@ class SensorApp final : public dosa::App
 
    private:
     SensorContainer container;
+
     float grid[64] = {0};
     unsigned long last_fired = 0;
+    unsigned long ir_grid_last_update = 0;  // Last time we polled the sensor
 
     void checkIrGrid()
     {
@@ -84,8 +86,6 @@ class SensorApp final : public dosa::App
             return true;
         }
     }
-
-    unsigned long ir_grid_last_update = 0;  // Last time we polled the sensor
 
     Container& getContainer() override
     {

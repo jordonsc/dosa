@@ -49,7 +49,7 @@ class IrGrid : public Loggable
 
    protected:
     bool inited = false;
-    GridEYE ir;
+    GridEYE ir{};
 };
 
 }  // namespace dosa

@@ -10,8 +10,9 @@ function getFqbn() {
     echo "arduino:samd:nano_33_iot"
     ;;
   "sensor")
-    # Formally, the sensor used the Nano 33 BLE board
-    #echo "arduino:mbed_nano:nano33ble"
+    echo "arduino:samd:nano_33_iot"
+    ;;
+  "sonar")
     echo "arduino:samd:nano_33_iot"
     ;;
   *) ;;
@@ -33,8 +34,9 @@ function syntax() {
   echo "  monitor        :  Opens a serial monitor to provided port"
   echo
   echo "Applications:"
-  echo "  door           : Master unit for door driver"
-  echo "  sensor         : Satellite unit for sensory suite"
+  echo "  door           : Winch door driver"
+  echo "  sensor         : Passive infrared motion sensor"
+  echo "  sonar          : Sonar ranging trigger sensor"
   echo
   echo "Connected boards & ports:"
   arduino-cli board list | awk '{ print "  " $0 }'
