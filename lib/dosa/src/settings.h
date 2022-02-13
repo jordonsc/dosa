@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS16"
+#define DOSA_SETTINGS_HEADER "DS17"
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -46,6 +46,13 @@
  */
 #define DOOR_CLOSE_TICKS 15000
 
+/**
+ * Number of consecutive reads with a reduced distance before firing the trigger.
+ *
+ * Increase to reduce noise.
+ */
+#define SONAR_TRIGGER_THRESHOLD 2
+
 namespace dosa {
 
 /**
@@ -64,10 +71,11 @@ namespace dosa {
  *   1      uint8     Sensor cfg: SENSOR_MIN_PIXELS_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_SINGLE_DELTA_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_TOTAL_DELTA_THRESHOLD
- *   2      uint16    Door cfg: Door open distance (mm)
- *   4      uint32    Door cfg: Open-wait time (ms)
- *   4      uint32    Door cfg: Cool-down time (ms)
- *   4      uint32    Door cfg: Close ticks
+ *   2      uint16    Door cfg: DOOR_OPEN_DISTANCE
+ *   4      uint32    Door cfg: DOOR_OPEN_WAIT_TIME
+ *   4      uint32    Door cfg: DOOR_COOL_DOWN
+ *   4      uint32    Door cfg: DOOR_CLOSE_TICKS
+ *   2      uint16    Sonar cfg: SONAR_TRIGGER_THRESHOLD
  */
 class Settings : public Loggable
 {
@@ -135,7 +143,8 @@ class Settings : public Loggable
         read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
-        read_var(&door_close_ticks, 4);
+
+        read_var(&sonar_trigger_threshold, 2);
 
         // Validate values
         bool valid = true;
@@ -211,6 +220,8 @@ class Settings : public Loggable
         write_var(&door_cool_down, 4);
         write_var(&door_close_ticks, 4);
 
+        write_var(&sonar_trigger_threshold, 2);
+
         ram.write(0, payload, size);
         logln("Settings written to FRAM", dosa::LogLevel::INFO);
     }
@@ -233,6 +244,9 @@ class Settings : public Loggable
         door_open_wait = DOOR_OPEN_WAIT_TIME;
         door_cool_down = DOOR_COOL_DOWN;
         door_close_ticks = DOOR_CLOSE_TICKS;
+
+        // Sonar specific
+        sonar_trigger_threshold = SONAR_TRIGGER_THRESHOLD;
 
         updateDeviceNameBytes();
     }
@@ -365,6 +379,16 @@ class Settings : public Loggable
         door_close_ticks = doorCloseTicks;
     }
 
+    [[nodiscard]] uint16_t getSonarTriggerThreshold() const
+    {
+        return sonar_trigger_threshold;
+    }
+
+    void setSonarTriggerThreshold(uint16_t sonarTriggerThreshold)
+    {
+        sonar_trigger_threshold = sonarTriggerThreshold;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -388,6 +412,7 @@ class Settings : public Loggable
     uint32_t door_open_wait = 0;
     uint32_t door_cool_down = 0;
     uint32_t door_close_ticks = 0;
+    uint16_t sonar_trigger_threshold = 0;
 
     /**
      * Rebuild the 20x char array for the device name.

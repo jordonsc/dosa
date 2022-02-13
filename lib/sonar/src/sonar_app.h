@@ -27,6 +27,7 @@ class SonarApp final : public dosa::App
     SonarContainer container;
     uint16_t last_distance = 1;
     unsigned long last_fired = 0;
+    uint16_t trigger_count = 0;  // number of trigger
 
     void checkSonar()
     {
@@ -39,11 +40,27 @@ class SonarApp final : public dosa::App
         // Zero distance implies the sensor didn't receive a bounce-back (beyond range)
         if ((millis() - last_fired > REFIRE_DELAY) && (distance > 0) &&
             (distance < last_distance * DOSA_SONAR_TRIGGER_THRESHOLD || last_distance == 0)) {
-            sendTrigger(last_distance, distance);
-            last_fired = millis();
-        }
+            // Sensor is reading a trigger, consider if we should de-noise or fire -
+            ++trigger_count;
 
-        last_distance = distance;
+            if (trigger_count >= container.getSettings().getSonarTriggerThreshold()) {
+                // Trigger-warn state surpassed, fire trigger message
+                sendTrigger(last_distance, distance);
+                last_fired = millis();
+                last_distance = distance;
+                trigger_count = 0;
+            } else {
+                // Trigger-warn state: count up reads to de-noise until we're sure this is a real trigger
+                logln(
+                    "Sonar warning (" + String(trigger_count) + "): " + String(last_distance) + "mm -> " +
+                        String(distance) + "mm",
+                    LogLevel::DEBUG);
+            }
+        } else {
+            // Not in a warn/firing mode
+            last_distance = distance;
+            trigger_count = 0;
+        }
     }
 
     void sendTrigger(uint16_t previous, uint16_t current)
@@ -53,7 +70,7 @@ class SonarApp final : public dosa::App
         memcpy(map, &previous, 2);
         memcpy(map + 2, &current, 2);
 
-        logln("Sonar trigger: " + String(previous) + "mm -> " + String(current) + "mm");
+        logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
         dispatchMessage(messages::Trigger(messages::TriggerDevice::SONAR, map, getDeviceNameBytes()), true);
     }
 

@@ -49,6 +49,10 @@ class Config:
             self.exec_door_calibration(device, self.get_values(
                 ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
             ))
+        elif opt == 7:
+            self.exec_sonar_calibration(device, self.get_values(
+                ["Trigger threshold"]
+            ))
 
     def exec_config_mode(self, device):
         print("Sending Bluetooth fallback mode request..", end="")
@@ -148,6 +152,25 @@ class Config:
                         wait_for_ack=True)
         print(" done")
 
+    def exec_sonar_calibration(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 5)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:3] = struct.pack("<H", int(values[0]))  # Trigger threshold
+            except ValueError:
+                print("Malformed calibration data, aborting")
+                exit()
+
+        print("Sending new calibration data..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
+        print(" done")
+
     @staticmethod
     def get_values(vals):
         """
@@ -225,6 +248,7 @@ class Config:
         print("[4] Set wifi configuration")
         print("[5] Sensor calibration")
         print("[6] Door calibration")
+        print("[7] Sonar calibration")
 
         while True:
             try:
@@ -235,7 +259,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 7:
+            if 0 < opt < 8:
                 print()
                 return opt
             else:

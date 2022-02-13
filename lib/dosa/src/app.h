@@ -710,6 +710,24 @@ class App
         settings.save();
     }
 
+    void settingSonarCalibration(uint8_t const* data, uint16_t size)
+    {
+        if (size != 2) {
+            logln("ERROR: incorrect payload size for sonar calibration data", LogLevel::ERROR);
+            return;
+        }
+
+        uint16_t trigger_threshold;
+
+        memcpy(&trigger_threshold, data, 2);
+
+        logln("SONAR CALIBRATION");
+
+        auto& settings = getContainer().getSettings();
+        settings.setSonarTriggerThreshold(trigger_threshold);
+        settings.save();
+    }
+
     /**
      * Config setting packet received, update FRAM.
      */
@@ -745,6 +763,9 @@ class App
                 break;
             case messages::Configuration::ConfigItem::DOOR_CALIBRATION:
                 settingDoorCalibration(msg.getConfigData(), msg.getConfigSize());
+                break;
+            case messages::Configuration::ConfigItem::SONAR_CALIBRATION:
+                settingSonarCalibration(msg.getConfigData(), msg.getConfigSize());
                 break;
             default:
                 logln("UNKNOWN SETTING");

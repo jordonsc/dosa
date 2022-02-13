@@ -39,11 +39,17 @@ class Configuration : public Payload
         SENSOR_CALIBRATION = 3,
 
         /**
-         * uint32 (4 bytes):  Open ticks
-         * uint32 (4 bytes):  Open-wait time (ms)
-         * uint32 (4 bytes):  Cool-down time (ms)
+         * uint16 (2 bytes):  open distance (mm)
+         * uint32 (4 bytes):  open-wait time (ms)
+         * uint32 (4 bytes):  cool-down time (ms)
+         * uint32 (4 bytes):  close ticks
          */
         DOOR_CALIBRATION = 4,
+
+        /**
+         * uint16 (2 bytes):  trigger threshold (consecutive reads with split beam)
+         */
+        SONAR_CALIBRATION = 5,
     };
 
     /**
