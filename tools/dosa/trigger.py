@@ -9,9 +9,9 @@ class Trigger:
         self.comms = comms
 
     def fire(self, target=None):
-        aux = bytearray(b'\0')
-        for i in range(65):
-            aux += b'\xFF'
+        aux = bytearray(b'\x02')
+        for i in range(64):
+            aux += b'\x00'
 
         trg = self.comms.build_payload(dosa.Messages.TRIGGER, aux)
         self.comms.send(trg, target)

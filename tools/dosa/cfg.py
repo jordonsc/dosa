@@ -47,7 +47,7 @@ class Config:
             ))
         elif opt == 6:
             self.exec_door_calibration(device, self.get_values(
-                ["Open ticks", "Open-wait time (ms)", "Cool-down (ms)"]
+                ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
             ))
 
     def exec_config_mode(self, device):
@@ -135,9 +135,10 @@ class Config:
             exit()
         else:
             try:
-                aux[1:5] = struct.pack("<L", int(values[0]))  # Open ticks
-                aux[5:11] = struct.pack("<L", int(values[1]))  # Open-wait time (ms)
-                aux[11:16] = struct.pack("<L", int(values[2]))  # Cool-down (ms)
+                aux[1:3] = struct.pack("<H", int(values[0]))  # Open distance
+                aux[3:7] = struct.pack("<L", int(values[1]))  # Open-wait time (ms)
+                aux[7:11] = struct.pack("<L", int(values[2]))  # Cool-down (ms)
+                aux[11:15] = struct.pack("<L", int(values[3]))  # Close ticks
             except ValueError:
                 print("Malformed calibration data, aborting")
                 exit()

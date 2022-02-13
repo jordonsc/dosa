@@ -13,6 +13,7 @@ enum class TriggerDevice : uint8_t
 {
     NONE = 0,  // for error conditions
     BUTTON = 1,
+    SCRIPT = 2,
     PIR = 10,
     IR_GRID = 11,
     SONAR = 12,

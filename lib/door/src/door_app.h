@@ -51,11 +51,18 @@ class DoorApp final : public dosa::App
             }
             door_fire_from_udp = false;
         }
+
+        /**
+         * Important: we need to keep reading from the serial interface so that we don't get stale data when the door
+         *            sequence is triggered.
+         */
+        container.getSonar().process();
     }
 
    private:
     DoorContainer container;
     uint16_t last_msg_id = 0;
+    uint32_t last_debug = 0;
     bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
 
     /**

@@ -12,24 +12,30 @@ namespace dosa::door {
 class DoorContainer : public Container
 {
    public:
-    DoorContainer() : Container(), door_winch(&serial, settings), door_switch(PIN_SWITCH_DOOR, true) {}
+    DoorContainer() : Container(), door_winch(&serial, settings, sonar), door_switch(PIN_SWITCH_DOOR, true) {}
 
-    DoorWinch& getDoorWinch()
+    [[nodiscard]] DoorWinch& getDoorWinch()
     {
         return door_winch;
     }
 
-    DoorLights& getDoorLights()
+    [[nodiscard]] DoorLights& getDoorLights()
     {
         return door_lights;
     }
 
-    Switch& getDoorSwitch()
+    [[nodiscard]] Switch& getDoorSwitch()
     {
         return door_switch;
     }
 
+    [[nodiscard]] Sonar& getSonar()
+    {
+        return sonar;
+    }
+
    protected:
+    Sonar sonar;
     DoorWinch door_winch;
     DoorLights door_lights;
     Switch door_switch;

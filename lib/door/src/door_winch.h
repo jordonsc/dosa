@@ -11,17 +11,12 @@
 #define PIN_MOTOR_A 4    // Motor output fwd
 #define PIN_MOTOR_B 5    // Motor output reverse
 #define PIN_MOTOR_PWM 6  // Motor speed
-#define PIN_REED_SW 7    // Kill switch
 #define PIN_MOTOR_CPR 2  // Motor CPR encoder pulse
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
 // All times in milliseconds, see also dosa::settings.h for configurable values
 #define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
-#define MOTOR_SLOW_SPEED 100     // Motor speed (1-255) to run when not at full speed (nearing apex)
-
-// If defined, the door will continue to open until stopped (else it will open only to OPEN_HIGH_SPEED_TICKS)
-// #define DOOR_FULL_OPEN
 
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
@@ -47,7 +42,8 @@ enum class DoorErrorCode : byte
     UNKNOWN = 0,
     OPEN_TIMEOUT = 1,
     CLOSE_TIMEOUT = 2,
-    JAMMED = 3
+    JAMMED = 3,
+    SONAR_ERROR = 4,
 };
 
 typedef void (*winchErrorCallback)(DoorErrorCode, void*);
@@ -57,7 +53,7 @@ class DoorWinch : public Loggable
 {
    protected:
    public:
-    explicit DoorWinch(SerialComms* s, Settings& settings) : Loggable(s), kill_sw(PIN_REED_SW, true), settings(settings)
+    explicit DoorWinch(SerialComms* s, Settings& settings, Sonar& sonar) : Loggable(s), settings(settings), sonar(sonar)
     {
         pinMode(PIN_MOTOR_A, OUTPUT);
         pinMode(PIN_MOTOR_B, OUTPUT);
@@ -94,43 +90,35 @@ class DoorWinch : public Loggable
      */
     void trigger()
     {
-        // Number of ticks the close sequence didn't complete before it was interrupted
-        uint32_t deficit = 0;
-
-        // Put the sequence in a loop as the door might re-open during the closing sequence
-        while (true) {
-            auto open_ticks = open(deficit);
-            logln("Opened in " + String(open_ticks) + " ticks, open spread " + String(open_ticks + deficit));
-            open_ticks += deficit;
-
-            auto openWaitTimer = millis();
-            while (millis() - openWaitTimer < settings.getDoorOpenWait()) {
-                if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
-                    // Callback has asked us to reset open-wait timer (activity near door)
-                    openWaitTimer = millis();
-                }
-                delay(10);
-            }
-
-            // Request the door close to the same degree as it was last opened + any deficit from previous iterations
-            auto close_ticks = close(open_ticks);
-
-            // If we fully closed, then return control to the main loop
-            if (close_ticks >= open_ticks) {
-                logln("Closed in " + String(close_ticks) + " ticks");
-                break;
-            } else {
-                deficit = open_ticks - close_ticks;
-                logln("Partial close for " + String(close_ticks) + " ticks, deficit " + String(deficit));
-            }
+        auto open_ticks = open();
+        if (open_ticks == 0) {
+            // If the sensor believes the door is already fully open, it will return 0 ticks (and have done nothing).
+            return;
+        } else {
+            logln("Opened in " + String(open_ticks) + " ticks");
         }
 
+        // Open-wait
+        auto openWaitTimer = millis();
+        while (millis() - openWaitTimer < settings.getDoorOpenWait()) {
+            if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
+                // Callback has asked us to reset open-wait timer (activity near door)
+                openWaitTimer = millis();
+            }
+            delay(10);
+        }
+
+        // Request the door close to the same degree as it was last opened + a coefficient to ensure the pulley is slack
+        auto close_ticks = close(settings.getDoorCloseTicks());
+        logln("Closed in " + String(close_ticks) + " ticks");
+
+        // Close-wait (cool-down)
         uint32_t max_delay = settings.getDoorCoolDown() * 2;
         auto seq_complete_time = millis();
         while (millis() - seq_complete_time < max_delay) {
             if ((interrupt_cb == nullptr || !interrupt_cb(interrupt_cb_ctx)) &&
                 (millis() - seq_complete_time > settings.getDoorCoolDown())) {
-                // No movement detected, min delay exceeded - allow exit
+                // Sensors clear & min delay exceeded - allow exit
                 break;
             }
             delay(100);
@@ -142,43 +130,35 @@ class DoorWinch : public Loggable
      *
      * Returns the number of CPR pulses throughout the sequence.
      */
-    uint32_t open(unsigned long deficit = 0)
+    uint32_t open()
     {
         logln("Door: OPEN");
         seq_start_time = millis();
         resetCprTimer();
-        kill_sw.process();
+        uint32_t open_distance = settings.getDoorOpenDistance();
 
-        uint32_t high_speed_ticks = settings.getDoorOpenTicks() - deficit;
+        waitForSonarReady();
+        if (sonar.getDistance() > 0 && sonar.getDistance() < open_distance) {
+            logln("Door already at threshold, aborting open sequence", LogLevel::WARNING);
+            return 0;
+        }
 
-        if (high_speed_ticks > 0) {
-            logln("Running at full-speed for " + String(high_speed_ticks) + " ticks", dosa::LogLevel::DEBUG);
-
-            // Full speed run at the start, this is when there is the most strain on the motor
-            setMotor(true, 255);
-            while (int_cpr_ticks < high_speed_ticks) {
-                delay(10);
-                if (checkForOpenKill()) {
-                    stopMotor();
-                    return int_cpr_ticks;
-                }
+        setMotor(true, 255);
+        while (true) {
+            sonar.process();
+            if (checkForOpenKill() || (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
+                logln("Open halted at " + String(sonar.getDistance()) + "mm", LogLevel::DEBUG);
+                break;
             }
         }
-
-#ifdef DOOR_FULL_OPEN
-        // After we've opened part-way, slow down to avoid damage
-        setMotor(true, MOTOR_SLOW_SPEED);
-        while (!checkForOpenKill()) {
-            delay(10);
-        }
-#endif
 
         stopMotor();
         return int_cpr_ticks;
     }
 
     /**
-     * Release the door for `ticks` number of CPR pulses. Should match the open sequence.
+     * Release the door for `ticks` number of CPR pulses. Should be a little above what is required to fully close
+     * the door from it's maximum draw angle.
      *
      * Returns number of CPR pulses during the process.
      */
@@ -192,11 +172,6 @@ class DoorWinch : public Loggable
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
-#ifdef DOOR_CLOSE_ALLOW_INTERRUPT
-            if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
-                break;
-            }
-#endif
         }
 
         stopMotor();
@@ -232,8 +207,8 @@ class DoorWinch : public Loggable
     }
 
    protected:
-    Switch kill_sw;
     Settings& settings;
+    Sonar& sonar;
 
     unsigned long seq_start_time = 0;  // Time that an open/close sequence started
     unsigned long cpr_last_time = 0;   // For calculating motor speed
@@ -299,13 +274,6 @@ class DoorWinch : public Loggable
             return true;
         }
 
-        // Check kill switch
-        if (kill_sw.process() && kill_sw.getState()) {
-            logln("Door hit kill switch");
-            stopMotor();
-            return true;
-        }
-
         // Check for motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
             logln("Door blocked while opening");
@@ -322,15 +290,14 @@ class DoorWinch : public Loggable
 
         // Correct way for close sequence to end: matched the same CPR pulses as open sequence
         if (int_cpr_ticks > ticks) {
-            stopMotor();
             return true;
         }
 
         // Motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
             logln("Winch jammed (close sequence!)", dosa::LogLevel::WARNING);
-            stopMotor();
             if (error_cb != nullptr) {
+                stopMotor();
                 error_cb(DoorErrorCode::JAMMED, error_cb_ctx);
             }
             return true;
@@ -339,14 +306,36 @@ class DoorWinch : public Loggable
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
             logln("Door close sequence max time exceeded", dosa::LogLevel::WARNING);
-            stopMotor();
             if (error_cb != nullptr) {
+                stopMotor();
                 error_cb(DoorErrorCode::CLOSE_TIMEOUT, error_cb_ctx);
             }
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Wait until we've had a distance report from the sonar.
+     *
+     * This should be called before trying to read the sonar distance for the first time to ensure the value is valid.
+     */
+    void waitForSonarReady()
+    {
+        auto start_time = millis();
+        while (millis() - start_time < 1000) {
+            if (sonar.process()) {
+                return;
+            }
+        }
+
+        logln("Sonar not reporting data!", LogLevel::ERROR);
+
+        if (error_cb != nullptr) {
+            stopMotor();
+            error_cb(DoorErrorCode::SONAR_ERROR, error_cb_ctx);
+        }
     }
 };
 

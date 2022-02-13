@@ -687,23 +687,26 @@ class App
 
     void settingDoorCalibration(uint8_t const* data, uint16_t size)
     {
-        if (size != 12) {
+        if (size != 14) {
             logln("ERROR: incorrect payload size for door calibration data", LogLevel::ERROR);
             return;
         }
 
-        uint32_t open_ticks, open_wait, cool_down;
+        uint16_t open_distance;
+        uint32_t open_wait, cool_down, close_ticks;
 
-        memcpy(&open_ticks, data, 4);
-        memcpy(&open_wait, data + 4, 4);
-        memcpy(&cool_down, data + 8, 4);
+        memcpy(&open_distance, data, 2);
+        memcpy(&open_wait, data + 2, 4);
+        memcpy(&cool_down, data + 6, 4);
+        memcpy(&close_ticks, data + 10, 4);
 
         logln("DOOR CALIBRATION");
 
         auto& settings = getContainer().getSettings();
-        settings.setDoorOpenTicks(open_ticks);
+        settings.setDoorOpenDistance(open_distance);
         settings.setDoorOpenWait(open_wait);
         settings.setDoorCoolDown(cool_down);
+        settings.setDoorCloseTicks(close_ticks);
         settings.save();
     }
 

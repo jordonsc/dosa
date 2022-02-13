@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS14"
+#define DOSA_SETTINGS_HEADER "DS16"
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -25,10 +25,10 @@
 #define SENSOR_TOTAL_DELTA_THRESHOLD 10.0
 
 /**
- * Number of CPR pulses the door will open for, before holding in the DOOR_OPEN_WAIT_TIME and then closing for the
- * same number of ticks.
+ * Distance in mm the sonar should be <= when halting the door open sequence. The sonar should be reading the door's
+ * distance from its apex/threshold.
  */
-#define DOOR_OPEN_TICKS 14000
+#define DOOR_OPEN_DISTANCE 500
 
 /**
  * Time in milliseconds the door spends in then open-wait status, holding in an open position before closing again.
@@ -39,6 +39,12 @@
  * Time in milliseconds we wait before allowing further action after a trigger sequence.
  */
 #define DOOR_COOL_DOWN 3000
+
+/**
+ * Fixed number of ticks we close the door for. This will translate to an approximate distance, it should be a small
+ * amount greater than required.
+ */
+#define DOOR_CLOSE_TICKS 15000
 
 namespace dosa {
 
@@ -58,9 +64,10 @@ namespace dosa {
  *   1      uint8     Sensor cfg: SENSOR_MIN_PIXELS_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_SINGLE_DELTA_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_TOTAL_DELTA_THRESHOLD
- *   4      uint32    Door cfg: Open-ticks
+ *   2      uint16    Door cfg: Door open distance (mm)
  *   4      uint32    Door cfg: Open-wait time (ms)
  *   4      uint32    Door cfg: Cool-down time (ms)
+ *   4      uint32    Door cfg: Close ticks
  */
 class Settings : public Loggable
 {
@@ -125,9 +132,10 @@ class Settings : public Loggable
         read_var(&sensor_pixel_delta, 4);
         read_var(&sensor_total_delta, 4);
 
-        read_var(&door_open_ticks, 4);
+        read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
+        read_var(&door_close_ticks, 4);
 
         // Validate values
         bool valid = true;
@@ -165,11 +173,11 @@ class Settings : public Loggable
          *      4  Header
          *   4x 2  Variable size markers
          *      9  Sensor calibration
-         *     12  Door calibration
+         *     14  Door calibration
          * ---------------------------
-         *     33  Total
+         *     35  Total
          */
-        size_t size = 33 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 35 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -198,9 +206,10 @@ class Settings : public Loggable
         write_var(&sensor_pixel_delta, 4);
         write_var(&sensor_total_delta, 4);
 
-        write_var(&door_open_ticks, 4);
+        write_var(&door_open_distance, 2);
         write_var(&door_open_wait, 4);
         write_var(&door_cool_down, 4);
+        write_var(&door_close_ticks, 4);
 
         ram.write(0, payload, size);
         logln("Settings written to FRAM", dosa::LogLevel::INFO);
@@ -208,16 +217,23 @@ class Settings : public Loggable
 
     void setDefaults()
     {
+        // Common
         pin = DOSA_SETTINGS_DEFAULT_PIN;
         device_name = "DOSA " + String(random(1000, 9999));
         wifi_ssid = "";
         wifi_password = "";
+
+        // IR grid specific
         sensor_min_pixels = SENSOR_MIN_PIXELS_THRESHOLD;
         sensor_pixel_delta = SENSOR_SINGLE_DELTA_THRESHOLD;
         sensor_total_delta = SENSOR_TOTAL_DELTA_THRESHOLD;
-        door_open_ticks = DOOR_OPEN_TICKS;
+
+        // Door winch specific
+        door_open_distance = DOOR_OPEN_DISTANCE;
         door_open_wait = DOOR_OPEN_WAIT_TIME;
         door_cool_down = DOOR_COOL_DOWN;
+        door_close_ticks = DOOR_CLOSE_TICKS;
+
         updateDeviceNameBytes();
     }
 
@@ -309,16 +325,6 @@ class Settings : public Loggable
         sensor_total_delta = sensorTotalDelta;
     }
 
-    [[nodiscard]] uint32_t getDoorOpenTicks() const
-    {
-        return door_open_ticks;
-    }
-
-    void setDoorOpenTicks(uint32_t doorOpenTicks)
-    {
-        door_open_ticks = doorOpenTicks;
-    }
-
     [[nodiscard]] uint32_t getDoorOpenWait() const
     {
         return door_open_wait;
@@ -337,6 +343,26 @@ class Settings : public Loggable
     void setDoorCoolDown(uint32_t doorCoolDown)
     {
         door_cool_down = doorCoolDown;
+    }
+
+    [[nodiscard]] uint16_t getDoorOpenDistance() const
+    {
+        return door_open_distance;
+    }
+
+    void setDoorOpenDistance(uint16_t doorOpenDistance)
+    {
+        door_open_distance = doorOpenDistance;
+    }
+
+    [[nodiscard]] uint32_t getDoorCloseTicks() const
+    {
+        return door_close_ticks;
+    }
+
+    void setDoorCloseTicks(uint32_t doorCloseTicks)
+    {
+        door_close_ticks = doorCloseTicks;
     }
 
     /**
@@ -358,9 +384,10 @@ class Settings : public Loggable
     uint8_t sensor_min_pixels = 0;
     float sensor_pixel_delta = 0;
     float sensor_total_delta = 0;
-    uint32_t door_open_ticks = 0;
+    uint16_t door_open_distance = 0;
     uint32_t door_open_wait = 0;
     uint32_t door_cool_down = 0;
+    uint32_t door_close_ticks = 0;
 
     /**
      * Rebuild the 20x char array for the device name.
