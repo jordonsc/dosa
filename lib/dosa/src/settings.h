@@ -143,6 +143,7 @@ class Settings : public Loggable
         read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
+        read_var(&door_close_ticks, 4);
 
         read_var(&sonar_trigger_threshold, 2);
 
@@ -183,10 +184,11 @@ class Settings : public Loggable
          *   4x 2  Variable size markers
          *      9  Sensor calibration
          *     14  Door calibration
+         *      2  Sonar calibration
          * ---------------------------
-         *     35  Total
+         *     37  Total
          */
-        size_t size = 35 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 37 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -222,8 +224,12 @@ class Settings : public Loggable
 
         write_var(&sonar_trigger_threshold, 2);
 
-        ram.write(0, payload, size);
-        logln("Settings written to FRAM", dosa::LogLevel::INFO);
+        if (size == (ptr - payload)) {
+            ram.write(0, payload, size);
+            logln("Settings written to FRAM", dosa::LogLevel::INFO);
+        } else {
+            logln("FRAM payload size mismatch", dosa::LogLevel::ERROR);
+        }
     }
 
     void setDefaults()

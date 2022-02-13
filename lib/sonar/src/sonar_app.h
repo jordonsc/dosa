@@ -15,6 +15,7 @@ class SonarApp final : public dosa::App
     void init() override
     {
         App::init();
+        logln("Trigger threshold: " + String(container.getSettings().getSonarTriggerThreshold())), LogLevel::DEBUG;
     }
 
     void loop() override

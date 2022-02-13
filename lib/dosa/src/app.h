@@ -677,6 +677,9 @@ class App
         memcpy(&total_delta, data + 5, 4);
 
         logln("SENSOR CALIBRATION");
+        logln(" > min pixels:  " + String(min_pixels));
+        logln(" > pixel delta: " + String(pixel_delta));
+        logln(" > total delta: " + String(total_delta));
 
         auto& settings = getContainer().getSettings();
         settings.setSensorMinPixels(min_pixels);
@@ -701,6 +704,10 @@ class App
         memcpy(&close_ticks, data + 10, 4);
 
         logln("DOOR CALIBRATION");
+        logln(" > open distance: " + String(open_distance));
+        logln(" > open-wait:     " + String(open_wait));
+        logln(" > cool-down:     " + String(cool_down));
+        logln(" > close ticks:   " + String(close_ticks));
 
         auto& settings = getContainer().getSettings();
         settings.setDoorOpenDistance(open_distance);
@@ -722,6 +729,7 @@ class App
         memcpy(&trigger_threshold, data, 2);
 
         logln("SONAR CALIBRATION");
+        logln(" > trigger threshold: " + String(trigger_threshold));
 
         auto& settings = getContainer().getSettings();
         settings.setSonarTriggerThreshold(trigger_threshold);
