@@ -31,6 +31,15 @@ arduino-cli --config-file "${cfg}" core install arduino:samd arduino:mbed_nano C
 # Install required libraries
 arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
 
+# Install Inkplate library from Github
+inkplate_dir=$(echo ~/Arduino/libraries/Inkplate)
+if [[ -d ${inkplate_dir} ]]; then
+  git -C "${inkplate_dir}" pull
+else
+  mkdir -p "${inkplate_dir}"
+  git clone https://github.com/e-radionicacom/Inkplate-Arduino-library.git "${inkplate_dir}"
+fi
+
 # For Python console tool
 pip3 install pySerial
 

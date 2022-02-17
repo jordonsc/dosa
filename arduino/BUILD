@@ -78,3 +78,11 @@ cc_library(
     includes = ["SparkFun_GridEYE_AMG88_Library/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "Inkplate",
+    srcs = glob(["Inkplate/src/**/*.cpp"]),
+    hdrs = glob(["Inkplate/src/**/*.h"]),
+    includes = ["Inkplate/src"],
+    visibility = ["//visibility:public"],
+)

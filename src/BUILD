@@ -52,5 +52,6 @@ cc_binary(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino",
+        "//arduino:Inkplate",
     ],
 )

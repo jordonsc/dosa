@@ -15,7 +15,7 @@ echo "Linking Arduino libraries to project.."
 
 # Remove old links to the local arduino directory (used by IDE)
 rm -f arduino/arduino arduino/SPI arduino/Wire arduino/ArduinoBLE arduino/WiFiNINA arduino/Adafruit_FRAM_SPI \
-      arduino/Adafruit_BusIO arduino/SparkFun_GridEYE_AMG88_Library
+      arduino/Adafruit_BusIO arduino/SparkFun_GridEYE_AMG88_Library arduino/Inkplate
 
 # Link core Arduino libs -
 ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores/arduino arduino/arduino
@@ -28,6 +28,7 @@ ln -s ~/Arduino/libraries/WiFiNINA arduino/WiFiNINA
 ln -s ~/Arduino/libraries/Adafruit_FRAM_SPI arduino/Adafruit_FRAM_SPI
 ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/Adafruit_BusIO
 ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/SparkFun_GridEYE_AMG88_Library
+ln -s ~/Arduino/libraries/Inkplate arduino/Inkplate
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
