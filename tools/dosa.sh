@@ -15,6 +15,9 @@ function getFqbn() {
   "sonar")
     echo "arduino:samd:nano_33_iot"
     ;;
+  "monitor")
+    echo "Croduino_Boards:Inkplate:Inkplate6"
+    ;;
   *) ;;
 
   esac
@@ -37,6 +40,7 @@ function syntax() {
   echo "  door           : Winch door driver"
   echo "  sensor         : Passive infrared motion sensor"
   echo "  sonar          : Sonar ranging trigger sensor"
+  echo "  monitor        : DOSA display monitor"
   echo
   echo "Connected boards & ports:"
   arduino-cli board list | awk '{ print "  " $0 }'

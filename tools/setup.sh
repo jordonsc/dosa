@@ -22,11 +22,14 @@ if [[ ! $(command -v "arduino-cli") ]]; then
 fi
 
 # Install boards to the CLI
+cfg=${app}/arduino-cli.yaml
+
 echo "Installing boards.."
-arduino-cli core install arduino:samd arduino:mbed_nano
+arduino-cli --config-file "${cfg}" core update-index
+arduino-cli --config-file "${cfg}" core install arduino:samd arduino:mbed_nano Croduino_Boards:Inkplate
 
 # Install required libraries
-arduino-cli lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
+arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
 
 # For Python console tool
 pip3 install pySerial

@@ -43,3 +43,14 @@ cc_binary(
         "//lib:sonar",
     ],
 )
+
+cc_binary(
+    name = "monitor",
+    srcs = glob(["monitor/monitor.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+    ],
+)
