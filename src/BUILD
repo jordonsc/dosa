@@ -47,11 +47,10 @@ cc_binary(
 cc_binary(
     name = "monitor",
     srcs = glob(["monitor/monitor.cc"]),
-    copts = COPTS,
+    copts = ["-std=c++11"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
-        "//arduino:Inkplate",
+        "//lib:monitor",
     ],
 )

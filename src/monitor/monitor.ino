@@ -5,17 +5,21 @@
  * Uses an Inkplate display to show the status of all DOSA devices.
  */
 
-#include <Inkplate.h>
-#include "monitor_app.h"
+#include <dosa_monitor.h>
 
-auto app = dosa::MonitorApp();
+dosa::InkAppBuilder<dosa::MonitorApp> builder;
 
 /**
  * Arduino setup
  */
 void setup()
 {
-    app.init();
+    auto& cfg = builder.getConfig();
+    cfg.app_name = "DOSA Monitor";
+    cfg.wifi_filename = dosa::config::wifi;
+    cfg.logo_filename = dosa::images::logo;
+
+    builder.getApp().init();
 }
 
 /**
@@ -23,5 +27,5 @@ void setup()
  */
 void loop()
 {
-    app.loop();
+    builder.getApp().loop();
 }

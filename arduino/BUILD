@@ -86,3 +86,11 @@ cc_library(
     includes = ["Inkplate/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "Cro_WiFi",
+    srcs = glob(["Cro_WiFi/src/**/*.cpp"]),
+    hdrs = glob(["Cro_WiFi/src/**/*.h"]),
+    includes = ["Cro_WiFi/src"],
+    visibility = ["//visibility:public"],
+)

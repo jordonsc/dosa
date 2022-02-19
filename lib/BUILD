@@ -82,3 +82,34 @@ cc_library(
         "//lib:dosa",
     ],
 )
+
+# Inkplate app
+cc_library(
+    name = "dosa_inkplate",
+    srcs = glob(["dosa_inkplate/src/**/*.cpp"]),
+    hdrs = glob(["dosa_inkplate/src/**/*.h"]),
+    copts = ["-std=c++11"],
+    includes = ["dosa_inkplate/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino",
+        "//arduino:Cro_WiFi",
+        "//arduino:Inkplate",
+        "//arduino:SPI",
+    ],
+)
+
+# monitor app
+cc_library(
+    name = "monitor",
+    srcs = glob(["monitor/src/**/*.cpp"]),
+    hdrs = glob(["monitor/src/**/*.h"]),
+    copts = ["-std=c++11"],
+    includes = ["monitor/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:dosa_inkplate",
+    ],
+)

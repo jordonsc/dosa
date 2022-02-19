@@ -1,12 +1,8 @@
 #pragma once
 
-namespace dosa {
+#include <dosa_inkplate.h>
 
-struct dimensions
-{
-    uint16_t width;
-    uint16_t height;
-};
+namespace dosa {
 
 /**
  * Path to config files on the SD card.
@@ -25,7 +21,6 @@ namespace images {
 dimensions const glyph_size = {128, 128};
 dimensions const logo_size = {200, 200};
 dimensions const panel_size = {580, 140};
-dimensions const device_size = {800, 600};
 
 char const* logo = "/images/logo_200.png";
 char const* sensor_active = "/images/sensor_active_128.png";
