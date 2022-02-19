@@ -5,8 +5,8 @@ namespace images {
 
 struct dimensions
 {
-    int width;
-    int height;
+    uint16_t width;
+    uint16_t height;
 };
 
 const dimensions logo = {200, 200};
