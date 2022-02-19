@@ -20,42 +20,55 @@ namespace dosa {
 class InkplateApp
 {
    public:
-    InkplateApp(InkplateConfig cfg, uint8_t display_mode) : config(std::move(cfg)), display(display_mode) {}
+    InkplateApp(InkplateConfig cfg, uint8_t display_mode) : config(std::move(cfg)), display_mode(display_mode) {}
 
    protected:
     InkplateConfig config;
-    Inkplate display;
+    uint8_t display_mode;
 
     uint32_t last_refresh = 0;   // timestamp to last full refresh
     uint16_t refresh_count = 0;  // counter of partial refreshes
+
+    Inkplate& getDisplay() const
+    {
+        static Inkplate ink = Inkplate(display_mode);
+        return ink;
+    }
+
+    WiFiUDP& getUdp() const
+    {
+        static WiFiUDP udp;
+        return udp;
+    }
 
     /**
      * Standard boot-up sequence.
      */
     virtual void init()
     {
-        display.begin();
-        display.clearDisplay();
+        getDisplay().begin();
+        getDisplay().clearDisplay();
 
-        display.setFont(&DejaVu_Sans_48);
+        getDisplay().setFont(&DejaVu_Sans_48);
         printCentre(config.app_name.c_str(), 360);
 
-        display.setFont(&DejaVu_Sans_24);
+        getDisplay().setFont(&DejaVu_Sans_24);
         loadingStatus("Initialising..", 0, false);
 
-        if (display.sdCardInit() == 0) {
+        if (getDisplay().sdCardInit() == 0) {
             loadingError("ERROR: SD card init failed!");
         }
 
-        if (!display.drawPngFromSd(config.logo_filename.c_str(), 300, 120, false, false)) {
+        if (!getDisplay().drawPngFromSd(config.logo_filename.c_str(), 300, 120, false, false)) {
             loadingError("ERROR: failed to load graphics");
         }
 
-        display.display();
+        getDisplay().display();
         last_refresh = millis();
 
         loadWifiConfig();
         connectWifi();
+        bindMulticast();
     }
 
     /**
@@ -71,11 +84,11 @@ class InkplateApp
     {
         if ((millis() - last_refresh > SCREEN_MIN_REFRESH_INT) &&
             ((refresh_count >= SCREEN_MAX_PARTIAL) || prefer_full)) {
-            display.display();
+            getDisplay().display();
             refresh_count = 0;
             last_refresh = millis();
         } else {
-            display.partialUpdate();
+            getDisplay().partialUpdate();
             ++refresh_count;
         }
     }
@@ -100,9 +113,9 @@ class InkplateApp
         int16_t x1, y1;
         uint16_t w, h;
 
-        display.getTextBounds(txt, 0, 0, &x1, &y1, &w, &h);
-        display.setCursor(x - (w / 2), y);
-        display.print(txt);
+        getDisplay().getTextBounds(txt, 0, 0, &x1, &y1, &w, &h);
+        getDisplay().setCursor(x - (w / 2), y);
+        getDisplay().print(txt);
     }
 
     /**
@@ -146,19 +159,15 @@ class InkplateApp
         config.wifi_pw.trim();
     }
 
+    void bindMulticast()
+    {
+        getUdp().beginMulticast(comms::mc_address, comms::mc_port);
+    }
+
     void connectWifi()
     {
         loadingStatus("Connecting to " + config.wifi_ap + "..");
         WiFi.begin(config.wifi_ap.c_str(), config.wifi_pw.c_str());
-
-        auto start = millis();
-        while (WiFi.status() != WL_CONNECTED) {
-            delay(100);
-            if (millis() - start > 3000) {
-                // After 3 seconds, start showing the ticker
-                break;
-            }
-        }
 
         // Visual connection ticker
         uint8_t wifi_pos = 0;
@@ -166,16 +175,16 @@ class InkplateApp
             switch (wifi_pos) {
                 default:
                 case 0:
-                    loadingStatus("Still connecting /", WIFI_TICKER_DELAY);
+                    loadingStatus("Connecting to " + config.wifi_ap + "...", WIFI_TICKER_DELAY);
                     break;
                 case 1:
-                    loadingStatus("Still connecting -", WIFI_TICKER_DELAY);
+                    loadingStatus("Connecting to " + config.wifi_ap + "....", WIFI_TICKER_DELAY);
                     break;
                 case 2:
-                    loadingStatus("Still connecting \\", WIFI_TICKER_DELAY);
+                    loadingStatus("Connecting to " + config.wifi_ap + ".....", WIFI_TICKER_DELAY);
                     break;
                 case 3:
-                    loadingStatus("Still connecting /", WIFI_TICKER_DELAY);
+                    loadingStatus("Connecting to " + config.wifi_ap + "..", WIFI_TICKER_DELAY);
                     break;
             }
 
@@ -192,12 +201,12 @@ class InkplateApp
      */
     void loadingStatus(char const* txt, uint16_t wait_time = 0, bool update = true)
     {
-        display.fillRect(0, 380, dosa::device_size.width, 60, WHITE);
+        getDisplay().fillRect(0, 380, dosa::device_size.width, 60, WHITE);
         printCentre(txt, 400);
 
         if (update) {
             // Don't use refreshDisplay() - don't want a full refresh just yet
-            display.partialUpdate();
+            getDisplay().partialUpdate();
         }
 
         if (wait_time > 0) {

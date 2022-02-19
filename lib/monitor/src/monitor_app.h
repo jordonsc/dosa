@@ -15,7 +15,7 @@ class MonitorApp : public InkplateApp
     {
         InkplateApp::init();
 
-        display.clearDisplay();
+        getDisplay().clearDisplay();
         printMain();
         fullRefreshWhenReady();
     }
@@ -25,7 +25,7 @@ class MonitorApp : public InkplateApp
         /**
          * Button 1: send trigger
          */
-        if (display.readTouchpad(PAD1)) {
+        if (getDisplay().readTouchpad(PAD1)) {
             device0_state = !device0_state;
             if (device0_state) {
                 printPanel(0, dosa::images::sensor_active, "Indoor Sensor", "MOTION DETECTED", true);
@@ -39,7 +39,7 @@ class MonitorApp : public InkplateApp
         /**
          * Button 2: refresh devices
          */
-        if (display.readTouchpad(PAD2)) {
+        if (getDisplay().readTouchpad(PAD2)) {
             device2_state = !device2_state;
             if (device2_state) {
                 printPanel(2, dosa::images::winch_active, "Roof Door", "OPEN", true);
@@ -52,7 +52,7 @@ class MonitorApp : public InkplateApp
         /**
          * Button 3: full-screen refresh
          */
-        if (display.readTouchpad(PAD3)) {
+        if (getDisplay().readTouchpad(PAD3)) {
             refreshDisplay(true);
         }
 
@@ -86,6 +86,7 @@ class MonitorApp : public InkplateApp
         auto bg = inv ? BLACK : WHITE;
         auto fg = inv ? WHITE : BLACK;
 
+        auto& display = getDisplay();
         display.fillRect(x, y, dosa::images::panel_size.width, dosa::images::panel_size.height, bg);
         display.drawRect(x, y, dosa::images::panel_size.width, dosa::images::panel_size.height, fg);
 
