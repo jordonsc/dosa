@@ -1,6 +1,7 @@
 #pragma once
 
 #include <messages.h>
+#include <ArduinoBLE.h>
 
 #include <utility>
 

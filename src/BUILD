@@ -12,8 +12,6 @@ cc_binary(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
-        "//arduino:ArduinoBLE",
         "//lib:door",
     ],
 )
@@ -25,8 +23,6 @@ cc_binary(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
-        "//arduino:ArduinoBLE",
         "//lib:sensor",
     ],
 )
@@ -38,8 +34,6 @@ cc_binary(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
-        "//arduino:ArduinoBLE",
         "//lib:sonar",
     ],
 )

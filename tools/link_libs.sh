@@ -15,23 +15,33 @@ echo
 # Link core libraries to the project folder -
 echo "Linking Arduino libraries to project.."
 
-# Remove old links to the local arduino directory (used by IDE)
+# Legacy
 rm -f arduino/arduino arduino/SPI arduino/Wire arduino/ArduinoBLE arduino/WiFiNINA arduino/Adafruit_FRAM_SPI \
   arduino/Adafruit_BusIO arduino/SparkFun_GridEYE_AMG88_Library arduino/Inkplate arduino/Cro_WiFi
 
+# Remove previous links to boards & libs
+rm -rf arduino/boards arduino/libraries
+
 # Link core Arduino libs -
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores/arduino arduino/arduino
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/SPI arduino/SPI
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/Wire arduino/Wire
-ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries/WiFi arduino/Cro_WiFi
+#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores/arduino arduino/arduino
+#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/SPI arduino/SPI
+#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/Wire arduino/Wire
+#ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries/WiFi arduino/Cro_WiFi
+
+# Link board cores & their libraries -
+mkdir -p arduino/libraries arduino/boards/samd arduino/boards/inkplate
+ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores arduino/boards/samd/cores
+ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries arduino/boards/samd/libraries
+ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/cores arduino/boards/inkplate/cores
+ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries arduino/boards/inkplate/libraries
 
 # Link custom Arduino libs -
-ln -s ~/Arduino/libraries/ArduinoBLE arduino/ArduinoBLE
-ln -s ~/Arduino/libraries/WiFiNINA arduino/WiFiNINA
-ln -s ~/Arduino/libraries/Adafruit_FRAM_SPI arduino/Adafruit_FRAM_SPI
-ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/Adafruit_BusIO
-ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/SparkFun_GridEYE_AMG88_Library
-ln -s ~/Arduino/libraries/Inkplate arduino/Inkplate
+ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/libraries/Adafruit_BusIO
+ln -s ~/Arduino/libraries/Adafruit_FRAM_SPI arduino/libraries/Adafruit_FRAM_SPI
+ln -s ~/Arduino/libraries/ArduinoBLE arduino/libraries/ArduinoBLE
+ln -s ~/Arduino/libraries/Inkplate arduino/libraries/Inkplate
+ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/SparkFun_GridEYE_AMG88_Library
+ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."

@@ -26,7 +26,8 @@ cfg=${app}/arduino-cli.yaml
 
 echo "Installing boards.."
 arduino-cli --config-file "${cfg}" core update-index
-arduino-cli --config-file "${cfg}" core install arduino:samd arduino:mbed_nano Croduino_Boards:Inkplate
+# NB: issue with Adafruit BusIO on arduino:samd@1.8.11 (as of 2022-02-20)
+arduino-cli --config-file "${cfg}" core install arduino:samd@1.8.11 arduino:mbed_nano Croduino_Boards:Inkplate
 
 # Install required libraries
 arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"

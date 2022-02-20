@@ -5,7 +5,7 @@ COPTS = [
 LINKOPTS = [
 ]
 
-# DOSA common library
+# DOSA samd-based apps
 cc_library(
     name = "dosa",
     srcs = glob(["dosa/src/**/*.cpp"]),
@@ -15,12 +15,28 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
+        "//arduino:Adafruit_BusIO",
         "//arduino:Adafruit_FRAM_SPI",
         "//arduino:ArduinoBLE",
         "//arduino:SparkFun_GridEYE",
         "//arduino:WiFiNINA",
-        "//arduino:Wire",
+        "//arduino:board_samd",
+        "//lib:messages",
+    ],
+)
+
+# DOSA Inkplate-based apps
+cc_library(
+    name = "dosa_inkplate",
+    srcs = glob(["dosa_inkplate/src/**/*.cpp"]),
+    hdrs = glob(["dosa_inkplate/src/**/*.h"]),
+    copts = ["-std=c++11"],
+    includes = ["dosa_inkplate/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino:Inkplate",
+        "//arduino:board_inkplate",
         "//lib:messages",
     ],
 )
@@ -48,7 +64,6 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
         "//lib:dosa",
     ],
 )
@@ -63,7 +78,6 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
         "//lib:dosa",
     ],
 )
@@ -78,25 +92,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino",
         "//lib:dosa",
-    ],
-)
-
-# Inkplate app
-cc_library(
-    name = "dosa_inkplate",
-    srcs = glob(["dosa_inkplate/src/**/*.cpp"]),
-    hdrs = glob(["dosa_inkplate/src/**/*.h"]),
-    copts = ["-std=c++11"],
-    includes = ["dosa_inkplate/src"],
-    linkopts = LINKOPTS,
-    visibility = ["//visibility:public"],
-    deps = [
-        "//arduino",
-        "//arduino:Cro_WiFi",
-        "//arduino:Inkplate",
-        "//arduino:SPI",
     ],
 )
 
