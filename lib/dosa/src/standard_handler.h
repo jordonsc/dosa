@@ -4,7 +4,8 @@
 
 #include "handler.h"
 
-namespace dosa::comms {
+namespace dosa {
+namespace comms {
 
 /**
  * Templated handler for common scenarios.
@@ -49,4 +50,5 @@ class StandardHandler : public dosa::comms::Handler
     void* ctx;
 };
 
-}  // namespace dosa::comms
+}  // namespace comms
+}  // namespace dosa

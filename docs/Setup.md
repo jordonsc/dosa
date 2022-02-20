@@ -68,7 +68,7 @@ If you're using an IDE that wants to be able to see the Arduino library headers,
     # This can only be linked after you've downloaded the libraries in the IDE
     ln -s ~/Arduino/libraries/ArduinoBLE arduino/ArduinoBLE
 
-> NB: Change paths if you have not installed BLE libraries under your local user.
+> NB: The `tools/link_libs.sh` script will symlink all required libraries.
 
 
 Getting Started

@@ -31,7 +31,11 @@ Will print the usage and list connected boards. There are two steps involved in 
 
 You must always first compile:
 
+    # Production build
     ./dosa compile door
+    
+    # Debug build - lowers the log-level and the application won't begin until a serial monitor is listening
+    ./dosa compile-debug door
 
 > NB: the "door" app is wifi-enabled and will require wifi credentials; see below.
 
@@ -40,20 +44,31 @@ specify the port (you can view ports with `arduino-cli board list`).
 
     ./dosa upload door /dev/ttyACM0
 
-You can do these both together with the `install` command:
+You can do these both together with the `install` or `debug` command:
 
+    # Compile and upload the `door` application
     ./dosa install door /dev/ttyACM0
+    
+    # Compile in debug mode, upload and start a monitor 
+    ./dosa debug door /dev/ttyACM0
 
-Wifi Enabled Apps
------------------
-To pass Wifi secrets to Wifi-enabled apps, you will need to export the SSID and password:
+Configuring Devices
+-------------------
+Arduino-board devices will bring Bluetooth online when they first run, or if they fail to connect to wifi. You should
+connect to the Bluetooth using a generic Bluetooth application (consider "Lightblue" for Android) and from there you
+can set Characteristic values to change settings.
 
-    export DOSA_NET_SSID="your SSID here"
-    (export DOSA_NET_PW="wifi password here"; ./dosa install someApp /dev/ttyACM0)
+Sensitive values are password protected, the default password is "dosa". Use a new-line as a delimeter between values.
 
-> Using a sub-shell will prevent exposing the password to your environment.
+See `lib/dosa/src/const.h` for a list of BLE characteristics.
 
-Wifi credentials are injected into the application base64 encoded. This is totally for security obfuscation purposes
-and totally nothing to do with being unable to get `-D` flags to work with quotes.
+### Set Device Pin
+Send `dosa\nnew password` to `d05a0010-e8f2-537e-4f6c-d104768a1100`
 
-> Burning wifi credentials is a short-term solution which will be replaced by an FRAM/BT solution.
+### Set Device Name
+Send `dosa\nnew device name` to `d05a0010-e8f2-537e-4f6c-d104768a1002`
+
+### Set Wifi Configuration
+Send `dosa\nAP NAME\nPASSWORD` to `d05a0010-e8f2-537e-4f6c-d104768a1101`
+
+> Once the wifi value has been updated, the device is disable Bluetooth and attempt to connect to the access point.

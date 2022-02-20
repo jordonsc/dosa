@@ -5,7 +5,8 @@
 #include "const.h"
 #include "sonar_container.h"
 
-namespace dosa::sonar {
+namespace dosa {
+namespace sonar {
 
 class SonarApp final : public dosa::App
 {
@@ -81,4 +82,5 @@ class SonarApp final : public dosa::App
     }
 };
 
-}  // namespace dosa::sonar
+}  // namespace sonar
+}  // namespace dosa

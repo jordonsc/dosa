@@ -1,12 +1,4 @@
-/**
- * DOSA common constants.
- */
-
 #pragma once
-
-// Quote hack for -D strings
-#define DOSA_QUOTE_Q(x) #x
-#define DOSA_QUOTE(x) DOSA_QUOTE_Q(x)
 
 /**
  * DOSA Application Version.
@@ -34,10 +26,23 @@
  */
 #define DOSA_COMMS_MAX_HANDLERS 10
 
+namespace dosa {
+
+/**
+ * Build an Arduino String object from a fixed-size byte array.
+ */
+[[nodiscard]] String stringFromBytes(void const* bytes, size_t length)
+{
+    char buffer[length + 1];
+    memcpy(buffer, bytes, length);
+    buffer[length] = 0;
+    return String(buffer);
+}
+
 /**
  * Bluetooth signatures.
  */
-namespace dosa::bt {
+namespace bt {
 
 // DOSA general service
 char const* svc_dosa = "d05a0010-e8f2-537e-4f6c-d104768a1000";
@@ -49,22 +54,12 @@ char const* char_device_name = "d05a0010-e8f2-537e-4f6c-d104768a1002";
 char const* char_set_pin = "d05a0010-e8f2-537e-4f6c-d104768a1100";
 char const* char_set_wifi = "d05a0010-e8f2-537e-4f6c-d104768a1101";
 
-}  // namespace dosa::bt
-
-namespace dosa {
-[[nodiscard]] String stringFromBytes(void const* bytes, size_t length)
-{
-    char buffer[length + 1];
-    memcpy(buffer, bytes, length);
-    buffer[length] = 0;
-    return String(buffer);
-}
-}  // namespace dosa
+}  // namespace bt
 
 /**
  * Comms addresses.
  */
-namespace dosa::comms {
+namespace comms {
 
 struct Node
 {
@@ -87,4 +82,5 @@ uint16_t const udpPort = 6902;
     return ipToString(node.ip) + ":" + String(node.port);
 }
 
-}  // namespace dosa::comms
+}  // namespace comms
+}  // namespace dosa

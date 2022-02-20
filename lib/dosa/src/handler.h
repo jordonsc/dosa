@@ -5,7 +5,8 @@
 
 #include "const.h"
 
-namespace dosa::comms {
+namespace dosa {
+namespace comms {
 
 class Handler
 {
@@ -23,4 +24,5 @@ class Handler
     virtual void handlePacket(char const* packet, uint32_t size, Node const&) = 0;
 };
 
-}  // namespace dosa::comms
+}  // namespace comms
+}  // namespace dosa
