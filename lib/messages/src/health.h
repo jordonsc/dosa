@@ -2,7 +2,8 @@
 
 #include "const.h"
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 enum class DeviceType : uint8_t
 {
@@ -30,4 +31,5 @@ enum class DeviceState : uint8_t
     CRITICAL = 12,
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

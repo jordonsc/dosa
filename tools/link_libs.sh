@@ -20,20 +20,16 @@ rm -f arduino/arduino arduino/SPI arduino/Wire arduino/ArduinoBLE arduino/WiFiNI
   arduino/Adafruit_BusIO arduino/SparkFun_GridEYE_AMG88_Library arduino/Inkplate arduino/Cro_WiFi
 
 # Remove previous links to boards & libs
-rm -rf arduino/boards arduino/libraries
+rm -rf arduino/boards arduino/variants arduino/libraries
 
-# Link core Arduino libs -
-#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores/arduino arduino/arduino
-#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/SPI arduino/SPI
-#ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries/Wire arduino/Wire
-#ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries/WiFi arduino/Cro_WiFi
-
-# Link board cores & their libraries -
-mkdir -p arduino/libraries arduino/boards/samd arduino/boards/inkplate
+# Link board cores, their libraries & appropriate variants -
+mkdir -p arduino/libraries arduino/boards/samd arduino/boards/inkplate arduino/variants
 ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores arduino/boards/samd/cores
 ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries arduino/boards/samd/libraries
+ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/variants/nano_33_iot arduino/variants/nano_33_iot
 ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/cores arduino/boards/inkplate/cores
 ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries arduino/boards/inkplate/libraries
+ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/variants/Inkplate arduino/variants/inkplate
 
 # Link custom Arduino libs -
 ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/libraries/Adafruit_BusIO
@@ -49,13 +45,14 @@ echo "Linking project libraries to Arduino.."
 # Prepare Arduino library directory -
 mkdir -p ~/Arduino/libraries
 rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/messages ~/Arduino/libraries/door ~/Arduino/libraries/sensor \
-  ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor
+  ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor ~/Arduino/libraries/comms
 
 # (Re)link libs -
 ln -s ${app}/../lib/dosa ~/Arduino/libraries/dosa
+ln -s ${app}/../lib/dosa_inkplate ~/Arduino/libraries/dosa_inkplate
+ln -s ${app}/../lib/comms ~/Arduino/libraries/comms
 ln -s ${app}/../lib/messages ~/Arduino/libraries/messages
 ln -s ${app}/../lib/door ~/Arduino/libraries/door
 ln -s ${app}/../lib/sensor ~/Arduino/libraries/sensor
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/sonar
-ln -s ${app}/../lib/dosa_inkplate ~/Arduino/libraries/dosa_inkplate
 ln -s ${app}/../lib/monitor ~/Arduino/libraries/monitor

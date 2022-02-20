@@ -1,14 +1,12 @@
 #pragma once
 
 #include <Arduino.h>
+#include <comms.h>
 
 namespace dosa {
 
-class InkplateConfig
+struct InkplateConfig
 {
-   public:
-    InkplateConfig() = default;
-
     /**
      * Application name.
      *
@@ -28,8 +26,15 @@ class InkplateConfig
      */
     String wifi_filename;
 
+    /**
+     * Path to the 128x128 error icon.
+     */
+    String error_filename;
+
     String wifi_ap;
     String wifi_pw;
+    bool wait_for_serial = false;
+    LogLevel log_level = LogLevel::INFO;
 };
 
 }  // namespace dosa

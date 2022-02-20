@@ -1,10 +1,10 @@
 /**
  * Serial communications (USB).
  */
-
 #pragma once
 
 #include <Arduino.h>
+#include <pins_arduino.h>
 
 namespace dosa {
 

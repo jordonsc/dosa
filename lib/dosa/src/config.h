@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ArduinoBLE.h>
+#include <comms.h>
 #include <messages.h>
 
 #include "serial.h"

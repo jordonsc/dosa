@@ -5,7 +5,7 @@ cc_library(
         "boards/samd/**/*.cpp",
         "boards/samd/**/*.c",
     ]),
-    hdrs = glob(["boards/samd/*/*.h"]),
+    hdrs = glob(["boards/samd/**/*.h"]),
     includes = [
         "boards/samd/cores/arduino",
     ] + glob(
@@ -29,6 +29,27 @@ cc_library(
         exclude_directories = 0,
     ),
     visibility = ["//visibility:public"],
+)
+
+# Variants
+cc_library(
+    name = "variant_nano_33_iot",
+    srcs = glob(["variants/nano_33_iot/*.cpp"]),
+    hdrs = glob(["variants/nano_33_iot/*.h"]),
+    includes = ["variants/nano_33_iot"],
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
+)
+
+cc_library(
+    name = "variant_inkplate",
+    srcs = glob(["variants/inkplate/*.cpp"]),
+    hdrs = glob(["variants/inkplate/*.h"]),
+    includes = ["variants/inkplate"],
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
 )
 
 # Libraries

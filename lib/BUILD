@@ -21,7 +21,8 @@ cc_library(
         "//arduino:SparkFun_GridEYE",
         "//arduino:WiFiNINA",
         "//arduino:board_samd",
-        "//lib:messages",
+        "//arduino:variant_nano_33_iot",
+        "//lib:comms",
     ],
 )
 
@@ -30,13 +31,34 @@ cc_library(
     name = "dosa_inkplate",
     srcs = glob(["dosa_inkplate/src/**/*.cpp"]),
     hdrs = glob(["dosa_inkplate/src/**/*.h"]),
-    copts = ["-std=c++11"],
+    copts = COPTS,
     includes = ["dosa_inkplate/src"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
         "//arduino:Inkplate",
         "//arduino:board_inkplate",
+        "//arduino:variant_inkplate",
+        "//lib:comms",
+    ],
+)
+
+# DOSA communications
+cc_library(
+    name = "comms",
+    srcs = glob(["comms/src/**/*.cpp"]),
+    hdrs = glob(["comms/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["comms/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # The board-specific dependencies are all a (potential) lie, and is just so your IDE can make sense of what is
+        # happening
+        "//arduino:WiFiNINA",
+        "//arduino:board_samd",
+        "//arduino:variant_nano_33_iot",
+        # Requirements below are all genuine
         "//lib:messages",
     ],
 )
@@ -96,12 +118,12 @@ cc_library(
     ],
 )
 
-# monitor app
+# Display monitor
 cc_library(
     name = "monitor",
     srcs = glob(["monitor/src/**/*.cpp"]),
     hdrs = glob(["monitor/src/**/*.h"]),
-    copts = ["-std=c++11"],
+    copts = COPTS,
     includes = ["monitor/src"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],

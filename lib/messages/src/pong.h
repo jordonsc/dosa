@@ -7,7 +7,8 @@
 
 #define DOSA_COMMS_PONG_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 2
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 class Pong : public Payload
 {
@@ -57,4 +58,5 @@ class Pong : public Payload
     DeviceState device_health;
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

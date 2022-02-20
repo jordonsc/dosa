@@ -5,7 +5,8 @@
 #include "const.h"
 #include "payload.h"
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 /**
  * Some messages just need a command code, without any additional information. These can use a single class.
@@ -71,4 +72,5 @@ class GenericMessage final : public Payload
     VariablePayload payload;
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

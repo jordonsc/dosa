@@ -1,12 +1,11 @@
 #pragma once
 
+#include <dosa_comms.h>
+
 #include "bt.h"
-#include "comms.h"
 #include "fram.h"
 #include "lights.h"
-#include "serial.h"
 #include "settings.h"
-#include "wifi.h"
 
 namespace dosa {
 

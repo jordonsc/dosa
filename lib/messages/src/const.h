@@ -21,8 +21,10 @@ typedef __uint64_t uint64_t;
 #define DOSA_COMMS_MSG_TRIGGER "trg"  // sensor/switch has been tripped
 #define DOSA_COMMS_MSG_CONFIG "cfg"  // update device configuration
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 // These packet constants are used in place of an exception, when Payload construction fails
 static char const* bad_cmd_code = "NUL";
 static char const* bad_dev_name = "BAD_PACKET__________";
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

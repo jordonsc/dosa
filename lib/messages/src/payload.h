@@ -11,7 +11,8 @@
 #define DOSA_COMMS_PAYLOAD_BASE_SIZE 27
 #define DOSA_COMMS_MAX_PAYLOAD_SIZE 10240  // 10kib
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 /**
  * Contains a payload of variable size.
@@ -212,4 +213,5 @@ class Payload
     }
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

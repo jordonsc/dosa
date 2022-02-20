@@ -1,5 +1,6 @@
 #pragma once
 
+#include <comms.h>
 #include <dosa_inkplate.h>
 
 #include "const.h"
@@ -9,7 +10,7 @@ namespace dosa {
 class MonitorApp : public InkplateApp
 {
    public:
-    explicit MonitorApp(InkplateConfig cfg) : InkplateApp(std::move(cfg), INKPLATE_1BIT) {}
+    explicit MonitorApp(InkplateConfig const& cfg) : InkplateApp(cfg, INKPLATE_1BIT, &serial) {}
 
     void init() override
     {
@@ -60,6 +61,8 @@ class MonitorApp : public InkplateApp
     }
 
    private:
+    SerialComms serial;
+
     // for testing -
     bool device0_state = false;
     bool device2_state = false;

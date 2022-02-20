@@ -1,12 +1,10 @@
 #pragma once
 
 #include <messages.h>
-#include <wifi.h>
-
-#include <utility>
 
 #include "const.h"
 #include "standard_handler.h"
+#include "wifi.h"
 
 namespace dosa {
 
@@ -201,7 +199,12 @@ class Comms : public Loggable
             return false;
         }
 
+#ifdef ARDUINO_ARCH_SAMD
         udp.write(payload.getPayload(), payload.getPayloadSize());
+#endif
+#ifdef ARDUINO_ESP32_DEV
+        udp.write((uint8_t const*)(payload.getPayload()), payload.getPayloadSize());
+#endif
 
         if (udp.endPacket() != 1) {
             logln("ERROR: UDP end failed", dosa::LogLevel::ERROR);

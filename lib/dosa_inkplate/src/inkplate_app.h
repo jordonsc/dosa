@@ -2,9 +2,7 @@
 
 #include <Inkplate.h>
 #include <SdFat.h>
-#include <WiFi.h>
-
-#include <utility>
+#include <comms.h>
 
 #include "config.h"
 #include "const.h"
@@ -13,18 +11,25 @@
 
 #define SCREEN_MIN_REFRESH_INT 5000  // Don't do a full-screen refresh faster than this interval
 #define SCREEN_MAX_PARTIAL 5         // Number of partial refreshes before forcing a full refresh
-#define WIFI_TICKER_DELAY 1000       // Frame-rate for wifi visual indicator
 
 namespace dosa {
 
-class InkplateApp
+class InkplateApp : public Loggable
 {
    public:
-    InkplateApp(InkplateConfig cfg, uint8_t display_mode) : config(std::move(cfg)), display_mode(display_mode) {}
+    InkplateApp(InkplateConfig const& cfg, uint8_t display_mode, SerialComms* serial_comms)
+        : Loggable(serial_comms),
+          config(cfg),
+          display_mode(display_mode),
+          wifi(serial),
+          comms(wifi, serial)
+    {}
 
    protected:
     InkplateConfig config;
     uint8_t display_mode;
+    Wifi wifi;
+    Comms comms;
 
     uint32_t last_refresh = 0;   // timestamp to last full refresh
     uint16_t refresh_count = 0;  // counter of partial refreshes
@@ -35,17 +40,24 @@ class InkplateApp
         return ink;
     }
 
-    WiFiUDP& getUdp() const
-    {
-        static WiFiUDP udp;
-        return udp;
-    }
-
     /**
      * Standard boot-up sequence.
      */
     virtual void init()
     {
+        // Serial
+        serial->setLogLevel(config.log_level);
+        if (config.wait_for_serial) {
+            serial->wait();
+        }
+
+        logln("-- " + config.app_name + " --");
+#ifdef DOSA_DEBUG
+        logln("// Debug Mode //");
+#endif
+        logln("Begin init..");
+
+        logln("Init display..");
         getDisplay().begin();
         getDisplay().clearDisplay();
 
@@ -55,6 +67,7 @@ class InkplateApp
         getDisplay().setFont(&DejaVu_Sans_24);
         loadingStatus("Initialising..", 0, false);
 
+        logln("Init SD card..");
         if (getDisplay().sdCardInit() == 0) {
             loadingError("ERROR: SD card init failed!");
         }
@@ -69,6 +82,9 @@ class InkplateApp
         loadWifiConfig();
         connectWifi();
         bindMulticast();
+
+        //auto& udp = wifi.getUdp();
+
     }
 
     /**
@@ -132,6 +148,7 @@ class InkplateApp
      */
     void loadWifiConfig()
     {
+        logln("Loading wifi config from " + config.wifi_filename);
         FatFile wifi_file;
         if (!wifi_file.open(config.wifi_filename.c_str(), O_RDONLY)) {
             loadingError("ERROR: failed to open wifi.txt");
@@ -159,41 +176,19 @@ class InkplateApp
         config.wifi_pw.trim();
     }
 
-    void bindMulticast()
-    {
-        getUdp().beginMulticast(comms::mc_address, comms::mc_port);
-    }
+    void bindMulticast() {}
 
     void connectWifi()
     {
+        logln("Connecting to wifi '" + config.wifi_ap + "'..");
         loadingStatus("Connecting to " + config.wifi_ap + "..");
-        WiFi.begin(config.wifi_ap.c_str(), config.wifi_pw.c_str());
-
-        // Visual connection ticker
-        uint8_t wifi_pos = 0;
-        while (WiFi.status() != WL_CONNECTED) {
-            switch (wifi_pos) {
-                default:
-                case 0:
-                    loadingStatus("Connecting to " + config.wifi_ap + "...", WIFI_TICKER_DELAY);
-                    break;
-                case 1:
-                    loadingStatus("Connecting to " + config.wifi_ap + "....", WIFI_TICKER_DELAY);
-                    break;
-                case 2:
-                    loadingStatus("Connecting to " + config.wifi_ap + ".....", WIFI_TICKER_DELAY);
-                    break;
-                case 3:
-                    loadingStatus("Connecting to " + config.wifi_ap + "..", WIFI_TICKER_DELAY);
-                    break;
-            }
-
-            if (wifi_pos++ > 3) {
-                wifi_pos = 0;
-            }
+        wifi.reset();
+        wifi.setHostname("monitor.dosa");
+        if (wifi.connect(config.wifi_ap.c_str(), config.wifi_pw.c_str())) {
+            loadingStatus("Connected");
+        } else {
+            loadingError("Wifi connection failed.");
         }
-
-        loadingStatus("Connected");
     }
 
     /**
@@ -224,7 +219,14 @@ class InkplateApp
      */
     [[noreturn]] void loadingError(char const* error)
     {
-        loadingStatus(error, 0, true);
+        logln("Load error: " + String(error));
+
+        getDisplay().clearDisplay();
+        getDisplay().drawPngFromSd(config.error_filename.c_str(), 335, 235, false, false);
+        getDisplay().setFont(&DejaVu_Sans_24);
+        printCentre(error, 380);
+        getDisplay().display();
+
         while (true) {
         }
     }

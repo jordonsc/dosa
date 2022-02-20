@@ -7,7 +7,8 @@
 
 #define DOSA_COMMS_TRIGGER_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 65
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 enum class TriggerDevice : uint8_t
 {
@@ -37,7 +38,7 @@ class Trigger : public Payload
     {
         if (size != DOSA_COMMS_TRIGGER_SIZE) {
             // cannot log or throw an exception, so create a null Trigger packet
-            return Trigger(TriggerDevice::NONE, nullptr, bad_dev_name);
+            return {TriggerDevice::NONE, nullptr, bad_dev_name};
         }
 
         TriggerDevice d;
@@ -85,4 +86,5 @@ class Trigger : public Payload
     char payload[DOSA_COMMS_TRIGGER_SIZE] = {0};
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

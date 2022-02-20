@@ -8,7 +8,8 @@
 #define DOSA_COMMS_ACK_SIZE DOSA_COMMS_PAYLOAD_BASE_SIZE + 2
 #define DOSA_COMMS_ACK_MSG_CODE "ack"
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 class Ack : public Payload
 {
@@ -81,4 +82,5 @@ class Ack : public Payload
     uint16_t ack_msg_id;
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa

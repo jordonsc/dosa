@@ -6,7 +6,8 @@
 #include "const.h"
 #include "payload.h"
 
-namespace dosa::messages {
+namespace dosa {
+namespace messages {
 
 class Configuration : public Payload
 {
@@ -125,4 +126,5 @@ class Configuration : public Payload
     VariablePayload payload;
 };
 
-}  // namespace dosa::messages
+}  // namespace messages
+}  // namespace dosa
