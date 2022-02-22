@@ -13,3 +13,8 @@
  * Percentage of previous distance that's considered a trigger.
  */
 #define DOSA_SONAR_TRIGGER_THRESHOLD 0.8
+
+/**
+ * Number of times we report an increased distance before actually increasing the calibration.
+ */
+#define DOSA_SONAR_CALIBRATION_THRESHOLD 3

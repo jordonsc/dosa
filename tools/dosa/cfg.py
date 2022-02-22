@@ -219,8 +219,11 @@ class Config:
                     msg.addr)
                 self.devices.append(d)
 
-                print("[" + str(self.device_count + 1) + "]: " + msg.device_name + " (" + msg.addr[0] + ") // " +
-                      dosa.device.device_type_str(d.device_type) + "::" + dosa.device.device_status_str(d.device_state))
+                print("[" + str(self.device_count + 1) + "]: " +
+                      msg.device_name.ljust(22) +
+                      msg.addr[0].ljust(18) +
+                      dosa.device.device_type_str(d.device_type).upper().ljust(20) +
+                      dosa.device.device_status_str(d.device_state))
 
                 self.device_count += 1
 

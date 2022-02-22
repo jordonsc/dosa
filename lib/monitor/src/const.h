@@ -20,7 +20,7 @@ namespace images {
 
 dimensions const glyph_size = {128, 128};
 dimensions const logo_size = {200, 200};
-dimensions const panel_size = {580, 140};
+dimensions const panel_size = {780, 140};
 
 char const* logo = "/images/logo_200.png";
 char const* sensor_active = "/images/sensor_active_128.png";

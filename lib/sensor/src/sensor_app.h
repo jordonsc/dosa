@@ -5,7 +5,8 @@
 #include "const.h"
 #include "sensor_container.h"
 
-namespace dosa::sensor {
+namespace dosa {
+namespace sensor {
 
 class SensorApp final : public dosa::App
 {
@@ -82,7 +83,7 @@ class SensorApp final : public dosa::App
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
-            dispatchMessage(messages::Trigger(messages::TriggerDevice::IR_GRID, map, getDeviceNameBytes()), true);
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR, map, getDeviceNameBytes()), true);
             return true;
         }
     }
@@ -93,4 +94,5 @@ class SensorApp final : public dosa::App
     }
 };
 
-}  // namespace dosa::sensor
+}  // namespace sensor
+}  // namespace dosa

@@ -12,12 +12,10 @@ namespace messages {
 
 enum class TriggerDevice : uint8_t
 {
-    NONE = 0,  // for error conditions
-    BUTTON = 1,
-    SCRIPT = 2,
-    PIR = 10,
-    IR_GRID = 11,
-    SONAR = 12,
+    UNKNOWN = 0,        // for error conditions
+    BUTTON = 1,      // physical button
+    AUTOMATION = 2,  // script or automation framework
+    SENSOR = 3,      // sensor trip
 };
 
 class Trigger : public Payload
@@ -38,7 +36,7 @@ class Trigger : public Payload
     {
         if (size != DOSA_COMMS_TRIGGER_SIZE) {
             // cannot log or throw an exception, so create a null Trigger packet
-            return {TriggerDevice::NONE, nullptr, bad_dev_name};
+            return {TriggerDevice::UNKNOWN, nullptr, bad_dev_name};
         }
 
         TriggerDevice d;

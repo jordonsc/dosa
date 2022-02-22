@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ArduinoBLE.h>
-#include <dosa_comms.h>
-#include <messages.h>
+#include <dosa_common.h>
 
 #include <utility>
 

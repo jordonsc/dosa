@@ -25,10 +25,21 @@ namespace comms {
 
 struct Node
 {
-    Node(IPAddress ip, uint16_t port) : ip(std::move(ip)), port(port) {}
+    // NB: cannot use std::move, no r-value constructor on IPAddress
+    Node(IPAddress const& ip, uint16_t port) : ip(ip), port(port) {}
 
     IPAddress ip;
     uint16_t port;
+
+    bool operator==(Node const& n) const
+    {
+        return ip == n.ip && port == n.port;
+    }
+
+    bool operator!=(Node const& n) const
+    {
+        return !operator==(n);
+    }
 };
 
 Node const multicastAddr(IPAddress(239, 1, 1, 69), 6901);

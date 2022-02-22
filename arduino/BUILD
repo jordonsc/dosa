@@ -105,3 +105,11 @@ cc_library(
     includes = ["libraries/WiFiNINA/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "Vector",
+    srcs = glob(["libraries/Vector/src/**/*.cpp"]),
+    hdrs = glob(["libraries/Vector/src/**/*.h"]),
+    includes = ["libraries/Vector/src"],
+    visibility = ["//visibility:public"],
+)

@@ -1,16 +1,22 @@
 def device_type_str(x):
-    if x == 0:
-        return "UNSPECIFIED"
+    if x == 1:
+        return "Monitor"
     elif x == 10:
-        return "MOTION SENSOR"
+        return "PIR Sensor"
     elif x == 11:
-        return "TRIP SENSOR"
+        return "Sonar Sensor"
+    elif x == 12:
+        return "Active IR Sensor"
+    elif x == 13:
+        return "Optical Sensor"
+    elif x == 30:
+        return "Button"
     elif x == 50:
-        return "SWITCH"
+        return "Switch"
     elif x == 51:
-        return "MOTORISED WINCH"
+        return "Motorised Winch"
     else:
-        return "UNKNOWN DEVICE"
+        return "Unknown Device"
 
 
 def device_status_str(x):

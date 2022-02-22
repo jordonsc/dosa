@@ -1,27 +1,11 @@
 #pragma once
 
 /**
- * DOSA Application Version.
- */
-#define DOSA_VERSION 22
-
-/**
  * Pin used for CS on FRAM.
  */
 #define FRAM_CS_PIN 10
 
 namespace dosa {
-
-/**
- * Build an Arduino String object from a fixed-size byte array.
- */
-[[nodiscard]] String stringFromBytes(void const* bytes, size_t length)
-{
-    char buffer[length + 1];
-    memcpy(buffer, bytes, length);
-    buffer[length] = 0;
-    return String(buffer);
-}
 
 /**
  * Bluetooth signatures.

@@ -38,6 +38,7 @@ ln -s ~/Arduino/libraries/ArduinoBLE arduino/libraries/ArduinoBLE
 ln -s ~/Arduino/libraries/Inkplate arduino/libraries/Inkplate
 ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/SparkFun_GridEYE_AMG88_Library
 ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
+ln -s ~/Arduino/libraries/Vector/ arduino/libraries/Vector
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
@@ -45,9 +46,11 @@ echo "Linking project libraries to Arduino.."
 # Prepare Arduino library directory -
 mkdir -p ~/Arduino/libraries
 rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/messages ~/Arduino/libraries/door ~/Arduino/libraries/sensor \
-  ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor ~/Arduino/libraries/comms
+  ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor ~/Arduino/libraries/comms \
+  ~/Arduino/libraries/common
 
 # (Re)link libs -
+ln -s ${app}/../lib/common ~/Arduino/libraries/common
 ln -s ${app}/../lib/dosa ~/Arduino/libraries/dosa
 ln -s ${app}/../lib/dosa_inkplate ~/Arduino/libraries/dosa_inkplate
 ln -s ${app}/../lib/comms ~/Arduino/libraries/comms

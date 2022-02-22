@@ -2,7 +2,10 @@
 
 #include <Inkplate.h>
 #include <SdFat.h>
-#include <comms.h>
+#include <dosa_common.h>
+#include <dosa_comms.h>
+
+#include <utility>
 
 #include "config.h"
 #include "const.h"
@@ -14,22 +17,20 @@
 
 namespace dosa {
 
-class InkplateApp : public Loggable
+class InkplateApp : public virtual Loggable, public NamedApplication, public WifiApplication
 {
    public:
-    InkplateApp(InkplateConfig const& cfg, uint8_t display_mode, SerialComms* serial_comms)
+    InkplateApp(InkplateConfig cfg, uint8_t display_mode, SerialComms* serial_comms)
         : Loggable(serial_comms),
-          config(cfg),
-          display_mode(display_mode),
-          wifi(serial),
-          comms(wifi, serial)
+          NamedApplication("Monitor"),
+          WifiApplication(serial_comms),
+          config(std::move(cfg)),
+          display_mode(display_mode)
     {}
 
    protected:
     InkplateConfig config;
     uint8_t display_mode;
-    Wifi wifi;
-    Comms comms;
 
     uint32_t last_refresh = 0;   // timestamp to last full refresh
     uint16_t refresh_count = 0;  // counter of partial refreshes
@@ -48,6 +49,7 @@ class InkplateApp : public Loggable
         // Serial
         serial->setLogLevel(config.log_level);
         if (config.wait_for_serial) {
+            // FIXME: this doesn't work on the Inkplate :(
             serial->wait();
         }
 
@@ -55,36 +57,30 @@ class InkplateApp : public Loggable
 #ifdef DOSA_DEBUG
         logln("// Debug Mode //");
 #endif
-        logln("Begin init..");
-
         logln("Init display..");
         getDisplay().begin();
-        getDisplay().clearDisplay();
-
-        getDisplay().setFont(&DejaVu_Sans_48);
-        printCentre(config.app_name.c_str(), 360);
-
-        getDisplay().setFont(&DejaVu_Sans_24);
-        loadingStatus("Initialising..", 0, false);
 
         logln("Init SD card..");
         if (getDisplay().sdCardInit() == 0) {
             loadingError("ERROR: SD card init failed!");
         }
 
-        if (!getDisplay().drawPngFromSd(config.logo_filename.c_str(), 300, 120, false, false)) {
-            loadingError("ERROR: failed to load graphics");
+        // We're now ready to paint the splash screen
+        printSplash();
+
+        // Wifi initialisation
+        loadWifiConfig();
+
+        while (!connectWifi()) {
+            // Keep retrying after 30 seconds
+            delay(30000);
+            printSplash();
         }
 
-        getDisplay().display();
-        last_refresh = millis();
-
-        loadWifiConfig();
-        connectWifi();
+        // Bind the DOSA UDP multicast group once connected
         bindMulticast();
 
-        //auto& udp = wifi.getUdp();
-
+        logln("Init complete.");
     }
 
     /**
@@ -142,7 +138,55 @@ class InkplateApp : public Loggable
         printCentre(txt, dosa::device_size.width / 2, y);
     }
 
+    /**
+     * Right aligned print.
+     */
+    void printRight(char const* txt, uint16_t x, uint16_t y)
+    {
+        int16_t x1, y1;
+        uint16_t w, h;
+
+        getDisplay().getTextBounds(txt, 0, 0, &x1, &y1, &w, &h);
+        getDisplay().setCursor(x - w, y);
+        getDisplay().print(txt);
+    }
+
+    /**
+     * Dispatch a generic message on the UDP multicast address.
+     */
+    void dispatchGenericMessage(char const* cmd_code)
+    {
+        comms.dispatch(comms::multicastAddr, messages::GenericMessage(cmd_code, getDeviceNameBytes()), false);
+    }
+
+    /**
+     * Dispatch a specific message on the UDP multicast address.
+     */
+    void dispatchMessage(messages::Payload const& payload, bool wait_for_ack = false)
+    {
+        comms.dispatch(comms::multicastAddr, payload, wait_for_ack);
+    }
+
    private:
+    /**
+     * Startup splash screen
+     */
+    void printSplash(bool full_refresh = true)
+    {
+        getDisplay().clearDisplay();
+
+        getDisplay().setFont(&DejaVu_Sans_48);
+        printCentre(config.app_name.c_str(), 360);
+
+        if (!getDisplay().drawPngFromSd(config.logo_filename.c_str(), 300, 120, false, false)) {
+            loadingError("ERROR: failed to load graphics");
+        }
+
+        if (full_refresh) {
+            fullRefreshWhenReady();
+        }
+    }
+
     /**
      * Loads the wifi AP & password from the text file specified in the config::wifi_filename value.
      */
@@ -176,9 +220,7 @@ class InkplateApp : public Loggable
         config.wifi_pw.trim();
     }
 
-    void bindMulticast() {}
-
-    void connectWifi()
+    bool connectWifi()
     {
         logln("Connecting to wifi '" + config.wifi_ap + "'..");
         loadingStatus("Connecting to " + config.wifi_ap + "..");
@@ -186,8 +228,10 @@ class InkplateApp : public Loggable
         wifi.setHostname("monitor.dosa");
         if (wifi.connect(config.wifi_ap.c_str(), config.wifi_pw.c_str())) {
             loadingStatus("Connected");
+            return true;
         } else {
-            loadingError("Wifi connection failed.");
+            loadingError("Wifi connection failed.", false);
+            return false;
         }
     }
 
@@ -197,6 +241,7 @@ class InkplateApp : public Loggable
     void loadingStatus(char const* txt, uint16_t wait_time = 0, bool update = true)
     {
         getDisplay().fillRect(0, 380, dosa::device_size.width, 60, WHITE);
+        getDisplay().setFont(&DejaVu_Sans_24);
         printCentre(txt, 400);
 
         if (update) {
@@ -217,7 +262,7 @@ class InkplateApp : public Loggable
     /**
      * Display an error message an indefinitely hold.
      */
-    [[noreturn]] void loadingError(char const* error)
+    void loadingError(char const* error, bool no_return = true)
     {
         logln("Load error: " + String(error));
 
@@ -227,7 +272,7 @@ class InkplateApp : public Loggable
         printCentre(error, 380);
         getDisplay().display();
 
-        while (true) {
+        while (no_return) {
         }
     }
 };

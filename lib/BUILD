@@ -5,6 +5,20 @@ COPTS = [
 LINKOPTS = [
 ]
 
+# Generic interfaces
+cc_library(
+    name = "common",
+    srcs = glob(["common/src/**/*.cpp"]),
+    hdrs = glob(["common/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["common/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:comms",
+    ],
+)
+
 # DOSA samd-based apps
 cc_library(
     name = "dosa",
@@ -22,7 +36,7 @@ cc_library(
         "//arduino:WiFiNINA",
         "//arduino:board_samd",
         "//arduino:variant_nano_33_iot",
-        "//lib:comms",
+        "//lib:common",
     ],
 )
 
@@ -39,7 +53,7 @@ cc_library(
         "//arduino:Inkplate",
         "//arduino:board_inkplate",
         "//arduino:variant_inkplate",
-        "//lib:comms",
+        "//lib:common",
     ],
 )
 
@@ -128,6 +142,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
+        "//arduino:Vector",
         "//lib:dosa_inkplate",
     ],
 )

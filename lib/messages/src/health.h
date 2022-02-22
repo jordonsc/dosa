@@ -7,28 +7,41 @@ namespace messages {
 
 enum class DeviceType : uint8_t
 {
-    UNSPECIFIED = 0,  // for error conditions only
-    MONITOR = 1,      // monitoring device
-    UTILITY = 2,      // utility application (such as config script)
+    UNSPECIFIED = 0,  //
+    MONITOR = 1,      // Monitoring device
+    UTILITY = 2,      // Utility application (such as config script)
 
-    // Trigger devices
-    SENSOR_MOTION = 10,
-    SENSOR_SONAR = 11,
-    BUTTON = 12,
+    // Photonic sensors
+    SENSOR_PIR = 10,        // Passive infrared (incl. IR grid)
+    SENSOR_ACTIVE_IR = 11,  // Active infrared
+    SENSOR_OPTICAL = 12,    // Optical camera
+
+    // Sonic sensors
+    SENSOR_SONAR = 20,  // Ultrasonic
+
+    // Hydration sensors
+    // Reserved: 30-39
+
+    // Tactile sensors
+    BUTTON = 40,  // Physical button
 
     // Action devices
-    SWITCH = 50,
-    MOTOR_WINCH = 51,
+    SWITCH = 110,       // Toggles power state
+    MOTOR_WINCH = 112,  // Motorised winch
+    LIGHT = 113,        // Light controller
 };
 
 enum class DeviceState : uint8_t
 {
-    OK = 0,
-    WORKING = 1,
+    OK = 0,       // Device is online, but not doing anything
+    WORKING = 1,  // Device is online and actively performing a primary function
 
-    MINOR_FAULT = 10,
-    MAJOR_FAULT = 11,
-    CRITICAL = 12,
+    MINOR_FAULT = 10,  // A minor issue has been detected
+    MAJOR_FAULT = 11,  // A serious issue has been detected; primary function impaired
+    CRITICAL = 12,     // Device can no longer perform its primary function
+
+    // Device itself should not declare its own state with below codes
+    NOT_RESPONDING = 20,  // Device not responding to pings or commands
 };
 
 }  // namespace messages

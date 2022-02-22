@@ -18,7 +18,7 @@ void setup()
     cfg.app_name = "DOSA Motion Sensor";
     cfg.short_name = "DOSA-M";
     cfg.bluetooth_appearance = 0x0541;
-    cfg.device_type = dosa::messages::DeviceType::SENSOR_MOTION;
+    cfg.device_type = dosa::messages::DeviceType::SENSOR_PIR;
 
     builder.getApp().init();
 }

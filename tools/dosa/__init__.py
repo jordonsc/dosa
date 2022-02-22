@@ -38,7 +38,7 @@ class Message:
         self.msg_id = struct.unpack("<H", packet[0:2])[0]
         self.msg_code = packet[2:5]
         self.payload_size = struct.unpack("<H", packet[5:7])[0]
-        self.device_name = packet[7:25].decode("utf-8")
+        self.device_name = packet[7:25].decode("utf-8").rstrip('\x00')
 
     def msg_id_bytes(self):
         return self.payload[0:2]

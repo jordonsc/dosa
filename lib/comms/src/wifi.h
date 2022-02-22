@@ -15,7 +15,7 @@
 #include "const.h"
 #include "loggable.h"
 
-#define DOSA_WIFI_CONNECT_TIMEOUT 15000
+#define DOSA_WIFI_CONNECT_TIMEOUT 30000
 
 namespace dosa {
 
@@ -56,7 +56,7 @@ class Wifi : public Loggable
 
     [[nodiscard]] int getStatus()
     {
-        return wifi_online ? ctrl.status() : WL_DISCONNECTED;
+        return wifi_online ? WiFiClass::status() : WL_DISCONNECTED;
     }
 
     /**
@@ -64,7 +64,7 @@ class Wifi : public Loggable
      *
      * This only applies to NINA chips.
      */
-    static void reset()
+    void reset()
     {
 #ifdef ARDUINO_ARCH_SAMD
         WiFiDrv::wifiDriverDeinit();
@@ -155,7 +155,7 @@ class Wifi : public Loggable
 
         ctrl.disconnect();
     }
-#endif
+#else
 #ifdef ARDUINO_ESP32_DEV
     bool connectSequence(String const& ssid, String const& password, uint8_t attempts)
     {
@@ -176,6 +176,9 @@ class Wifi : public Loggable
         logln("Wifi connected");
         return true;
     }
+#else
+    bool connectSequence(String const& ssid, String const& password, uint8_t attempts) {}
+#endif
 #endif
 };
 

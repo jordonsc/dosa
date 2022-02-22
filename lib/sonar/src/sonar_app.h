@@ -29,24 +29,33 @@ class SonarApp final : public dosa::App
     SonarContainer container;
     uint16_t last_distance = 1;
     unsigned long last_fired = 0;
-    uint16_t trigger_count = 0;  // number of trigger
 
     void checkSonar()
     {
+        static uint16_t trigger_count = 0;      // number of triggers (distance < last_distance)
+        static uint16_t calibration_count = 0;  // number of calibrations (distance > last_distance)
+
         if (!container.getSonar().process()) {
             return;
         }
 
+        // Zero distance implies the sensor didn't receive a bounce-back (beyond range)
         auto distance = container.getSonar().getDistance();
 
-        // Zero distance implies the sensor didn't receive a bounce-back (beyond range)
         if ((millis() - last_fired > REFIRE_DELAY) && (distance > 0) &&
             (distance < last_distance * DOSA_SONAR_TRIGGER_THRESHOLD || last_distance == 0)) {
-            // Sensor is reading a trigger, consider if we should de-noise or fire -
+            /**
+             * Trigger mode.
+             *
+             * Sensor is reading a trigger state (distance < calibrated threshold), consider if we should wait for more
+             * positives or actually fire.
+             */
             ++trigger_count;
+            calibration_count = 0;
 
             if (trigger_count >= container.getSettings().getSonarTriggerThreshold()) {
                 // Trigger-warn state surpassed, fire trigger message
+                setDeviceState(messages::DeviceState::WORKING);
                 sendTrigger(last_distance, distance);
                 last_fired = millis();
                 last_distance = distance;
@@ -59,9 +68,43 @@ class SonarApp final : public dosa::App
                     LogLevel::DEBUG);
             }
         } else {
-            // Not in a warn/firing mode
-            last_distance = distance;
+            /**
+             * Calibration mode.
+             *
+             * To ensure an errant longer-distance isn't recorded, we'll also apply a threshold before increasing the
+             * current distance.
+             */
             trigger_count = 0;
+
+            if (last_distance == distance) {
+                // Measurement is bang on, do nothing
+                calibration_count = 0;
+                return;
+            } else if (last_distance == 0 && distance > 0) {
+                // But we'll skip the threshold if we're setting a distance from an unknown/infinite value
+                calibration_count = 0;
+                last_distance = distance;
+                return;
+            } else if (distance == 0 && last_distance > 0) {
+                // Suggesting an new distance of infinite
+                ++calibration_count;
+            } else if (distance > last_distance) {
+                // Distance has increased from last marker
+                ++calibration_count;
+            }
+
+            if (calibration_count >= DOSA_SONAR_CALIBRATION_THRESHOLD) {
+                // OK, really looks like the distance has increased, accept the new distance as our calibrated marker
+                last_distance = distance;
+                calibration_count = 0;
+
+                if (last_distance == 0) {
+                    // We'll consider an infinite distance to be a 'minor issue'
+                    setDeviceState(messages::DeviceState::MINOR_FAULT);
+                } else {
+                    setDeviceState(messages::DeviceState::OK);
+                }
+            }
         }
     }
 
@@ -73,7 +116,7 @@ class SonarApp final : public dosa::App
         memcpy(map + 2, &current, 2);
 
         logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
-        dispatchMessage(messages::Trigger(messages::TriggerDevice::SONAR, map, getDeviceNameBytes()), true);
+        dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR, map, getDeviceNameBytes()), true);
     }
 
     Container& getContainer() override

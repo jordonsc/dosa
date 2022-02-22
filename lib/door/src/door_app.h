@@ -11,7 +11,8 @@
 #define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
 #define DOSA_DOOR_ERR_JAM "Door JAMMED"
 
-namespace dosa::door {
+namespace dosa {
+namespace door {
 
 class DoorApp final : public dosa::App
 {
@@ -210,4 +211,5 @@ class DoorApp final : public dosa::App
     }
 };
 
-}  // namespace dosa::door
+}  // namespace door
+}  // namespace dosa
