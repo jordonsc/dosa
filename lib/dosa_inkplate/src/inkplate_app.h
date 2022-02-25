@@ -17,13 +17,13 @@
 
 namespace dosa {
 
-class InkplateApp : public virtual Loggable, public NamedApplication, public WifiApplication
+class InkplateApp : public Loggable, public WifiApplication, public NamedApplication
 {
    public:
     InkplateApp(InkplateConfig cfg, uint8_t display_mode, SerialComms* serial_comms)
         : Loggable(serial_comms),
-          NamedApplication("Monitor"),
           WifiApplication(serial_comms),
+          NamedApplication("Monitor"),
           config(std::move(cfg)),
           display_mode(display_mode)
     {}
@@ -49,8 +49,9 @@ class InkplateApp : public virtual Loggable, public NamedApplication, public Wif
         // Serial
         serial->setLogLevel(config.log_level);
         if (config.wait_for_serial) {
-            // FIXME: this doesn't work on the Inkplate :(
-            serial->wait();
+            // FIXME: serial->wait() doesn't work on the Inkplate - using a 3-second delay instead
+            // serial->wait();
+            delay(3000);
         }
 
         logln("-- " + config.app_name + " --");
@@ -78,6 +79,7 @@ class InkplateApp : public virtual Loggable, public NamedApplication, public Wif
         }
 
         // Bind the DOSA UDP multicast group once connected
+        logln("Bind multicast..");
         bindMulticast();
 
         logln("Init complete.");
@@ -167,7 +169,6 @@ class InkplateApp : public virtual Loggable, public NamedApplication, public Wif
         comms.dispatch(comms::multicastAddr, payload, wait_for_ack);
     }
 
-   private:
     /**
      * Startup splash screen
      */

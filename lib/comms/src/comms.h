@@ -188,6 +188,7 @@ class Comms : public Loggable
         size_t retries = 0)
     {
         if (!wifi.isConnected()) {
+            logln("Cannot dispatch packet when wifi is down", dosa::LogLevel::ERROR);
             return false;
         }
 
@@ -213,7 +214,7 @@ class Comms : public Loggable
 
         logln(
             "SEND: " + getCommandCode(payload) + " to " + comms::ipToString(ip) + ":" + String(port),
-            LogLevel::TRACE);
+            LogLevel::DEBUG);
 
         // (semi) block until we receive an ack (non-ack inbound messages will interrupt)
         if (wait_for_ack) {

@@ -15,7 +15,7 @@
 #include "const.h"
 #include "loggable.h"
 
-#define DOSA_WIFI_CONNECT_TIMEOUT 30000
+#define DOSA_WIFI_CONNECT_TIMEOUT 10000
 
 namespace dosa {
 
@@ -124,21 +124,36 @@ class Wifi : public Loggable
         logln("Local IP: " + comms::ipToString(ctrl.localIP()) + " netmask " + comms::ipToString(ctrl.subnetMask()));
     }
 
-#ifdef ARDUINO_ARCH_SAMD
     bool connectSequence(String const& ssid, String const& password, uint8_t attempts)
     {
-        logln("WiFi NINA connection sequence", LogLevel::DEBUG);
+        logln("WiFi NINA connection sequence", LogLevel::TRACE);
+#ifdef ARDUINO_ARCH_SAMD
         ctrl.setTimeout(DOSA_WIFI_CONNECT_TIMEOUT);
+#endif
         uint8_t attempt = 0;
 
         do {
             if (attempt > 0) {
+#ifdef ARDUINO_ARCH_SAMD
                 ctrl.end();
+#else
+                ctrl.disconnect(true, true);
+#endif
                 log("Retry " + String(attempt + 1) + "/" + String(attempts) + ".. ");
             }
 
             // Connect to WPA/WPA2 network:
+            auto start_time = millis();
             int status = ctrl.begin(ssid.c_str(), password.c_str());
+
+            while (status != WL_CONNECTED) {
+                if (millis() - start_time > DOSA_WIFI_CONNECT_TIMEOUT) {
+                    break;
+                } else {
+                    delay(100);
+                    status = WiFiClass::status();
+                }
+            }
 
             if (status != WL_CONNECTED) {
                 wifi_online = false;
@@ -154,32 +169,8 @@ class Wifi : public Loggable
         } while (attempt < attempts);
 
         ctrl.disconnect();
+        return false;
     }
-#else
-#ifdef ARDUINO_ESP32_DEV
-    bool connectSequence(String const& ssid, String const& password, uint8_t attempts)
-    {
-        logln("ESP32 connection sequence", LogLevel::DEBUG);
-        ctrl.setAutoReconnect(true);
-        ctrl.begin(ssid.c_str(), password.c_str());
-
-        auto start_time = millis();
-        while (ctrl.status() != WL_CONNECTED) {
-            if (millis() - start_time > DOSA_WIFI_CONNECT_TIMEOUT) {
-                logStatusCode(ctrl.status());
-                return false;
-            }
-
-            delay(100);
-        }
-
-        logln("Wifi connected");
-        return true;
-    }
-#else
-    bool connectSequence(String const& ssid, String const& password, uint8_t attempts) {}
-#endif
-#endif
 };
 
 }  // namespace dosa

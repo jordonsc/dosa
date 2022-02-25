@@ -4,17 +4,16 @@
 
 namespace dosa {
 
-class WifiApplication : public virtual Loggable
+class WifiApplication
 {
    protected:
-    explicit WifiApplication(SerialComms* serial) : Loggable(serial), wifi(serial), comms(wifi, serial) {}
+    explicit WifiApplication(SerialComms* serial) : wifi(serial), comms(wifi, serial) {}
 
     Wifi wifi;
     Comms comms;
 
     void bindMulticast()
     {
-        logln("Binding multicast group..");
         comms.bindMulticast(dosa::comms::multicastAddr);
     }
 

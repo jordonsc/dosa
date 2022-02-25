@@ -29,11 +29,13 @@ class MonitorApp : public InkplateApp
 
         // This will be >= 5 seconds from the splash screen first appearing
         fullRefreshWhenReady();
+        logln("Monitor online");
     }
 
     void loop() override
     {
-        if (millis() - last_ping < DOSA_PING_INTERVAL) {
+        if (millis() - last_ping > DOSA_PING_INTERVAL) {
+            checkWifi();
             sendPing();
         }
 
@@ -69,6 +71,32 @@ class MonitorApp : public InkplateApp
     uint32_t last_ping = 0;
 
     /**
+     * Checks and reconnects the wifi if it disconnected.
+     *
+     * May never return if wifi is unavailable. Returns true if this function needed to reconnect.
+     * @return
+     */
+    bool checkWifi()
+    {
+        if (!wifi.isConnected()) {
+            do {
+                printSplash();
+                loadingStatus("Reconnecting wifi..");
+                if (!connectWifi()) {
+                    loadingError("Failed to connect to wifi", false);
+                    delay(15000);
+                }
+            } while (!wifi.isConnected());
+
+            printMain();
+            fullRefreshWhenReady();
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
      * Dispatch a trigger message, signed a as user button press.
      */
     void sendTrigger()
@@ -83,6 +111,7 @@ class MonitorApp : public InkplateApp
      */
     void sendPing()
     {
+        logln("Ping");
         dispatchGenericMessage(DOSA_COMMS_MSG_PING);
         last_ping = millis();
     }
@@ -178,6 +207,8 @@ class MonitorApp : public InkplateApp
     void onPong(dosa::messages::Pong const& pong, comms::Node const& sender)
     {
         auto device = DosaDevice::fromPong(pong, sender);
+        logln("Pong: " + device.getDeviceName() + " @ " + comms::ipToString(device.getAddress().ip));
+
         bool matched = false;
         bool changed = false;
 
