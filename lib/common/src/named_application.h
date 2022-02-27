@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include <utility>
+
 namespace dosa {
 
 class NamedApplication

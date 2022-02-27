@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Vector.h>
+#include <Array.h>
 #include <comms.h>
 #include <dosa_inkplate.h>
 
@@ -8,8 +8,11 @@
 #include "dosa_device.h"
 
 #define DOSA_PING_INTERVAL 10000
+#define DOSA_BUTTON_DELAY 3000  // time required before repeating a button press
 
 namespace dosa {
+
+int const MAX_DEVICES = 10;
 
 class MonitorApp : public InkplateApp
 {
@@ -39,18 +42,23 @@ class MonitorApp : public InkplateApp
             sendPing();
         }
 
+        InkplateApp::loop();
+
         /**
          * Button 1: send trigger
          */
-        if (getDisplay().readTouchpad(PAD1)) {
+        if (getDisplay().readTouchpad(PAD1) && (millis() - button_last_press[0] > DOSA_BUTTON_DELAY)) {
+            button_last_press[0] = millis();
             sendTrigger();
         }
 
         /**
          * Button 2: clear device list and refresh
          */
-        if (getDisplay().readTouchpad(PAD2)) {
+        if (getDisplay().readTouchpad(PAD2) && (millis() - button_last_press[1] > DOSA_BUTTON_DELAY)) {
+            button_last_press[1] = millis();
             devices.clear();
+            setDeviceState(messages::DeviceState::OK);
             refreshDisplay(true);
             sendPing();
         }
@@ -58,7 +66,8 @@ class MonitorApp : public InkplateApp
         /**
          * Button 3: full-screen refresh
          */
-        if (getDisplay().readTouchpad(PAD3)) {
+        if (getDisplay().readTouchpad(PAD3) && (millis() - button_last_press[2] > DOSA_BUTTON_DELAY)) {
+            button_last_press[2] = millis();
             refreshDisplay(true);
         }
 
@@ -67,8 +76,9 @@ class MonitorApp : public InkplateApp
 
    private:
     SerialComms serial;
-    Vector<DosaDevice> devices;
+    Array<DosaDevice, MAX_DEVICES> devices;
     uint32_t last_ping = 0;
+    uint32_t button_last_press[3] = {0};
 
     /**
      * Checks and reconnects the wifi if it disconnected.
@@ -111,7 +121,7 @@ class MonitorApp : public InkplateApp
      */
     void sendPing()
     {
-        logln("Ping");
+        logln("Broadcasting ping..", LogLevel::DEBUG);
         dispatchGenericMessage(DOSA_COMMS_MSG_PING);
         last_ping = millis();
     }
@@ -218,6 +228,7 @@ class MonitorApp : public InkplateApp
                 matched = true;
                 if (d != device) {
                     // Device information has changed (name, health, etc)
+                    logln("Updating device information for " + comms::ipToString(d.getAddress().ip));
                     d = device;
                     changed = true;
                 }
@@ -226,11 +237,18 @@ class MonitorApp : public InkplateApp
         }
 
         if (!matched) {
-            devices.push_back(device);
-            changed = true;
+            if (devices.size() == devices.max_size()) {
+                logln("Hit maximum device limit", LogLevel::ERROR);
+                setDeviceState(messages::DeviceState::MINOR_FAULT);
+            } else {
+                logln("Adding device " + device.getDeviceName());
+                devices.push_back(device);
+                changed = true;
+            }
         }
 
         if (changed) {
+            logln("Device pool size: " + String(devices.size()));
             printMain();
             refreshDisplay();
         }

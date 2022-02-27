@@ -142,7 +142,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//arduino:Vector",
+        "//arduino:Array",
         "//lib:dosa_inkplate",
     ],
 )

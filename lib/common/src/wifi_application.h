@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <dosa_comms.h>
 
 namespace dosa {
 
@@ -12,9 +13,9 @@ class WifiApplication
     Wifi wifi;
     Comms comms;
 
-    void bindMulticast()
+    bool bindMulticast()
     {
-        comms.bindMulticast(dosa::comms::multicastAddr);
+        return comms.bindMulticast(dosa::comms::multicastAddr);
     }
 
     Wifi& getWifi()

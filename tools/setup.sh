@@ -30,7 +30,7 @@ arduino-cli --config-file "${cfg}" core update-index
 arduino-cli --config-file "${cfg}" core install arduino:samd@1.8.11 arduino:mbed_nano Croduino_Boards:Inkplate
 
 # Install required libraries
-arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA Vector "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
+arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA Array "Adafruit FRAM SPI" "SparkFun GridEYE AMG88 Library"
 
 # Install Inkplate library from Github
 inkplate_dir=$(echo ~/Arduino/libraries/Inkplate)

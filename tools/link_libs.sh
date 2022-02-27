@@ -38,7 +38,7 @@ ln -s ~/Arduino/libraries/ArduinoBLE arduino/libraries/ArduinoBLE
 ln -s ~/Arduino/libraries/Inkplate arduino/libraries/Inkplate
 ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/SparkFun_GridEYE_AMG88_Library
 ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
-ln -s ~/Arduino/libraries/Vector/ arduino/libraries/Vector
+ln -s ~/Arduino/libraries/Array arduino/libraries/Array
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."

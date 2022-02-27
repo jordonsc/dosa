@@ -12,7 +12,7 @@ namespace messages {
 
 enum class TriggerDevice : uint8_t
 {
-    UNKNOWN = 0,        // for error conditions
+    UNKNOWN = 0,     // for error conditions
     BUTTON = 1,      // physical button
     AUTOMATION = 2,  // script or automation framework
     SENSOR = 3,      // sensor trip

@@ -33,7 +33,7 @@ namespace dosa {
  * If a user connects via BT, we will NOT attempt to reconnect wifi until they disconnect.
  */
 #define WIFI_CON_CHECK 500  // Time between checking health of wifi connection (ms)
-#define WIFI_RECONNECT_WAIT 60000  // Time before reattempting to connect wifi (ms)
+#define WIFI_RECONNECT_WAIT 15000  // Time before reattempting to connect wifi (ms)
 #define WIFI_INITIAL_ATTEMPTS 5  // Default number of attempts to connect wifi (first-run uses default)
 #define WIFI_RETRY_ATTEMPTS 5  // Number of attempts to connect wifi after init
 
@@ -42,7 +42,7 @@ namespace dosa {
  *
  * Contains support for FRAM, Bluetooth and Wifi - all bundled in this class. (Consider breaking it out?)
  */
-class App
+class App : public StatefulApplication
 {
    public:
     explicit App(Config config)
@@ -413,21 +413,6 @@ class App
         return central_connected;
     }
 
-    [[nodiscard]] messages::DeviceState getDeviceState() const
-    {
-        return device_state;
-    }
-
-    [[nodiscard]] bool isErrorState() const
-    {
-        return device_state >= messages::DeviceState::MINOR_FAULT;
-    }
-
-    void setDeviceState(messages::DeviceState ds)
-    {
-        device_state = ds;
-    }
-
    private:
     bool central_connected = false;
     bool wifi_connected = false;
@@ -435,7 +420,6 @@ class App
     unsigned long wifi_last_checked = 0;
     unsigned long wifi_last_reconnected = 0;
     messages::DeviceType device_type = messages::DeviceType::UNSPECIFIED;
-    messages::DeviceState device_state = messages::DeviceState::OK;
 
     bool authCheck(String const& v)
     {
@@ -597,7 +581,7 @@ class App
         // Send reply pong
         getContainer().getComms().dispatch(
             sender,
-            messages::Pong(device_type, device_state, getContainer().getSettings().getDeviceNameBytes()));
+            messages::Pong(device_type, getDeviceState(), getContainer().getSettings().getDeviceNameBytes()));
     }
 
     void settingPassword(String const& value)

@@ -17,7 +17,7 @@
 
 namespace dosa {
 
-class InkplateApp : public Loggable, public WifiApplication, public NamedApplication
+class InkplateApp : public Loggable, public WifiApplication, public NamedApplication, public StatefulApplication
 {
    public:
     InkplateApp(InkplateConfig cfg, uint8_t display_mode, SerialComms* serial_comms)
@@ -80,7 +80,15 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
 
         // Bind the DOSA UDP multicast group once connected
         logln("Bind multicast..");
-        bindMulticast();
+        if (!bindMulticast()) {
+            logln("Multicast bind failed!", LogLevel::ERROR);
+        }
+
+        // Ping-Pong auto-responder
+        comms.newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_PING,
+            &pingMessageForwarder,
+            this);
 
         logln("Init complete.");
     }
@@ -88,7 +96,13 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
     /**
      * Main device loop.
      */
-    virtual void loop() = 0;
+    virtual void loop()
+    {
+        // Check for inbound UDP messages
+        if (wifi.isConnected()) {
+            comms.processInbound();
+        }
+    }
 
     /**
      * Performs a partial refresh on the display, unless enough time and iterations have passed in which it will do
@@ -275,6 +289,32 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
 
         while (no_return) {
         }
+    }
+
+   private:
+    /**
+     * Ping message received, automatically send a pong.
+     */
+    void onPing(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        static uint16_t last_ping = 0;
+
+        if (msg.getMessageId() != last_ping) {
+            // Reply to retries, but don't log them
+            last_ping = msg.getMessageId();
+            logln("Ping from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+        }
+
+        // Send reply pong
+        comms.dispatch(sender, messages::Pong(config.device_type, getDeviceState(), getDeviceNameBytes()));
+    }
+
+    /**
+     * Context forwarder for ping request messages.
+     */
+    static void pingMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<InkplateApp*>(context)->onPing(msg, sender);
     }
 };
 

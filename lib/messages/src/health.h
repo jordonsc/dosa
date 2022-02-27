@@ -42,6 +42,7 @@ enum class DeviceState : uint8_t
 
     // Device itself should not declare its own state with below codes
     NOT_RESPONDING = 20,  // Device not responding to pings or commands
+    UNKNOWN = 255,
 };
 
 }  // namespace messages

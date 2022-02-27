@@ -21,6 +21,7 @@ void setup()
     cfg.error_filename = dosa::images::error_inactive;
     cfg.log_level = dosa::LogLevel::DEBUG;
     cfg.wait_for_serial = true;
+    cfg.device_type = dosa::messages::DeviceType::MONITOR;
 
     builder.getApp().init();
 }

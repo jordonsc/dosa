@@ -10,6 +10,13 @@ namespace dosa {
 class DosaDevice
 {
    public:
+    DosaDevice()
+        : device_name(String()),
+          device_type(messages::DeviceType::UNSPECIFIED),
+          device_state(messages::DeviceState::UNKNOWN),
+          address({{0, 0, 0, 0}, 0})
+    {}
+
     DosaDevice(
         String deviceName,
         messages::DeviceType deviceType,

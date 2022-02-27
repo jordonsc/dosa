@@ -214,7 +214,7 @@ class Comms : public Loggable
 
         logln(
             "SEND: " + getCommandCode(payload) + " to " + comms::ipToString(ip) + ":" + String(port),
-            LogLevel::DEBUG);
+            LogLevel::TRACE);
 
         // (semi) block until we receive an ack (non-ack inbound messages will interrupt)
         if (wait_for_ack) {

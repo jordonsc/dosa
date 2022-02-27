@@ -83,6 +83,14 @@ cc_library(
 )
 
 cc_library(
+    name = "Array",
+    srcs = glob(["libraries/Array/src/**/*.cpp"]),
+    hdrs = glob(["libraries/Array/src/**/*.h"]),
+    includes = ["libraries/Array/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "Inkplate",
     srcs = glob(["libraries/Inkplate/src/**/*.cpp"]),
     hdrs = glob(["libraries/Inkplate/src/**/*.h"]),
@@ -103,13 +111,5 @@ cc_library(
     srcs = glob(["libraries/WiFiNINA/src/**/*.cpp"]),
     hdrs = glob(["libraries/WiFiNINA/src/**/*.h"]),
     includes = ["libraries/WiFiNINA/src"],
-    visibility = ["//visibility:public"],
-)
-
-cc_library(
-    name = "Vector",
-    srcs = glob(["libraries/Vector/src/**/*.cpp"]),
-    hdrs = glob(["libraries/Vector/src/**/*.h"]),
-    includes = ["libraries/Vector/src"],
     visibility = ["//visibility:public"],
 )

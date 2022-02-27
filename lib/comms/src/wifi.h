@@ -56,7 +56,16 @@ class Wifi : public Loggable
 
     [[nodiscard]] int getStatus()
     {
-        return wifi_online ? WiFiClass::status() : WL_DISCONNECTED;
+        return wifi_online ? getControllerStatus() : WL_DISCONNECTED;
+    }
+
+    [[nodiscard]] int getControllerStatus()
+    {
+#ifdef ARDUINO_ARCH_SAMD
+        return ctrl.status();
+#else
+        return WiFiClass::status();
+#endif
     }
 
     /**
@@ -151,7 +160,7 @@ class Wifi : public Loggable
                     break;
                 } else {
                     delay(100);
-                    status = WiFiClass::status();
+                    status = getControllerStatus();
                 }
             }
 

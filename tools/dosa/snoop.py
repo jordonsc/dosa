@@ -28,7 +28,9 @@ class Snoop:
                 if self.auto_ack:
                     self.comms.send_ack(msg.msg_id_bytes(), msg.addr)
                     aux += " (replied)"
-                if self.print_map:
+                #if self.print_map:
+                if False:
+                    # FIXME: This no longer works as the device type isn't passed in the trigger
                     trigger_type = struct.unpack("<B", msg.payload[27:28])[0]
                     if trigger_type == 11:
                         # IR grid, display map
@@ -41,7 +43,7 @@ class Snoop:
                                 index += 1
                             aux += "|\n"
                         aux += "+--------+"
-                    elif trigger_type == 12:
+                    elif trigger_type == 20:
                         # Sonar sensor, show distances
                         dist_prev = struct.unpack("<H", msg.payload[28:30])[0]
                         dist_new = struct.unpack("<H", msg.payload[30:32])[0]

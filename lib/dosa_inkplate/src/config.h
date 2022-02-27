@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <comms.h>
+#include <messages.h>
 
 namespace dosa {
 
@@ -30,6 +31,11 @@ struct InkplateConfig
      * Path to the 128x128 error icon.
      */
     String error_filename;
+
+    /**
+     * Device type.
+     */
+    messages::DeviceType device_type;
 
     String wifi_ap;
     String wifi_pw;
