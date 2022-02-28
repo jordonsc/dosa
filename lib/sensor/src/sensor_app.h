@@ -83,7 +83,7 @@ class SensorApp final : public dosa::App
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
-            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR, map, getDeviceNameBytes()), true);
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
             return true;
         }
     }

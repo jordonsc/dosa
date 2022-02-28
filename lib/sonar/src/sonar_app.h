@@ -136,7 +136,7 @@ class SonarApp final : public dosa::App
         memcpy(map + 2, &current, 2);
 
         logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
-        dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR, map, getDeviceNameBytes()), true);
+        dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
     }
 
     Container& getContainer() override

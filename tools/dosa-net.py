@@ -29,6 +29,8 @@ parser.add_argument('-i', '--ignore', dest='ignore', action='store_const', const
                     help='ignore retry messages')
 parser.add_argument('-a', '--ack', dest='ack', action='store_const', const=True, default=False,
                     help='send a return ack for triggers')
+parser.add_argument('-x', '--noping', dest='noping', action='store_const', const=True, default=False,
+                    help='ignore ping messages')
 
 args = parser.parse_args()
 
@@ -55,7 +57,7 @@ try:
             trigger.fire()
 
     else:
-        snoop = dosa.Snoop(comms=comms, map=args.map, ignore=args.ignore, ack=args.ack)
+        snoop = dosa.Snoop(comms=comms, map=args.map, ignore=args.ignore, ack=args.ack, ignore_pings=args.noping)
         print("Listening..")
         snoop.run_snoop()
 

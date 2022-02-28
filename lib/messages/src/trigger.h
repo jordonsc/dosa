@@ -12,10 +12,12 @@ namespace messages {
 
 enum class TriggerDevice : uint8_t
 {
-    UNKNOWN = 0,     // for error conditions
-    BUTTON = 1,      // physical button
-    AUTOMATION = 2,  // script or automation framework
-    SENSOR = 3,      // sensor trip
+    UNKNOWN = 0,         // for error conditions
+    BUTTON = 1,          // physical button
+    SENSOR = 2,          // generic sensor (will not provide further details in trigger)
+    SENSOR_RANGING = 3,  // distance based trip sensor (2x uint16_t for distance values)
+    SENSOR_GRID = 4,     // sensor grid (8x8 byte array included in trigger)
+    AUTOMATION = 100,    // automation framework
 };
 
 class Trigger : public Payload

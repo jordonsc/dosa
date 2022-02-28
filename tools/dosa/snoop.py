@@ -4,7 +4,7 @@ import time
 
 
 class Snoop:
-    def __init__(self, comms=None, ignore=False, ack=False, map=False):
+    def __init__(self, comms=None, ignore=False, ack=False, map=False, ignore_pings=False):
         if comms is None:
             comms = dosa.Comms()
 
@@ -13,6 +13,7 @@ class Snoop:
         self.ignore_retries = ignore
         self.auto_ack = ack
         self.print_map = map
+        self.ignore_pings = ignore_pings
 
     def run_snoop(self):
         while True:
@@ -22,17 +23,23 @@ class Snoop:
             if self.ignore_retries and (msg.msg_id == self.last_msg_id):
                 continue
 
+            if self.ignore_pings and (msg.msg_code == dosa.Messages.PING):
+                continue
+
             if msg.msg_code == dosa.Messages.ACK:
                 aux = " // ACK ID: " + str(struct.unpack("<H", msg.payload[27:29])[0])
             elif msg.msg_code == dosa.Messages.TRIGGER and (msg.msg_id != self.last_msg_id):
                 if self.auto_ack:
                     self.comms.send_ack(msg.msg_id_bytes(), msg.addr)
                     aux += " (replied)"
-                #if self.print_map:
-                if False:
-                    # FIXME: This no longer works as the device type isn't passed in the trigger
+                if self.print_map:
                     trigger_type = struct.unpack("<B", msg.payload[27:28])[0]
-                    if trigger_type == 11:
+                    if trigger_type == 3:
+                        # Ranging sensor, show distances
+                        dist_prev = struct.unpack("<H", msg.payload[28:30])[0]
+                        dist_new = struct.unpack("<H", msg.payload[30:32])[0]
+                        aux += " // distance: " + str(dist_prev) + " -> " + str(dist_new)
+                    elif trigger_type == 4:
                         # IR grid, display map
                         aux += "\n+--------+\n"
                         index = 0
@@ -43,11 +50,6 @@ class Snoop:
                                 index += 1
                             aux += "|\n"
                         aux += "+--------+"
-                    elif trigger_type == 20:
-                        # Sonar sensor, show distances
-                        dist_prev = struct.unpack("<H", msg.payload[28:30])[0]
-                        dist_new = struct.unpack("<H", msg.payload[30:32])[0]
-                        aux += " // distance: " + str(dist_prev) + " -> " + str(dist_new)
             elif msg.msg_code == dosa.Messages.ERROR:
                 aux = " // ERROR: " + msg.payload[27:msg.payload_size].decode("utf-8")
             elif msg.msg_code == dosa.Messages.ONLINE:
