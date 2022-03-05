@@ -13,7 +13,7 @@
 #include "fonts/dejavu_sans_48.h"
 
 #define SCREEN_MIN_REFRESH_INT 5000  // Don't do a full-screen refresh faster than this interval
-#define SCREEN_MAX_PARTIAL 5         // Number of partial refreshes before forcing a full refresh
+#define SCREEN_MAX_PARTIAL 10        // Number of partial refreshes before forcing a full refresh
 
 namespace dosa {
 
@@ -78,12 +78,6 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
             printSplash();
         }
 
-        // Bind the DOSA UDP multicast group once connected
-        logln("Bind multicast..");
-        if (!bindMulticast()) {
-            logln("Multicast bind failed!", LogLevel::ERROR);
-        }
-
         // Ping-Pong auto-responder
         comms.newHandler<comms::StandardHandler<messages::GenericMessage>>(
             DOSA_COMMS_MSG_PING,
@@ -92,6 +86,8 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
 
         logln("Init complete.");
     }
+
+    virtual void onWifiConnect() = 0;
 
     /**
      * Main device loop.
@@ -243,6 +239,7 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
         wifi.setHostname("monitor.dosa");
         if (wifi.connect(config.wifi_ap.c_str(), config.wifi_pw.c_str())) {
             loadingStatus("Connected");
+            onWifiConnect();
             return true;
         } else {
             loadingError("Wifi connection failed.", false);

@@ -14,7 +14,9 @@ class DosaDevice
         : device_name(String()),
           device_type(messages::DeviceType::UNSPECIFIED),
           device_state(messages::DeviceState::UNKNOWN),
-          address({{0, 0, 0, 0}, 0})
+          address({{0, 0, 0, 0}, 0}),
+          state_last_updated(millis()),
+          last_contact(millis())
     {}
 
     DosaDevice(
@@ -25,7 +27,9 @@ class DosaDevice
         : device_name(std::move(deviceName)),
           device_type(deviceType),
           device_state(deviceState),
-          address(std::move(address))
+          address(std::move(address)),
+          state_last_updated(millis()),
+          last_contact(millis())
     {}
 
     static DosaDevice fromPong(messages::Pong const& pong, comms::Node const& sender)
@@ -61,15 +65,40 @@ class DosaDevice
     void setDeviceState(messages::DeviceState deviceState)
     {
         device_state = deviceState;
+        state_last_updated = millis();
     }
 
-    bool operator==(DosaDevice const& d) const
+    /**
+     * Timestamp of when the device state was last updated.
+     */
+    [[nodiscard]] uint32_t getStateLastUpdated() const
+    {
+        return state_last_updated;
+    }
+
+    /**
+     * Get the timestamp of the last known contact with this device.
+     */
+    [[nodiscard]] uint32_t getLastContact() const
+    {
+        return last_contact;
+    }
+
+    /**
+     * Update the last contact time to now.
+     */
+    void reportContact()
+    {
+        last_contact = millis();
+    }
+
+    [[nodiscard]] bool operator==(DosaDevice const& d) const
     {
         return device_name == d.device_name && device_type == d.device_type && device_state == d.device_state &&
                address == d.address;
     }
 
-    bool operator!=(DosaDevice const& d) const
+    [[nodiscard]] bool operator!=(DosaDevice const& d) const
     {
         return !operator==(d);
     }
@@ -103,13 +132,15 @@ class DosaDevice
         }
     }
 
-    static char const* stateToString(messages::DeviceState d)
+    [[nodiscard]] static char const* stateToString(messages::DeviceState d)
     {
         switch (d) {
             case messages::DeviceState::OK:
                 return "OK";
             case messages::DeviceState::WORKING:
                 return "Working";
+            case messages::DeviceState::TRIGGER:
+                return "Triggered";
             case messages::DeviceState::MINOR_FAULT:
                 return "Minor Fault";
             case messages::DeviceState::MAJOR_FAULT:
@@ -128,6 +159,8 @@ class DosaDevice
     messages::DeviceType device_type;
     messages::DeviceState device_state;
     comms::Node address;
+    uint32_t state_last_updated;
+    uint32_t last_contact;
 };
 
 }  // namespace dosa

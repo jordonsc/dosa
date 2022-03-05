@@ -9,41 +9,73 @@
 
 #define DOSA_PING_INTERVAL 10000
 #define DOSA_BUTTON_DELAY 3000  // time required before repeating a button press
+#define DOSA_MAX_DISPLAY_DEVICES 4
+#define DOSA_NO_CONTACT_TIME 33000  // after 33 seconds (3 pings + buffer), report the device as out of contact
+#define DOSA_TRIGGER_WAIT 3000      // time to highlight a triggered sensor
 
 namespace dosa {
 
 int const MAX_DEVICES = 10;
 
-class MonitorApp : public InkplateApp
+class MonitorApp final : public InkplateApp
 {
    public:
     explicit MonitorApp(InkplateConfig const& cfg) : InkplateApp(cfg, INKPLATE_1BIT, &serial) {}
 
     void init() override
     {
-        InkplateApp::init();
-
-        // Clear the splash and display the main screen
-        printMain();
-
-        // Bind a pong handler and send initial ping while we wait for the screen to do a full refresh
+        // UDP message handlers
         getComms().newHandler<comms::StandardHandler<messages::Pong>>(DOSA_COMMS_MSG_PONG, &pongMessageForwarder, this);
-        sendPing();
+        getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_ONLINE,
+            &onlineMessageForwarder,
+            this);
+        getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_BEGIN,
+            &beginMessageForwarder,
+            this);
+        getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_END,
+            &endMessageForwarder,
+            this);
+        getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
+            DOSA_COMMS_MSG_TRIGGER,
+            &trgMessageForwarder,
+            this);
 
-        // This will be >= 5 seconds from the splash screen first appearing
-        fullRefreshWhenReady();
-        logln("Monitor online");
+        // This will bring up wifi, when wifi connects it will redraw the main screen
+        InkplateApp::init();
     }
 
     void loop() override
+    {
+        InkplateApp::loop();
+        pingIfRequired();
+        auditRegisteredDevices();
+        checkButtonPresses();
+
+        delay(100);
+    }
+
+   private:
+    SerialComms serial;
+    Array<DosaDevice, MAX_DEVICES> devices;
+    uint32_t last_ping = 0;
+    uint32_t button_last_press[3] = {0};
+
+    /**
+     * Send a ping message if the cool-down has expired.
+     */
+    void pingIfRequired()
     {
         if (millis() - last_ping > DOSA_PING_INTERVAL) {
             checkWifi();
             sendPing();
         }
+    }
 
-        InkplateApp::loop();
-
+    void checkButtonPresses()
+    {
         /**
          * Button 1: send trigger
          */
@@ -70,21 +102,39 @@ class MonitorApp : public InkplateApp
             button_last_press[2] = millis();
             refreshDisplay(true);
         }
-
-        delay(100);
     }
 
-   private:
-    SerialComms serial;
-    Array<DosaDevice, MAX_DEVICES> devices;
-    uint32_t last_ping = 0;
-    uint32_t button_last_press[3] = {0};
+    /**
+     * Checks if a device has fallen into an error state, or clear a trigger flag.
+     */
+    void auditRegisteredDevices()
+    {
+        bool change = false;
+
+        for (auto& d : devices) {
+            if (d.getDeviceState() == messages::DeviceState::TRIGGER &&
+                (millis() - d.getStateLastUpdated() > DOSA_TRIGGER_WAIT)) {
+                d.setDeviceState(messages::DeviceState::OK);
+                change = true;
+            }
+
+            if (millis() - d.getLastContact() > DOSA_NO_CONTACT_TIME &&
+                d.getDeviceState() != messages::DeviceState::NOT_RESPONDING) {
+                d.setDeviceState(messages::DeviceState::NOT_RESPONDING);
+                change = true;
+            }
+        }
+
+        if (change) {
+            printMain();
+            refreshDisplay();
+        }
+    }
 
     /**
      * Checks and reconnects the wifi if it disconnected.
      *
      * May never return if wifi is unavailable. Returns true if this function needed to reconnect.
-     * @return
      */
     bool checkWifi()
     {
@@ -98,11 +148,40 @@ class MonitorApp : public InkplateApp
                 }
             } while (!wifi.isConnected());
 
-            printMain();
-            fullRefreshWhenReady();
+            // onWifiConnect() will now clear registered devices and redraw the main screen
+
             return true;
         } else {
             return false;
+        }
+    }
+
+    /**
+     * Wifi has either come online for the first time, or reconnected.
+     */
+    void onWifiConnect() override
+    {
+        // Bind the DOSA UDP multicast group once connected
+        logln("Bind multicast..");
+        if (!bindMulticast()) {
+            logln("Multicast bind failed!", LogLevel::ERROR);
+            setDeviceState(messages::DeviceState::MAJOR_FAULT);
+        }
+
+        clearDeviceList();
+        fullRefreshWhenReady();
+        sendPing();
+    }
+
+    /**
+     * Clear the registered device list, and if selected, redraw the main screen (won't refresh).
+     */
+    void clearDeviceList(bool redraw = true)
+    {
+        devices.clear();
+
+        if (redraw) {
+            printMain();
         }
     }
 
@@ -134,7 +213,7 @@ class MonitorApp : public InkplateApp
     void printMain()
     {
         getDisplay().clearDisplay();
-        for (uint8_t i = 0; i < (uint8_t)devices.size(); ++i) {
+        for (uint8_t i = 0; i < (uint8_t)devices.size() && i <= DOSA_MAX_DISPLAY_DEVICES; ++i) {
             printDevice(i, devices[i]);
         }
     }
@@ -207,17 +286,12 @@ class MonitorApp : public InkplateApp
     }
 
     /**
-     * Print a device panel, part of the main display.
-     */
-    void printPanel(uint8_t pos, char const* img, String const& title, String const& status, bool inv = false) {}
-
-    /**
      * A pong message has been received.
      */
     void onPong(dosa::messages::Pong const& pong, comms::Node const& sender)
     {
         auto device = DosaDevice::fromPong(pong, sender);
-        logln("Pong: " + device.getDeviceName() + " @ " + comms::ipToString(device.getAddress().ip));
+        logln("Pong: " + device.getDeviceName() + " @ " + comms::ipToString(device.getAddress().ip), LogLevel::DEBUG);
 
         bool matched = false;
         bool changed = false;
@@ -226,9 +300,10 @@ class MonitorApp : public InkplateApp
             if (d.getAddress() == device.getAddress()) {
                 // Device already registered
                 matched = true;
+                d.reportContact();
                 if (d != device) {
-                    // Device information has changed (name, health, etc)
-                    logln("Updating device information for " + comms::ipToString(d.getAddress().ip));
+                    // Device information has changed (name, health, state etc)
+                    // NB: this will clear an error or no-contact device state
                     d = device;
                     changed = true;
                 }
@@ -248,18 +323,105 @@ class MonitorApp : public InkplateApp
         }
 
         if (changed) {
-            logln("Device pool size: " + String(devices.size()));
             printMain();
             refreshDisplay();
         }
     }
 
     /**
-     * Context forwarder for pong messages.
+     * A begin message has been received.
      */
-    static void pongMessageForwarder(dosa::messages::Pong const& pong, comms::Node const& sender, void* context)
+    void onBegin(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        for (auto& d : devices) {
+            if (d.getAddress() == sender) {
+                d.setDeviceState(messages::DeviceState::WORKING);
+                d.reportContact();
+                printMain();
+                refreshDisplay();
+                return;
+            }
+        }
+    }
+
+    /**
+     * An end message has been received.
+     */
+    void onEnd(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        for (auto& d : devices) {
+            if (d.getAddress() == sender) {
+                d.setDeviceState(messages::DeviceState::OK);
+                d.reportContact();
+                printMain();
+                refreshDisplay();
+                return;
+            }
+        }
+    }
+
+    /**
+     * An online message has been received.
+     *
+     * This doesn't contain enough detail to create a new device item, but we can mark a device that was deemed
+     * offline to now be back online.
+     */
+    void onOnline(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        for (auto& d : devices) {
+            if (d.getAddress() == sender) {
+                d.setDeviceState(messages::DeviceState::OK);
+                d.reportContact();
+                printMain();
+                refreshDisplay();
+                return;
+            }
+        }
+    }
+
+    /**
+     * A trigger message has been received.
+     */
+    void onTrigger(messages::Trigger const& msg, comms::Node const& sender)
+    {
+        for (auto& d : devices) {
+            if (d.getAddress() == sender) {
+                d.setDeviceState(messages::DeviceState::TRIGGER);
+                d.reportContact();
+                printMain();
+                refreshDisplay();
+                last_ping = millis();  // prevent an update that could be moments away from hiding the sensor state
+                return;
+            }
+        }
+    }
+
+    /**
+     * These functions forward a callback to a class-instance function.
+     */
+    static void pongMessageForwarder(messages::Pong const& pong, comms::Node const& sender, void* context)
     {
         static_cast<MonitorApp*>(context)->onPong(pong, sender);
+    }
+
+    static void onlineMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<MonitorApp*>(context)->onOnline(msg, sender);
+    }
+
+    static void beginMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<MonitorApp*>(context)->onBegin(msg, sender);
+    }
+
+    static void endMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<MonitorApp*>(context)->onEnd(msg, sender);
+    }
+
+    static void trgMessageForwarder(messages::Trigger const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<MonitorApp*>(context)->onTrigger(msg, sender);
     }
 };
 

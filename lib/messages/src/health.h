@@ -35,6 +35,7 @@ enum class DeviceState : uint8_t
 {
     OK = 0,       // Device is online, but not doing anything
     WORKING = 1,  // Device is online and actively performing a primary function
+    TRIGGER = 2,  // Device has been triggered and in cool-down (sensor trip, etc)
 
     MINOR_FAULT = 10,  // A minor issue has been detected
     MAJOR_FAULT = 11,  // A serious issue has been detected; primary function impaired
