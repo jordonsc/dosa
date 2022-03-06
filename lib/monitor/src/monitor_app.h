@@ -10,7 +10,7 @@
 #define DOSA_PING_INTERVAL 10000
 #define DOSA_BUTTON_DELAY 3000  // time required before repeating a button press
 #define DOSA_MAX_DISPLAY_DEVICES 4
-#define DOSA_NO_CONTACT_TIME 33000  // after 33 seconds (3 pings + buffer), report the device as out of contact
+#define DOSA_NO_CONTACT_TIME 22000  // after 22 seconds (2 pings + buffer), report the device as out of contact
 #define DOSA_TRIGGER_WAIT 3000      // time to highlight a triggered sensor
 
 namespace dosa {
@@ -90,6 +90,7 @@ class MonitorApp final : public InkplateApp
         if (getDisplay().readTouchpad(PAD2) && (millis() - button_last_press[1] > DOSA_BUTTON_DELAY)) {
             button_last_press[1] = millis();
             devices.clear();
+            printMain();
             setDeviceState(messages::DeviceState::OK);
             refreshDisplay(true);
             sendPing();
