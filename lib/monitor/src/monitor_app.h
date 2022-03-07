@@ -9,7 +9,7 @@
 
 #define DOSA_PING_INTERVAL 10000
 #define DOSA_BUTTON_DELAY 3000  // time required before repeating a button press
-#define DOSA_MAX_DISPLAY_DEVICES 4
+#define DOSA_MAX_DISPLAY_DEVICES 3
 #define DOSA_NO_CONTACT_TIME 22000  // after 22 seconds (2 pings + buffer), report the device as out of contact
 #define DOSA_TRIGGER_WAIT 3000      // time to highlight a triggered sensor
 
@@ -110,23 +110,23 @@ class MonitorApp final : public InkplateApp
      */
     void auditRegisteredDevices()
     {
-        bool change = false;
+        bool changed = false;
 
         for (auto& d : devices) {
             if (d.getDeviceState() == messages::DeviceState::TRIGGER &&
                 (millis() - d.getStateLastUpdated() > DOSA_TRIGGER_WAIT)) {
                 d.setDeviceState(messages::DeviceState::OK);
-                change = true;
+                changed = true;
             }
 
             if (millis() - d.getLastContact() > DOSA_NO_CONTACT_TIME &&
                 d.getDeviceState() != messages::DeviceState::NOT_RESPONDING) {
                 d.setDeviceState(messages::DeviceState::NOT_RESPONDING);
-                change = true;
+                changed = true;
             }
         }
 
-        if (change) {
+        if (changed) {
             printMain();
             refreshDisplay();
         }
@@ -171,7 +171,6 @@ class MonitorApp final : public InkplateApp
 
         clearDeviceList();
         fullRefreshWhenReady();
-        sendPing();
     }
 
     /**
@@ -213,7 +212,24 @@ class MonitorApp final : public InkplateApp
      */
     void printMain()
     {
-        getDisplay().clearDisplay();
+        auto& display = getDisplay();
+        display.clearDisplay();
+
+        // Print the temperature
+        display.setFont(&DejaVu_Sans_48);
+        display.setCursor(30, 60);
+        display.print(String(display.readTemperature()));
+        display.setFont(&DejaVu_Sans_24);
+        display.print("C");
+
+        // Battery voltage
+        printRight("Battery", device_size.width - 30, 30);
+        display.setFont(&DejaVu_Sans_48);
+        String battery(display.readBattery());
+        battery += "v";
+        printRight(battery.c_str(), device_size.width - 30, 80);
+
+
         for (uint8_t i = 0; i < (uint8_t)devices.size() && i <= DOSA_MAX_DISPLAY_DEVICES; ++i) {
             printDevice(i, devices[i]);
         }
@@ -226,7 +242,7 @@ class MonitorApp final : public InkplateApp
     {
         auto state = device.getDeviceState();
         int x = 10;
-        int y = (pos * (dosa::images::panel_size.height + 5)) + 10;  // 5 spacing, 5 top margin
+        int y = ((pos + 1) * (images::panel_size.height + 5)) + 10;  // 5 spacing, 5 top margin
 
         bool inv = state != messages::DeviceState::OK;
         auto bg = inv ? BLACK : WHITE;

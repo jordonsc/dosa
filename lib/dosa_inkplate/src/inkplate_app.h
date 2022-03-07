@@ -24,11 +24,13 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
         : Loggable(serial_comms),
           WifiApplication(serial_comms),
           NamedApplication("Monitor"),
+          time(wifi, serial_comms),
           config(std::move(cfg)),
           display_mode(display_mode)
     {}
 
    protected:
+    comms::TimeManager time;
     InkplateConfig config;
     uint8_t display_mode;
 

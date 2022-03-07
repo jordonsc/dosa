@@ -15,10 +15,6 @@ echo
 # Link core libraries to the project folder -
 echo "Linking Arduino libraries to project.."
 
-# Legacy
-rm -f arduino/arduino arduino/SPI arduino/Wire arduino/ArduinoBLE arduino/WiFiNINA arduino/Adafruit_FRAM_SPI \
-  arduino/Adafruit_BusIO arduino/SparkFun_GridEYE_AMG88_Library arduino/Inkplate arduino/Cro_WiFi
-
 # Remove previous links to boards & libs
 rm -rf arduino/boards arduino/variants arduino/libraries
 
@@ -39,6 +35,7 @@ ln -s ~/Arduino/libraries/Inkplate arduino/libraries/Inkplate
 ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/SparkFun_GridEYE_AMG88_Library
 ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 ln -s ~/Arduino/libraries/Array arduino/libraries/Array
+ln -s ~/Arduino/libraries/Time arduino/libraries/Time
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."

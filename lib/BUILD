@@ -143,6 +143,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino:Array",
+        "//arduino:Time",
         "//lib:dosa_inkplate",
     ],
 )
