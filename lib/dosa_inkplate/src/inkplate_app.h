@@ -14,6 +14,8 @@
 
 #define SCREEN_MIN_REFRESH_INT 5000  // Don't do a full-screen refresh faster than this interval
 #define SCREEN_MAX_PARTIAL 10        // Number of partial refreshes before forcing a full refresh
+#define DOSA_BATTERY_VMAX 4.55        // Battery max voltage
+#define DOSA_BATTERY_VMIN 3.00        // Battery min voltage
 
 namespace dosa {
 
@@ -288,6 +290,18 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
 
         while (no_return) {
         }
+    }
+
+    [[nodiscard]] uint8_t batteryAsPercentage() const
+    {
+        auto v = ceil((getDisplay().readBattery() - DOSA_BATTERY_VMIN) / (DOSA_BATTERY_VMAX - DOSA_BATTERY_VMIN) * 100);
+        if (v > 100) {
+            v = 100;
+        } else if (v < 0) {
+            v = 0;
+        }
+
+        return v;
     }
 
    private:

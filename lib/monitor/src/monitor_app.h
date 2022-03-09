@@ -7,11 +7,13 @@
 #include "const.h"
 #include "dosa_device.h"
 
-#define DOSA_PING_INTERVAL 10000
-#define DOSA_BUTTON_DELAY 3000  // time required before repeating a button press
-#define DOSA_MAX_DISPLAY_DEVICES 3
+#define DOSA_PING_INTERVAL 10000    // how often we send a ping message
+#define DOSA_BUTTON_DELAY 3000      // time required before repeating a button press
+#define DOSA_MAX_DISPLAY_DEVICES 3  // max number of panels we have space to draw
 #define DOSA_NO_CONTACT_TIME 22000  // after 22 seconds (2 pings + buffer), report the device as out of contact
 #define DOSA_TRIGGER_WAIT 3000      // time to highlight a triggered sensor
+#define DOSA_FORCE_REDRAW 300000    // time to redraw the main screen even if there is no activity (update temp, etc)
+#define DOSA_STATUS_TIME 5000       // time a status message appears on the screen
 
 namespace dosa {
 
@@ -54,6 +56,16 @@ class MonitorApp final : public InkplateApp
         auditRegisteredDevices();
         checkButtonPresses();
 
+        if (status_drawn != 0 && (millis() - status_drawn > DOSA_STATUS_TIME)) {
+            setStatusMessage("");
+            status_drawn = 0;
+        }
+
+        if (millis() - last_redraw > DOSA_FORCE_REDRAW) {
+            printMain();
+            refreshDisplay();
+        }
+
         delay(100);
     }
 
@@ -61,7 +73,21 @@ class MonitorApp final : public InkplateApp
     SerialComms serial;
     Array<DosaDevice, MAX_DEVICES> devices;
     uint32_t last_ping = 0;
+    uint32_t last_redraw = 0;
     uint32_t button_last_press[3] = {0};
+    String status_message{};
+    uint32_t status_drawn = 0;
+
+    /**
+     * Set the status text message at the bottom of the screen
+     */
+    void setStatusMessage(String const& message)
+    {
+        status_message = message;
+        status_drawn = millis();
+        printMain();
+        refreshDisplay();
+    }
 
     /**
      * Send a ping message if the cool-down has expired.
@@ -212,27 +238,79 @@ class MonitorApp final : public InkplateApp
      */
     void printMain()
     {
+        last_redraw = millis();
+
         auto& display = getDisplay();
         display.clearDisplay();
 
-        // Print the temperature
-        display.setFont(&DejaVu_Sans_48);
-        display.setCursor(30, 60);
-        display.print(String(display.readTemperature()));
-        display.setFont(&DejaVu_Sans_24);
-        display.print("C");
+        printTemperature();
+        printBatteryStatus();
 
-        // Battery voltage
-        printRight("Battery", device_size.width - 30, 30);
-        display.setFont(&DejaVu_Sans_48);
-        String battery(display.readBattery());
-        battery += "v";
-        printRight(battery.c_str(), device_size.width - 30, 80);
-
-
+        // Main device panels
         for (uint8_t i = 0; i < (uint8_t)devices.size() && i <= DOSA_MAX_DISPLAY_DEVICES; ++i) {
             printDevice(i, devices[i]);
         }
+
+        // Status message
+        if (!status_message.isEmpty()) {
+            display.setFont(&DejaVu_Sans_24);
+            display.setCursor(30, device_size.height - 30);
+            display.print(status_message);
+        }
+    }
+
+    void printTemperature()
+    {
+        auto& display = getDisplay();
+        // Print the temperature
+        display.setFont(&Roboto_90);
+        display.setCursor(30, 80);
+        display.print(String(display.readTemperature()));
+        display.setFont(&DejaVu_Sans_48);
+        display.setCursor(display.getCursorX(), 50);
+        display.print("C");
+    }
+
+    void printBatteryStatus()
+    {
+        auto& display = getDisplay();
+
+        // Battery voltage
+        auto bat = batteryAsPercentage();
+        display.setFont(&DejaVu_Sans_48);
+        String bat_pc(bat);
+        bat_pc += "%";
+        printRight(bat_pc.c_str(), device_size.width - 30, 50);
+
+        display.setFont(&DejaVu_Sans_24);
+        String voltage(display.readBattery());
+        voltage += "v";
+        printRight(voltage.c_str(), device_size.width - 30, 80);
+
+        // Battery icon
+        char* bat_icon;
+        if (bat >= 90) {
+            bat_icon = (char*)images::bat_9;
+        } else if (bat >= 80) {
+            bat_icon = (char*)images::bat_8;
+        } else if (bat >= 70) {
+            bat_icon = (char*)images::bat_7;
+        } else if (bat >= 60) {
+            bat_icon = (char*)images::bat_6;
+        } else if (bat >= 50) {
+            bat_icon = (char*)images::bat_5;
+        } else if (bat >= 40) {
+            bat_icon = (char*)images::bat_4;
+        } else if (bat >= 30) {
+            bat_icon = (char*)images::bat_3;
+        } else if (bat >= 20) {
+            bat_icon = (char*)images::bat_2;
+        } else if (bat >= 10) {
+            bat_icon = (char*)images::bat_1;
+        } else {
+            bat_icon = (char*)images::bat_0;
+        }
+        display.drawPngFromSd(bat_icon, device_size.width - 300, -15, false, false);
     }
 
     /**
@@ -242,7 +320,7 @@ class MonitorApp final : public InkplateApp
     {
         auto state = device.getDeviceState();
         int x = 10;
-        int y = ((pos + 1) * (images::panel_size.height + 5)) + 10;  // 5 spacing, 5 top margin
+        int y = (pos * (images::panel_size.height + 5)) + 100;  // 5 spacing + 5 top margin + header of 90
 
         bool inv = state != messages::DeviceState::OK;
         auto bg = inv ? BLACK : WHITE;
@@ -311,7 +389,6 @@ class MonitorApp final : public InkplateApp
         logln("Pong: " + device.getDeviceName() + " @ " + comms::ipToString(device.getAddress().ip), LogLevel::DEBUG);
 
         bool matched = false;
-        bool changed = false;
 
         for (auto& d : devices) {
             if (d.getAddress() == device.getAddress()) {
@@ -322,7 +399,7 @@ class MonitorApp final : public InkplateApp
                     // Device information has changed (name, health, state etc)
                     // NB: this will clear an error or no-contact device state
                     d = device;
-                    changed = true;
+                    setStatusMessage(d.getDeviceName() + " updated");
                 }
                 break;
             }
@@ -332,16 +409,12 @@ class MonitorApp final : public InkplateApp
             if (devices.size() == devices.max_size()) {
                 logln("Hit maximum device limit", LogLevel::ERROR);
                 setDeviceState(messages::DeviceState::MINOR_FAULT);
+                setStatusMessage("Max limit, cannot add " + device.getDeviceName());
             } else {
                 logln("Adding device " + device.getDeviceName());
                 devices.push_back(device);
-                changed = true;
+                setStatusMessage("Discovered " + device.getDeviceName());
             }
-        }
-
-        if (changed) {
-            printMain();
-            refreshDisplay();
         }
     }
 
@@ -354,8 +427,7 @@ class MonitorApp final : public InkplateApp
             if (d.getAddress() == sender) {
                 d.setDeviceState(messages::DeviceState::WORKING);
                 d.reportContact();
-                printMain();
-                refreshDisplay();
+                setStatusMessage(d.getDeviceName() + " start sequence");
                 return;
             }
         }
@@ -370,8 +442,7 @@ class MonitorApp final : public InkplateApp
             if (d.getAddress() == sender) {
                 d.setDeviceState(messages::DeviceState::OK);
                 d.reportContact();
-                printMain();
-                refreshDisplay();
+                setStatusMessage(d.getDeviceName() + " end sequence");
                 return;
             }
         }
@@ -389,8 +460,7 @@ class MonitorApp final : public InkplateApp
             if (d.getAddress() == sender) {
                 d.setDeviceState(messages::DeviceState::OK);
                 d.reportContact();
-                printMain();
-                refreshDisplay();
+                setStatusMessage(d.getDeviceName() + " online");
                 return;
             }
         }
@@ -405,9 +475,8 @@ class MonitorApp final : public InkplateApp
             if (d.getAddress() == sender) {
                 d.setDeviceState(messages::DeviceState::TRIGGER);
                 d.reportContact();
-                printMain();
-                refreshDisplay();
                 last_ping = millis();  // prevent an update that could be moments away from hiding the sensor state
+                setStatusMessage(d.getDeviceName() + " triggered");
                 return;
             }
         }

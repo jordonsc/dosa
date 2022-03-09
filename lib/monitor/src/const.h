@@ -32,6 +32,18 @@ char const* misc_inactive = "/images/misc_inactive_128.png";
 char const* error_active = "/images/warning_active_128.png";
 char const* error_inactive = "/images/warning_inactive_128.png";
 
+char const* bat_0 = "/images/bat_0.png";
+char const* bat_1 = "/images/bat_1.png";
+char const* bat_2 = "/images/bat_2.png";
+char const* bat_3 = "/images/bat_3.png";
+char const* bat_4 = "/images/bat_4.png";
+char const* bat_5 = "/images/bat_5.png";
+char const* bat_6 = "/images/bat_6.png";
+char const* bat_7 = "/images/bat_7.png";
+char const* bat_8 = "/images/bat_8.png";
+char const* bat_9 = "/images/bat_9.png";
+char const* bat_charge = "/images/bat_x.png";
+
 }  // namespace images
 
 }  // namespace dosa

@@ -13,4 +13,5 @@
 #include "fonts/dejavu_sans_24.h"
 #include "fonts/dejavu_sans_48.h"
 #include "fonts/dialog_bold_16.h"
+#include "fonts/roboto_90.h"
 #include "inkplate_app.h"
