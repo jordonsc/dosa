@@ -10,10 +10,15 @@
 #define DOSA_PING_INTERVAL 10000    // how often we send a ping message
 #define DOSA_BUTTON_DELAY 3000      // time required before repeating a button press
 #define DOSA_MAX_DISPLAY_DEVICES 3  // max number of panels we have space to draw
-#define DOSA_NO_CONTACT_TIME 22000  // after 22 seconds (2 pings + buffer), report the device as out of contact
+#define DOSA_NO_CONTACT_TIME 35000  // after 22 seconds (3 pings + buffer), report the device as out of contact
 #define DOSA_TRIGGER_WAIT 3000      // time to highlight a triggered sensor
 #define DOSA_FORCE_REDRAW 300000    // time to redraw the main screen even if there is no activity (update temp, etc)
 #define DOSA_STATUS_TIME 5000       // time a status message appears on the screen
+
+// Status LEDs
+#define DOSA_MON_STATUS_GREEN MCP23017_PIN_B1
+#define DOSA_MON_STATUS_BLUE MCP23017_PIN_B3
+#define DOSA_MON_STATUS_RED MCP23017_PIN_B5
 
 namespace dosa {
 
@@ -47,6 +52,9 @@ class MonitorApp final : public InkplateApp
 
         // This will bring up wifi, when wifi connects it will redraw the main screen
         InkplateApp::init();
+
+        getDisplay().pinModeMCP(DOSA_MON_STATUS_RED, OUTPUT);
+        getDisplay().digitalWriteMCP(DOSA_MON_STATUS_RED, HIGH);
     }
 
     void loop() override

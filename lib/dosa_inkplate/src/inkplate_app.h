@@ -13,7 +13,7 @@
 #include "fonts/dejavu_sans_48.h"
 
 #define SCREEN_MIN_REFRESH_INT 5000  // Don't do a full-screen refresh faster than this interval
-#define SCREEN_MAX_PARTIAL 10        // Number of partial refreshes before forcing a full refresh
+#define SCREEN_MAX_PARTIAL 20        // Number of partial refreshes before forcing a full refresh
 #define DOSA_BATTERY_VMAX 4.55        // Battery max voltage
 #define DOSA_BATTERY_VMIN 3.00        // Battery min voltage
 
