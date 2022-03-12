@@ -1,5 +1,10 @@
 Project Setup
 =============
+Requirements
+------------
+> The setup has been designed, and only tested on, a Ubuntu platform. While there is nothing stopping you using 
+> practically any other OS, Windows included, you'll probably need to port the configuration scripts first.
+
 Insta-setup
 -----------
 Some helper scripts will perform all required setup for you. These are tested on Ubuntu, use at your own risk.
@@ -9,6 +14,8 @@ Some helper scripts will perform all required setup for you. These are tested on
 
 Manual Setup
 ------------
+> There are quite a lot of libraries that need to be configured. It's advised to avoid attempting a manual setup.
+
 ### Arduino CLI
 Install the Arduino CLI, the `curl` command will install the CLI to the `~/bin` directory. Change `BINDIR` if you want
 to install elsewhere:
@@ -69,8 +76,3 @@ If you're using an IDE that wants to be able to see the Arduino library headers,
     ln -s ~/Arduino/libraries/ArduinoBLE arduino/ArduinoBLE
 
 > NB: The `tools/link_libs.sh` script will symlink all required libraries.
-
-
-Getting Started
----------------
-Head on over to the [Getting Started](Getting_Started.md) docs to dive into the codebase.

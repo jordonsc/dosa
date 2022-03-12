@@ -72,3 +72,15 @@ Send `dosa\nnew device name` to `d05a0010-e8f2-537e-4f6c-d104768a1002`
 Send `dosa\nAP NAME\nPASSWORD` to `d05a0010-e8f2-537e-4f6c-d104768a1101`
 
 > Once the wifi value has been updated, the device is disable Bluetooth and attempt to connect to the access point.
+
+DOSA Version
+------------
+The DOSA version is compiled into the binary using a define. This is found in `lib/common/src/const.h` and should be
+updated with every major DOSA release. It is particularly important this value is updated when deploying new OTA assets
+else the devices will not detect a new OTA package.
+
+The DOSA version can be overridden with an OS-level define:
+
+    export DOSA_VERSION=123
+
+New builds, the CLI and the OTA version used will all now use version '123'. 

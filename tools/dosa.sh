@@ -1,51 +1,24 @@
 #!/usr/bin/env bash
 
-ota_bucket="dosa-ota"
 app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 cd ${app}/..
 
-# Update this list to match board to application -
-function getFqbn() {
-  case "$1" in
-  "door")
-    echo "arduino:samd:nano_33_iot"
-    ;;
-  "sensor")
-    echo "arduino:samd:nano_33_iot"
-    ;;
-  "sonar")
-    echo "arduino:samd:nano_33_iot"
-    ;;
-  "monitor")
-    echo "Croduino_Boards:Inkplate:Inkplate6"
-    ;;
-  *) ;;
+ota_bucket="dosa-ota"
+dosa_version=${DOSA_VERSION}
+if [[ -z "${dosa_version}" ]]; then
+  dosa_version=$(cat lib/common/src/const.h | grep "#define DOSA_VERSION" | awk '{print $3}')
+fi
 
-  esac
-}
-
-# Should match the "short name" in app config
-function getAppKey() {
-  case "$1" in
-  "door")
-    echo "DOSA-D"
-    ;;
-  "sensor")
-    echo "DOSA-M"
-    ;;
-  "sonar")
-    echo "DOSA-S"
-    ;;
-  *) ;;
-
-  esac
-}
+source tools/app_specs.sh
 
 function syntax() {
+  echo "DOSA v${dosa_version}"
+  echo
   echo "Usage: "
-  echo "  dosa [COMMAND] [APPLICATION] [PORT]"
+  echo "  dosa (COMMAND) [APPLICATION] [PORT]"
   echo
   echo "Commands:"
+  echo "  setup          :  Setup or update your local environment dependencies"
   echo "  compile        :  Compiles the application, does not upload"
   echo "  compile-debug  :  Compiles the application in debug mode, does not upload"
   echo "  upload         :  Uploads the last compiled application"
@@ -82,8 +55,10 @@ function validatePort() {
   fi
 }
 
-if [[ $# -lt 2 ]]; then
-  syntax
+if [[ "$1" != "setup" ]]; then
+  if [[ $# -lt 2 ]]; then
+    syntax
+  fi
 fi
 
 function validateApp() {
@@ -94,11 +69,11 @@ function validateApp() {
 }
 
 function getBuildFlags() {
-  if [ "$1" == "debug" ]; then
+  if [[ "$1" == "debug" ]]; then
     echo -n "-DDOSA_DEBUG=1 "
   fi
 
-  if [ -n "${DOSA_VERSION}" ]; then
+  if [[ -n "${DOSA_VERSION}" ]]; then
     echo -n "-DDOSA_VERSION=${DOSA_VERSION} "
   fi
 }
@@ -106,6 +81,10 @@ function getBuildFlags() {
 fqbn=$(getFqbn $2)
 
 case $1 in
+"setup")
+  tools/setup.sh && tools/link_libs.sh
+  exit $?
+  ;;
 "compile")
   validateApp $fqbn
   echo "Compile '$2' against ${fqbn}.."
@@ -174,24 +153,16 @@ case $1 in
   app_key="$(getAppKey $2)"
   if [[ -z "${app_key}" ]]; then
     echo
-    echo "Missing app key for $2, not an OTA application"
-    exit 1
-  fi
-
-  if [[ -z "$3" ]]; then
-    echo
-    echo "DOSA build version required, usage:"
-    echo " ./dosa ota [APPLICATION] [DOSA_VERSION]"
-    echo
+    echo "Missing app key for $2! (not an OTA application?)"
     exit 1
   fi
 
   validateApp $fqbn
 
-  echo "Deploy OTA for ${app_key} v$3.."
+  echo "Deploy OTA for ${app_key} version ${dosa_version}.."
 
   echo -n "Validating bucket access.. "
-  gsutil ls 2> /dev/null | grep "gs://${ota_bucket}/" &> /dev/null
+  gsutil ls 2>/dev/null | grep "gs://${ota_bucket}/" &>/dev/null
   if [[ $? -eq 0 ]]; then
     echo "OK"
   else
@@ -209,10 +180,10 @@ case $1 in
 
   if [[ $? -eq 0 ]]; then
     echo "Uploading to GCP.."
-    echo $3 > /tmp/dosa.version
+    echo ${dosa_version} >/tmp/dosa.version
     gsutil cp /tmp/dosa.version gs://${ota_bucket}/${app_key}/version
     rm /tmp/dosa.version
-    gsutil cp "src/$2/build/${fqbn//:/.}/$2.ino.bin" gs://${ota_bucket}/${app_key}/build-$3.bin
+    gsutil cp "src/$2/build/${fqbn//:/.}/$2.ino.bin" gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin
     rm -rf "src/$2/build"
 
     echo

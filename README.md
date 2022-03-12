@@ -8,6 +8,8 @@ Docs
 ====
 * [Setup](docs/Setup.md)
 * [Building](docs/Building.md)
+* [Over-The-Air updates](docs/OTA.md)
+* [Guide to using graphics](docs/Graphics.md)
 * [Troubleshooting](docs/Troubleshooting.md)
 
 
@@ -86,8 +88,6 @@ sound board for audio alerts.
 Hardware components:
 * [Inkplate 6](https://core-electronics.com.au/inkplate-6.html)
 * [Sound board](https://core-electronics.com.au/adafruit-audio-fx-sound-board-wav-ogg-trigger-with-16mb-flash.html)
-
-> Monitor is a work-in-progress. 
 
 
 Etymology

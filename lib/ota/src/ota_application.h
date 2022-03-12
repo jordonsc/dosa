@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <dosa.h>
 
 namespace dosa {

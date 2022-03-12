@@ -36,6 +36,7 @@ ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/Spark
 ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 ln -s ~/Arduino/libraries/Array arduino/libraries/Array
 ln -s ~/Arduino/libraries/ArduinoOTA arduino/libraries/ArduinoOTA
+ln -s ~/Arduino/libraries/ArduinoHttpClient arduino/libraries/ArduinoHttpClient
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
