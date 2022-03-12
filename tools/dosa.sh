@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+ota_bucket="dosa-ota"
 app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 cd ${app}/..
 
@@ -23,6 +24,23 @@ function getFqbn() {
   esac
 }
 
+# Should match the "short name" in app config
+function getAppKey() {
+  case "$1" in
+  "door")
+    echo "DOSA-D"
+    ;;
+  "sensor")
+    echo "DOSA-M"
+    ;;
+  "sonar")
+    echo "DOSA-S"
+    ;;
+  *) ;;
+
+  esac
+}
+
 function syntax() {
   echo "Usage: "
   echo "  dosa [COMMAND] [APPLICATION] [PORT]"
@@ -34,6 +52,7 @@ function syntax() {
   echo "  install        :  Compiles application, uploads if compile is successful"
   echo "  install-debug  :  Compiles application in debug mode, uploads if compile is successful"
   echo "  debug          :  Runs install-debug followed by monitor for the same device"
+  echo "  ota            :  Update OTA repository for given application"
   echo "  monitor        :  Opens a serial monitor to provided port"
   echo
   echo "Applications:"
@@ -79,12 +98,8 @@ function getBuildFlags() {
     echo -n "-DDOSA_DEBUG=1 "
   fi
 
-  if [ -n "${DOSA_NET_SSID}" ]; then
-    echo -n "-DDOSA_NET_SSID=$(echo -n ${DOSA_NET_SSID} | base64) "
-  fi
-
-  if [ -n "${DOSA_NET_PW}" ]; then
-    echo -n "-DDOSA_NET_PW=$(echo -n ${DOSA_NET_PW} | base64) "
+  if [ -n "${DOSA_VERSION}" ]; then
+    echo -n "-DDOSA_VERSION=${DOSA_VERSION} "
   fi
 }
 
@@ -152,6 +167,59 @@ case $1 in
   else
     echo
     echo "Compile error, not uploading"
+    exit 1
+  fi
+  ;;
+"ota")
+  app_key="$(getAppKey $2)"
+  if [[ -z "${app_key}" ]]; then
+    echo
+    echo "Missing app key for $2, not an OTA application"
+    exit 1
+  fi
+
+  if [[ -z "$3" ]]; then
+    echo
+    echo "DOSA build version required, usage:"
+    echo " ./dosa ota [APPLICATION] [DOSA_VERSION]"
+    echo
+    exit 1
+  fi
+
+  validateApp $fqbn
+
+  echo "Deploy OTA for ${app_key} v$3.."
+
+  echo -n "Validating bucket access.. "
+  gsutil ls 2> /dev/null | grep "gs://${ota_bucket}/" &> /dev/null
+  if [[ $? -eq 0 ]]; then
+    echo "OK"
+  else
+    echo "no access"
+    echo
+    echo "Authenticate with:"
+    echo "  gcloud auth login"
+    echo
+    exit 1
+  fi
+
+  echo
+  echo "Compile '$2' against ${fqbn}.."
+  arduino-cli compile -eb ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
+
+  if [[ $? -eq 0 ]]; then
+    echo "Uploading to GCP.."
+    echo $3 > /tmp/dosa.version
+    gsutil cp /tmp/dosa.version gs://${ota_bucket}/${app_key}/version
+    rm /tmp/dosa.version
+    gsutil cp "src/$2/build/${fqbn//:/.}/$2.ino.bin" gs://${ota_bucket}/${app_key}/build-$3.bin
+    rm -rf "src/$2/build"
+
+    echo
+    echo "Deployment complete."
+  else
+    echo
+    echo "Compile error, aborting"
     exit 1
   fi
   ;;

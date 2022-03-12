@@ -42,17 +42,22 @@ echo "Linking project libraries to Arduino.."
 
 # Prepare Arduino library directory -
 mkdir -p ~/Arduino/libraries
+
+# Legacy -
 rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/messages ~/Arduino/libraries/door ~/Arduino/libraries/sensor \
   ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor ~/Arduino/libraries/comms \
-  ~/Arduino/libraries/common
+  ~/Arduino/libraries/common ~/Arduino/libraries/dosa_ota
+
+rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/dosa_*
 
 # (Re)link libs -
-ln -s ${app}/../lib/common ~/Arduino/libraries/common
 ln -s ${app}/../lib/dosa ~/Arduino/libraries/dosa
+ln -s ${app}/../lib/common ~/Arduino/libraries/dosa_common
 ln -s ${app}/../lib/dosa_inkplate ~/Arduino/libraries/dosa_inkplate
-ln -s ${app}/../lib/comms ~/Arduino/libraries/comms
-ln -s ${app}/../lib/messages ~/Arduino/libraries/messages
-ln -s ${app}/../lib/door ~/Arduino/libraries/door
-ln -s ${app}/../lib/sensor ~/Arduino/libraries/sensor
-ln -s ${app}/../lib/sonar ~/Arduino/libraries/sonar
-ln -s ${app}/../lib/monitor ~/Arduino/libraries/monitor
+ln -s ${app}/../lib/comms ~/Arduino/libraries/dosa_comms
+ln -s ${app}/../lib/messages ~/Arduino/libraries/dosa_messages
+ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
+ln -s ${app}/../lib/sensor ~/Arduino/libraries/dosa_sensor
+ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
+ln -s ${app}/../lib/monitor ~/Arduino/libraries/dosa_monitor
+ln -s ${app}/../lib/ota ~/Arduino/libraries/dosa_ota

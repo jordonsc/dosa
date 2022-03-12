@@ -4,3 +4,4 @@ arduino/Inkplate/extras
 arduino/Inkplate/examples
 arduino/Inkplate/Fonts
 arduino/Inkplate/.github
+src/*/build

@@ -7,6 +7,9 @@ bazel-*
 arduino/*
 !arduino/BUILD
 
+# Compiled sketches
+src/*/build
+
 # Python cache
 __pycache__
 *.pyc
