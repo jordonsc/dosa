@@ -21,7 +21,8 @@
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
 
-namespace dosa::door {
+namespace dosa {
+namespace door {
 
 namespace {
 
@@ -91,9 +92,9 @@ class DoorWinch : public Loggable
     void trigger()
     {
         auto open_ticks = open();
-        if (open_ticks == 0) {
+        if (open_ticks > 0) {
             // If the sensor believes the door is already fully open, it will return 0 ticks (and have done nothing).
-            return;
+
         } else {
             logln("Opened in " + String(open_ticks) + " ticks");
         }
@@ -139,7 +140,7 @@ class DoorWinch : public Loggable
 
         waitForSonarReady();
         if (sonar.getDistance() > 0 && sonar.getDistance() < open_distance) {
-            logln("Door already at threshold, aborting open sequence", LogLevel::WARNING);
+            logln("Door open-jam detecting, skipping open sequence", LogLevel::WARNING);
             return 0;
         }
 
@@ -339,4 +340,5 @@ class DoorWinch : public Loggable
     }
 };
 
-}  // namespace dosa::door
+}  // namespace door
+}  // namespace dosa

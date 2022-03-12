@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 #include <comms.h>
-#include <messages.h>
+#include <dosa_messages.h>
 
 namespace dosa {
 

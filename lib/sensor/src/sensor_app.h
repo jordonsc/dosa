@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dosa.h>
+#include <dosa_ota.h>
 
 #include "const.h"
 #include "sensor_container.h"
@@ -8,19 +8,19 @@
 namespace dosa {
 namespace sensor {
 
-class SensorApp final : public dosa::App
+class SensorApp final : public dosa::OtaApplication
 {
    public:
-    explicit SensorApp(Config const& config) : App(config) {}
+    using dosa::OtaApplication::OtaApplication;
 
     void init() override
     {
-        App::init();
+        OtaApplication::init();
     }
 
     void loop() override
     {
-        App::loop();
+        OtaApplication::loop();
 
         // Check state of the IR grid
         checkIrGrid();
@@ -83,9 +83,19 @@ class SensorApp final : public dosa::App
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
-            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
+            dispatchMessage(
+                messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()),
+                true);
             return true;
         }
+    }
+
+    void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
+    {
+        App::onDebugRequest(msg, sender);
+        netLog("Min pixels: " + String(getContainer().getSettings().getSensorMinPixels()), sender);
+        netLog("Per-pixel delta: " + String(getContainer().getSettings().getSensorPixelDelta()), sender);
+        netLog("Aggregate delta: " + String(getContainer().getSettings().getSensorTotalDelta()), sender);
     }
 
     Container& getContainer() override

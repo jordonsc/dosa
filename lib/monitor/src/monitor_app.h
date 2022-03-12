@@ -53,8 +53,8 @@ class MonitorApp final : public InkplateApp
         // This will bring up wifi, when wifi connects it will redraw the main screen
         InkplateApp::init();
 
-        getDisplay().pinModeMCP(DOSA_MON_STATUS_RED, OUTPUT);
-        getDisplay().digitalWriteMCP(DOSA_MON_STATUS_RED, HIGH);
+        pinMode(16, OUTPUT);
+        pinMode(16, HIGH);
     }
 
     void loop() override

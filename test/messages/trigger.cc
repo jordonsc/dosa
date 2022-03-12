@@ -1,5 +1,5 @@
+#include <dosa_messages.h>
 #include <gtest/gtest.h>
-#include <messages.h>
 
 using namespace dosa::messages;
 
@@ -31,11 +31,11 @@ TEST_F(TriggerTest, BasicTest)
     ASSERT_EQ(DOSA_COMMS_TRIGGER_SIZE, ASSUMED_TRIGGER_SIZE);
 
     uint8_t map[64] = {0};
-    auto trigger = Trigger(TriggerDevice::IR_GRID, map, device_name);
+    auto trigger = Trigger(TriggerDevice::SENSOR_GRID, map, device_name);
     EXPECT_NE(trigger.getMessageId(), 0);
     ASSERT_EQ(trigger.getPayloadSize(), ASSUMED_TRIGGER_SIZE);
     EXPECT_EQ(strcmp(trigger.getDeviceName(), TEST_DEVICE_NAME), 0);  // only works if name < 20 chars
-    EXPECT_EQ(trigger.getDeviceType(), TriggerDevice::IR_GRID);
+    EXPECT_EQ(trigger.getDeviceType(), TriggerDevice::SENSOR_GRID);
 
     char payload[ASSUMED_TRIGGER_SIZE] = {0};
     auto msgId = trigger.getMessageId();

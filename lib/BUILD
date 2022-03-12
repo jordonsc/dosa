@@ -90,6 +90,26 @@ cc_library(
     ],
 )
 
+# OTA support, extends normal DOSA App
+cc_library(
+    name = "ota",
+    srcs = glob(["ota/src/**/*.cpp"]),
+    hdrs = glob(["ota/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["ota/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        # Most common hardware use-case
+        "//arduino:WiFiNINA",
+        "//arduino:board_samd",
+        "//arduino:variant_nano_33_iot",
+        # Actual deps
+        "//arduino:ArduinoOTA",
+        "//lib:dosa",
+    ],
+)
+
 # Door winch master unit library
 cc_library(
     name = "door",
@@ -100,7 +120,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:dosa",
+        "//lib:ota",
     ],
 )
 
@@ -114,7 +134,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:dosa",
+        "//lib:ota",
     ],
 )
 
@@ -128,7 +148,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:dosa",
+        "//lib:ota",
     ],
 )
 
@@ -143,7 +163,6 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//arduino:Array",
-        "//arduino:Time",
         "//lib:dosa_inkplate",
     ],
 )

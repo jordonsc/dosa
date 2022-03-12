@@ -113,3 +113,11 @@ cc_library(
     includes = ["libraries/WiFiNINA/src"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "ArduinoOTA",
+    srcs = glob(["libraries/ArduinoOTA/src/**/*.cpp"]),
+    hdrs = glob(["libraries/ArduinoOTA/src/**/*.h"]),
+    includes = ["libraries/ArduinoOTA/src"],
+    visibility = ["//visibility:public"],
+)

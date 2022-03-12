@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
-#include <messages.h>
+#include <dosa_messages.h>
 
 namespace dosa {
 

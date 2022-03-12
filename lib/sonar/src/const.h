@@ -11,5 +11,7 @@
 
 /**
  * Percentage of previous distance that's considered a trigger.
+ *
+ * This is different to the entropy sensitivity setting, SONAR_TRIGGER_THRESHOLD, found in settings.h.
  */
-#define DOSA_SONAR_TRIGGER_THRESHOLD 0.8
+#define SONAR_TRIGGER_COEFFICIENT 0.8

@@ -1,5 +1,5 @@
+#include <dosa_messages.h>
 #include <gtest/gtest.h>
-#include <messages.h>
 
 using namespace dosa::messages;
 
@@ -72,7 +72,7 @@ TEST_F(AckTest, BasicTest)
 TEST_F(AckTest, AckFromPayload)
 {
     uint8_t map[64] = {0};
-    auto t = Trigger(TriggerDevice::IR_GRID, map, "FE");
+    auto t = Trigger(TriggerDevice::SENSOR_GRID, map, "FE");
     ASSERT_GT(t.getMessageId(), 0);
 
     auto ack = Ack(t, device_name);

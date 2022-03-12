@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dosa.h>
+#include <dosa_ota.h>
 
 #include "const.h"
 #include "sonar_container.h"
@@ -8,20 +8,20 @@
 namespace dosa {
 namespace sonar {
 
-class SonarApp final : public dosa::App
+class SonarApp final : public dosa::OtaApplication
 {
    public:
-    explicit SonarApp(Config const& config) : App(config) {}
+    using dosa::OtaApplication::OtaApplication;
 
     void init() override
     {
-        App::init();
+        OtaApplication::init();
         logln("Trigger threshold: " + String(container.getSettings().getSonarTriggerThreshold()), LogLevel::DEBUG);
     }
 
     void loop() override
     {
-        App::loop();
+        OtaApplication::loop();
         checkSonar();
     }
 
@@ -29,6 +29,13 @@ class SonarApp final : public dosa::App
     SonarContainer container;
     uint16_t calibrated_distance = 1;
     unsigned long last_fired = 0;
+
+    void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
+    {
+        App::onDebugRequest(msg, sender);
+        netLog("Sonar threshold: " + String(getContainer().getSettings().getSonarTriggerThreshold()), sender);
+        netLog("Sonar distance: " + String(container.getSonar().getDistance()), sender);
+    }
 
     /**
      * Reads the sonar and will either auto-calibrate or fire a trigger.
@@ -50,7 +57,7 @@ class SonarApp final : public dosa::App
         auto distance = container.getSonar().getDistance();
 
         if ((distance > 0) &&
-            (distance < calibrated_distance * DOSA_SONAR_TRIGGER_THRESHOLD || calibrated_distance == 0)) {
+            (distance < calibrated_distance * SONAR_TRIGGER_COEFFICIENT || calibrated_distance == 0)) {
             calibration_count = 0;
             considerTrigger(distance, trigger_count);
         } else {

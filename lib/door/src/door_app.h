@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dosa.h>
+#include <dosa_ota.h>
 
 #include "door_container.h"
 
@@ -14,16 +14,16 @@
 namespace dosa {
 namespace door {
 
-class DoorApp final : public dosa::App
+class DoorApp final : public dosa::OtaApplication
 {
    public:
-    using dosa::App::App;
+    using dosa::OtaApplication::OtaApplication;
 
-    explicit DoorApp(Config config) : App(std::move(config)) {}
+    explicit DoorApp(Config config) : OtaApplication(std::move(config)) {}
 
     void init() override
     {
-        App::init();
+        OtaApplication::init();
 
         container.getDoorLights().ready();
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
@@ -38,7 +38,7 @@ class DoorApp final : public dosa::App
 
     void loop() override
     {
-        App::loop();
+        OtaApplication::loop();
 
         // Check the door switch
         container.getDoorSwitch().process();
@@ -63,8 +63,17 @@ class DoorApp final : public dosa::App
    private:
     DoorContainer container;
     uint16_t last_msg_id = 0;
-    uint32_t last_debug = 0;
     bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
+
+    void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
+    {
+        App::onDebugRequest(msg, sender);
+        netLog("Open stop distance: " + String(getContainer().getSettings().getDoorOpenDistance()), sender);
+        netLog("Open wait: " + String(getContainer().getSettings().getDoorOpenWait()), sender);
+        netLog("Close ticks: " + String(getContainer().getSettings().getDoorCloseTicks()), sender);
+        netLog("Cooldown: " + String(getContainer().getSettings().getDoorCoolDown()), sender);
+        netLog("Sonar distance: " + String(container.getSonar().getDistance()), sender);
+    }
 
     /**
      * Sensor has broadcasted a trigger event.
@@ -147,22 +156,22 @@ class DoorApp final : public dosa::App
             default:
                 // Unknown error sequence: all lights blink together
                 bt_error_msg.setValue(DOSA_DOOR_ERR_UNKNOWN);
-                dispatchMessage(messages::Error(DOSA_DOOR_ERR_UNKNOWN, getDeviceNameBytes()));
+                netLog(DOSA_DOOR_ERR_UNKNOWN, NetLogLevel::CRITICAL);
+                break;
 
             case DoorErrorCode::OPEN_TIMEOUT:
-                // Open timeout sequence: error solid; activity blinks
                 bt_error_msg.setValue(DOSA_DOOR_ERR_OPEN);
-                dispatchMessage(messages::Error(DOSA_DOOR_ERR_OPEN, getDeviceNameBytes()));
+                netLog(DOSA_DOOR_ERR_OPEN, NetLogLevel::ERROR);
                 break;
 
             case DoorErrorCode::CLOSE_TIMEOUT:
-                // Close timeout sequence: error solid; ready blinks
                 bt_error_msg.setValue(DOSA_DOOR_ERR_CLOSE);
+                netLog(DOSA_DOOR_ERR_CLOSE, NetLogLevel::ERROR);
                 break;
 
             case DoorErrorCode::JAMMED:
-                // Jam sequence: error solid; activity/ready alternate
                 bt_error_msg.setValue(DOSA_DOOR_ERR_JAM);
+                netLog(DOSA_DOOR_ERR_JAM, NetLogLevel::CRITICAL);
                 break;
         }
     }

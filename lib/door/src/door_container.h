@@ -7,7 +7,8 @@
 
 #define PIN_SWITCH_DOOR 9
 
-namespace dosa::door {
+namespace dosa {
+namespace door {
 
 class DoorContainer : public Container
 {
@@ -41,4 +42,5 @@ class DoorContainer : public Container
     Switch door_switch;
 };
 
-}  // namespace dosa::door
+}  // namespace door
+}  // namespace dosa

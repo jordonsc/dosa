@@ -11,6 +11,8 @@
 
 namespace dosa {
 
+using NetLogLevel = messages::LogMessageLevel;
+
 /**
  * Delay when switching between wifi/BT
  */
@@ -108,6 +110,12 @@ class App : public StatefulApplication
             &pingMessageForwarder,
             this);
 
+        // Debug auto-responder
+        getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_DEBUG,
+            &pingMessageForwarder,
+            this);
+
         // Config setting handler
         getContainer().getComms().newHandler<comms::StandardHandler<messages::Configuration>>(
             DOSA_COMMS_MSG_CONFIG,
@@ -174,6 +182,32 @@ class App : public StatefulApplication
     void dispatchMessage(messages::Payload const& payload, bool wait_for_ack = false)
     {
         getContainer().getComms().dispatch(comms::multicastAddr, payload, wait_for_ack);
+    }
+
+    /**
+     * Dispatch a network log message.
+     */
+    void netLog(char const* msg, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+    }
+
+    void netLog(String const& msg, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
+    }
+
+    /**
+     * Dispatch a network log message to a specific destination
+     */
+    void netLog(char const* msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        getContainer().getComms().dispatch(target, messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+    }
+
+    void netLog(String const& msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        getContainer().getComms().dispatch(target, messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
     }
 
     /**
@@ -413,6 +447,18 @@ class App : public StatefulApplication
         return central_connected;
     }
 
+    /**
+     * DBG message received, automatically send log messages containing settings.
+     *
+     * You should override this (and still call this instance at the top of your overridden function).
+     */
+    virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+        netLog("DOSA version: " + String(DOSA_VERSION), sender);
+        netLog("Wifi AP: " + getContainer().getSettings().getWifiSsid(), sender);
+    }
+
    private:
     bool central_connected = false;
     bool wifi_connected = false;
@@ -554,9 +600,7 @@ class App : public StatefulApplication
             comms::nodeToString(sender) + ")");
 
         // Send reply ack
-        getContainer().getComms().dispatch(
-            sender,
-            messages::Ack(msg, getContainer().getSettings().getDeviceNameBytes()));
+        getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
 
         // Disconnect wifi and bring BT back online
         getContainer().getSettings().setWifiSsid("");  // to prevent reconnects (don't write to FRAM!)
@@ -780,6 +824,14 @@ class App : public StatefulApplication
     static void pingMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onPing(msg, sender);
+    }
+
+    /**
+     * Context forwarder for debug request messages.
+     */
+    static void debugMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onDebugRequest(msg, sender);
     }
 
     /**

@@ -14,9 +14,11 @@ typedef __uint64_t uint64_t;
 #define DOSA_COMMS_MSG_BEGIN "bgn"  // device is beginning its primary function
 #define DOSA_COMMS_MSG_END "end"  // device has completed its primary function
 #define DOSA_COMMS_MSG_PING "pin"  // ping (request for pong)
+#define DOSA_COMMS_MSG_OTA "ota"  // request device check for (and install) OTA updates
+#define DOSA_COMMS_MSG_DEBUG "dbg"  // request device return log messages containing device state & settings
 
 // Command codes with additional information (and their own class)
-#define DOSA_COMMS_MSG_ERROR "err"  // device is declaring an error
+#define DOSA_COMMS_MSG_LOG "log"  // network-level log
 #define DOSA_COMMS_MSG_PONG "pon"  // pong reply from a ping
 #define DOSA_COMMS_MSG_TRIGGER "trg"  // sensor/switch has been tripped
 #define DOSA_COMMS_MSG_CONFIG "cfg"  // update device configuration
