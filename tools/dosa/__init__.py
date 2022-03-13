@@ -9,6 +9,7 @@ from dosa.snoop import Snoop
 from dosa.ping import Ping
 from dosa.trigger import Trigger
 from dosa.ota import Ota
+from dosa.flush import Flush
 from dosa import device
 
 
@@ -22,6 +23,7 @@ class Messages:
     TRIGGER = b"trg"
     OTA = b"ota"
     DEBUG = b"dbg"
+    FLUSH = b"fls"
     BEGIN = b"bgn"
     END = b"end"
     REQUEST_BT_CFG_MODE = b"btc"

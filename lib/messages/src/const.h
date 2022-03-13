@@ -16,6 +16,7 @@ typedef __uint64_t uint64_t;
 #define DOSA_COMMS_MSG_PING "pin"  // ping (request for pong)
 #define DOSA_COMMS_MSG_OTA "ota"  // request device check for (and install) OTA updates
 #define DOSA_COMMS_MSG_DEBUG "dbg"  // request device return log messages containing device state & settings
+#define DOSA_COMMS_MSG_FLUSH "fls"  // instruct recipients to flush any cached DOSA data (network reset)
 
 // Command codes with additional information (and their own class)
 #define DOSA_COMMS_MSG_LOG "log"  // network-level log

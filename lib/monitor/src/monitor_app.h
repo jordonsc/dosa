@@ -49,12 +49,13 @@ class MonitorApp final : public InkplateApp
             DOSA_COMMS_MSG_TRIGGER,
             &trgMessageForwarder,
             this);
+        getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_FLUSH,
+            &flushMessageForwarder,
+            this);
 
         // This will bring up wifi, when wifi connects it will redraw the main screen
         InkplateApp::init();
-
-        pinMode(16, OUTPUT);
-        pinMode(16, HIGH);
     }
 
     void loop() override
@@ -388,6 +389,11 @@ class MonitorApp final : public InkplateApp
             y + images::panel_size.height - 30);
     }
 
+    virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) {
+        InkplateApp::onDebugRequest(msg, sender);
+        netLog("Device pool size: " + String(devices.size()), sender);
+    }
+
     /**
      * A pong message has been received.
      */
@@ -491,6 +497,19 @@ class MonitorApp final : public InkplateApp
     }
 
     /**
+     * A flush command has been received. This has the same effect as Button-2 being pressed.
+     */
+    void onFlush(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        logln("Flush requested by " + comms::ipToString(sender.ip) + ", clearing device registry..");
+        devices.clear();
+        printMain();
+        setDeviceState(messages::DeviceState::OK);
+        refreshDisplay(true);
+        sendPing();
+    }
+
+    /**
      * These functions forward a callback to a class-instance function.
      */
     static void pongMessageForwarder(messages::Pong const& pong, comms::Node const& sender, void* context)
@@ -516,6 +535,11 @@ class MonitorApp final : public InkplateApp
     static void trgMessageForwarder(messages::Trigger const& msg, comms::Node const& sender, void* context)
     {
         static_cast<MonitorApp*>(context)->onTrigger(msg, sender);
+    }
+
+    static void flushMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<MonitorApp*>(context)->onFlush(msg, sender);
     }
 };
 

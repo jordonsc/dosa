@@ -14,10 +14,12 @@
 
 #define SCREEN_MIN_REFRESH_INT 5000  // Don't do a full-screen refresh faster than this interval
 #define SCREEN_MAX_PARTIAL 20        // Number of partial refreshes before forcing a full refresh
-#define DOSA_BATTERY_VMAX 4.55        // Battery max voltage
-#define DOSA_BATTERY_VMIN 3.00        // Battery min voltage
+#define DOSA_BATTERY_VMAX 4.55       // Battery max voltage
+#define DOSA_BATTERY_VMIN 3.00       // Battery min voltage
 
 namespace dosa {
+
+using NetLogLevel = messages::LogMessageLevel;
 
 class InkplateApp : public Loggable, public WifiApplication, public NamedApplication, public StatefulApplication
 {
@@ -86,6 +88,12 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
         comms.newHandler<comms::StandardHandler<messages::GenericMessage>>(
             DOSA_COMMS_MSG_PING,
             &pingMessageForwarder,
+            this);
+
+        // Debug auto-responder
+        comms.newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_DEBUG,
+            &debugMessageForwarder,
             this);
 
         logln("Init complete.");
@@ -304,7 +312,78 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
         return v;
     }
 
+    /**
+     * Dispatch a network log message.
+     */
+    void netLog(char const* msg, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        cascadeNetLogMsg(msg, lvl);
+        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+    }
+
+    void netLog(String const& msg, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        cascadeNetLogMsg(msg, lvl);
+        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
+    }
+
+    /**
+     * Dispatch a network log message to a specific destination
+     */
+    void netLog(char const* msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        cascadeNetLogMsg(msg, lvl);
+        comms.dispatch(target, messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+    }
+
+    void netLog(String const& msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
+    {
+        cascadeNetLogMsg(msg, lvl);
+        comms.dispatch(target, messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
+    }
+
+    /**
+     * DBG message received, automatically send log messages containing settings.
+     *
+     * You should override this (and still call this instance at the top of your overridden function).
+     */
+    virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+        netLog("DOSA version: " + String(DOSA_VERSION), sender);
+        netLog(
+            "Battery voltage: " + String(getDisplay().readBattery()) + " (" + String(batteryAsPercentage()) + "%)",
+            sender);
+        netLog("Device temp: " + String(getDisplay().readTemperature()) + "c", sender);
+    }
+
    private:
+    /**
+     * Creates a serial log message for a NetLog message.
+     */
+    void cascadeNetLogMsg(String const& msg, NetLogLevel lvl)
+    {
+        switch (lvl) {
+            case messages::LogMessageLevel::DEBUG:
+                logln(msg, LogLevel::DEBUG);
+                break;
+            default:
+            case messages::LogMessageLevel::INFO:
+            case messages::LogMessageLevel::STATUS:
+                logln(msg, LogLevel::INFO);
+                break;
+            case messages::LogMessageLevel::WARNING:
+                logln(msg, LogLevel::WARNING);
+                break;
+            case messages::LogMessageLevel::ERROR:
+                logln(msg, LogLevel::ERROR);
+                break;
+            case messages::LogMessageLevel::CRITICAL:
+                logln(msg, LogLevel::CRITICAL);
+                break;
+        }
+    }
+
     /**
      * Ping message received, automatically send a pong.
      */
@@ -328,6 +407,14 @@ class InkplateApp : public Loggable, public WifiApplication, public NamedApplica
     static void pingMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<InkplateApp*>(context)->onPing(msg, sender);
+    }
+
+    /**
+     * Context forwarder for debug request messages.
+     */
+    static void debugMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<InkplateApp*>(context)->onDebugRequest(msg, sender);
     }
 };
 

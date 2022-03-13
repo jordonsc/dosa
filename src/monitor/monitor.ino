@@ -26,10 +26,7 @@ void setup()
     cfg.device_type = dosa::messages::DeviceType::MONITOR;
 
     cfg.log_level = dosa::LogLevel::DEBUG;
-    cfg.wait_for_serial = true;
-
-    // cfg.log_level = dosa::LogLevel::WARNING;
-    // cfg.wait_for_serial = false;
+    //cfg.wait_for_serial = true;
 
     builder.getApp().init();
 }
