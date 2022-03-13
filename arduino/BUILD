@@ -8,6 +8,7 @@ cc_library(
     hdrs = glob(["boards/samd/**/*.h"]),
     includes = [
         "boards/samd/cores/arduino",
+        "boards/samd/cores/arduino/api",
     ] + glob(
         ["boards/samd/libraries/*/src"],
         exclude_directories = 0,
@@ -119,5 +120,13 @@ cc_library(
     srcs = glob(["libraries/ArduinoOTA/src/**/*.cpp"]),
     hdrs = glob(["libraries/ArduinoOTA/src/**/*.h"]),
     includes = ["libraries/ArduinoOTA/src"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "ArduinoHttpClient",
+    srcs = glob(["libraries/ArduinoHttpClient/src/**/*.cpp"]),
+    hdrs = glob(["libraries/ArduinoHttpClient/src/**/*.h"]),
+    includes = ["libraries/ArduinoHttpClient/src"],
     visibility = ["//visibility:public"],
 )

@@ -189,11 +189,13 @@ class App : public StatefulApplication
      */
     void netLog(char const* msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
+        cascadeNetLogMsg(msg, lvl);
         dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl));
     }
 
     void netLog(String const& msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
+        cascadeNetLogMsg(msg, lvl);
         dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
     }
 
@@ -466,6 +468,33 @@ class App : public StatefulApplication
     unsigned long wifi_last_checked = 0;
     unsigned long wifi_last_reconnected = 0;
     messages::DeviceType device_type = messages::DeviceType::UNSPECIFIED;
+
+    /**
+     * Creates a serial log message for a NetLog message.
+     */
+    void cascadeNetLogMsg(String const& msg, NetLogLevel lvl)
+    {
+        static char const* prefix = "Net: ";
+        switch (lvl) {
+            case messages::LogMessageLevel::DEBUG:
+                logln(prefix + msg, LogLevel::DEBUG);
+                break;
+            default:
+            case messages::LogMessageLevel::INFO:
+            case messages::LogMessageLevel::STATUS:
+                logln(prefix + msg, LogLevel::INFO);
+                break;
+            case messages::LogMessageLevel::WARNING:
+                logln(prefix + msg, LogLevel::WARNING);
+                break;
+            case messages::LogMessageLevel::ERROR:
+                logln(prefix + msg, LogLevel::ERROR);
+                break;
+            case messages::LogMessageLevel::CRITICAL:
+                logln(prefix + msg, LogLevel::CRITICAL);
+                break;
+        }
+    }
 
     bool authCheck(String const& v)
     {
