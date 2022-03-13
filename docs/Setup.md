@@ -5,12 +5,23 @@ Requirements
 > The setup has been designed, and only tested on, a Ubuntu platform. While there is nothing stopping you using 
 > practically any other OS, Windows included, you'll probably need to port the configuration scripts first.
 
+### USB Cable
+You require a USB-B Micro cable _with a data wire_ to connect to the Arduino. Many USB-A to USB-B Micro cables that ship
+with hardware for the sole purpose of providing power don't include the wires for the data pins, so be aware that if the
+COM port isn't showing up, you've likely got a bad cable.
+
+When you do connect to the device with a suitable cable, the Arduino should show up in the ports selection.
+
 Insta-setup
 -----------
-Some helper scripts will perform all required setup for you. These are tested on Ubuntu, use at your own risk.
+To install dependencies and link required libraries, run the `setup` command of the DOSA CLI:
 
-* Run `tools/setup.sh` to install CLI, boards and dependencies.
-* Run `tools/link_libs.sh` to link libraries to the required folders for IDE and compiler both.
+    ./dosa setup
+
+This does everything you need to get your local environment working. Under the hood, it's running two shell scripts: 
+
+* `tools/setup.sh` to install CLI, boards and dependencies
+* `tools/link_libs.sh` to link libraries to the required folders for both the IDE and compiler
 
 Manual Setup
 ------------
@@ -35,15 +46,6 @@ You can view the installed boards with the `core list` command:
 Install required libraries:
 
     arduino-cli lib install ArduinoBLE
-
-
-### USB Cable
-
-You require a USB-B Micro cable _with a data wire_ to connect to the Arduino. Many USB-A to USB-B Micro cables that ship
-with hardware for the sole purpose of providing power don't include the wires for the data pins, so be aware that if the
-COM port isn't showing up, you've likely got a bad cable.
-
-When you do connect to the device with a suitable cable, the Arduino should show up in the ports selection.
 
 
 ### Configuring Your Filesystem
