@@ -8,6 +8,7 @@ from dosa.cfg import Config
 from dosa.snoop import Snoop
 from dosa.ping import Ping
 from dosa.trigger import Trigger
+from dosa.ota import Ota
 from dosa import device
 
 
@@ -16,15 +17,34 @@ class Messages:
     3-byte message codes used by UDP comms.
     """
     ACK = b"ack"
-    ERROR = b"err"
+    LOG = b"log"
     ONLINE = b"onl"
     TRIGGER = b"trg"
+    OTA = b"ota"
+    DEBUG = b"dbg"
     BEGIN = b"bgn"
     END = b"end"
     REQUEST_BT_CFG_MODE = b"btc"
     PING = b"pin"
     PONG = b"pon"
     CONFIG_SETTING = b"cfg"
+
+    @staticmethod
+    def get_log_level(log_level):
+        if log_level == 10:
+            return "DEBUG"
+        elif log_level == 20:
+            return "INFO"
+        elif log_level == 30:
+            return "STATUS"
+        elif log_level == 40:
+            return "WARNING"
+        elif log_level == 50:
+            return "ERROR"
+        elif log_level == 60:
+            return "CRITICAL"
+        else:
+            return "UNKNOWN LOG-LEVEL"
 
 
 class Message:

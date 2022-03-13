@@ -106,7 +106,7 @@ cc_library(
         "//arduino:variant_nano_33_iot",
         # Actual deps
         "//arduino:ArduinoOTA",
-        "//arduino:ArduinoHttpClient",
+        "//arduino:HttpClient",
         "//lib:dosa",
     ],
 )

@@ -22,6 +22,10 @@ parser.add_argument('-p', '--ping', dest='ping', action='store',
 parser.add_argument('-t', '--trigger', dest='trigger', default=False, nargs='?', action='store',
                     help='fire a trigger signal; target optional, else will broadcast')
 
+# Request OTA update
+parser.add_argument('-o', '--ota', dest='ota', default=False, nargs='?', action='store',
+                    help='send an OTA update request; target optional, else will broadcast')
+
 # Snoop options
 parser.add_argument('-m', '--map', dest='map', action='store_const', const=True, default=False,
                     help='display an IR grid map or distance readouts with triggers')
@@ -55,6 +59,12 @@ try:
             trigger.fire(target=(args.trigger, 6901))
         else:
             trigger.fire()
+    elif args.ota is not False:
+        ota = dosa.Ota(comms=comms)
+        if args.ota:
+            ota.dispatch(target=(args.ota, 6901))
+        else:
+            ota.dispatch()
 
     else:
         snoop = dosa.Snoop(comms=comms, map=args.map, ignore=args.ignore, ack=args.ack, ignore_pings=args.noping)

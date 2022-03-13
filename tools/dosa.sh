@@ -180,10 +180,14 @@ case $1 in
 
   if [[ $? -eq 0 ]]; then
     echo "Uploading to GCP.."
+
     echo ${dosa_version} >/tmp/dosa.version
     gsutil cp /tmp/dosa.version gs://${ota_bucket}/${app_key}/version
+    gsutil setmeta -h Cache-Control:no-cache gs://${ota_bucket}/${app_key}/version
     rm /tmp/dosa.version
+
     gsutil cp "src/$2/build/${fqbn//:/.}/$2.ino.bin" gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin
+    gsutil setmeta -h Cache-Control:no-cache gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin
     rm -rf "src/$2/build"
 
     echo

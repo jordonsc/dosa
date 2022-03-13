@@ -124,9 +124,9 @@ cc_library(
 )
 
 cc_library(
-    name = "ArduinoHttpClient",
-    srcs = glob(["libraries/ArduinoHttpClient/src/**/*.cpp"]),
-    hdrs = glob(["libraries/ArduinoHttpClient/src/**/*.h"]),
-    includes = ["libraries/ArduinoHttpClient/src"],
+    name = "HttpClient",
+    srcs = glob(["libraries/HttpClient/**/*.cpp"]),
+    hdrs = glob(["libraries/HttpClient/**/*.h"]),
+    includes = ["libraries/HttpClient"],
     visibility = ["//visibility:public"],
 )

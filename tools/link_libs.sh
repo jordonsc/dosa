@@ -36,19 +36,13 @@ ln -s ~/Arduino/libraries/SparkFun_GridEYE_AMG88_Library arduino/libraries/Spark
 ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 ln -s ~/Arduino/libraries/Array arduino/libraries/Array
 ln -s ~/Arduino/libraries/ArduinoOTA arduino/libraries/ArduinoOTA
-ln -s ~/Arduino/libraries/ArduinoHttpClient arduino/libraries/ArduinoHttpClient
+ln -s ~/Arduino/libraries/HttpClient arduino/libraries/HttpClient
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
 
 # Prepare Arduino library directory -
 mkdir -p ~/Arduino/libraries
-
-# Legacy -
-rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/messages ~/Arduino/libraries/door ~/Arduino/libraries/sensor \
-  ~/Arduino/libraries/sonar ~/Arduino/libraries/dosa_inkplate ~/Arduino/libraries/monitor ~/Arduino/libraries/comms \
-  ~/Arduino/libraries/common ~/Arduino/libraries/dosa_ota
-
 rm -f ~/Arduino/libraries/dosa ~/Arduino/libraries/dosa_*
 
 # (Re)link libs -

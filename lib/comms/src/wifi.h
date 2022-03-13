@@ -135,7 +135,6 @@ class Wifi : public Loggable
 
     bool connectSequence(String const& ssid, String const& password, uint8_t attempts)
     {
-        logln("WiFi NINA connection sequence", LogLevel::TRACE);
 #ifdef ARDUINO_ARCH_SAMD
         ctrl.setTimeout(DOSA_WIFI_CONNECT_TIMEOUT);
 #endif

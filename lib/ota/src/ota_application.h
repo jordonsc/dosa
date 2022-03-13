@@ -1,17 +1,21 @@
 #pragma once
 
 #include <Arduino.h>
-#include <ArduinoHttpClient.h>
 #include <ArduinoOTA.h>
+#include <HttpClient.h>
 #include <dosa.h>
 
 namespace dosa {
 
 #ifndef DOSA_OTA_HOST
 #define DOSA_OTA_HOST "storage.googleapis.com"
-#define DOSA_OTA_PORT 443
+#define DOSA_OTA_PORT 80
 #define DOSA_OTA_PATH "/dosa-ota/"
+#define DOSA_OTA_UA "DOSA OTA/1.0"
 #endif
+
+#define DOSA_OTA_SIZE_MIN 50000
+#define DOSA_OTA_SIZE_MAX 250000
 
 class OtaApplication : public App
 {
@@ -43,6 +47,15 @@ class OtaApplication : public App
         // Send reply ack
         getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
         netLog("OTA update initiated by " + comms::ipToString(sender.ip));
+
+        auto ota_version = getOtaVersion();
+        if (ota_version == 0) {
+            return;
+        } else if (ota_version > DOSA_VERSION) {
+            performOtaUpdate(ota_version);
+        } else {
+            netLog("No new updates to apply (current: " + String(DOSA_VERSION) + ", OTA: " + String(ota_version) + ")");
+        }
     }
 
     /**
@@ -50,25 +63,82 @@ class OtaApplication : public App
      */
     uint32_t getOtaVersion()
     {
-        WiFiSSLClient wifi_client;
-        HttpClient http_client(wifi_client, DOSA_OTA_HOST, DOSA_OTA_PORT);
+        WiFiClient wifi_client;
+        HttpClient http_client(wifi_client);
 
         String path(DOSA_OTA_PATH);
-        path += config.short_name + "/version";
-        http_client.get(path);
+        path += config.short_name + "/version?v=" + String(random(100000));
+        http_client.get(DOSA_OTA_HOST, DOSA_OTA_PORT, path.c_str(), DOSA_OTA_UA);
 
-        int status = http_client.responseStatusCode();
+        auto status = http_client.responseStatusCode();
         if (status != 200) {
             http_client.stop();
-            netLog(
-                "OTA version check failed; bad response code from OTA server: " + String(status),
-                NetLogLevel::ERROR);
+            netLog("OTA version check failed: " + String(status), NetLogLevel::ERROR);
             return 0;
         }
 
+        http_client.skipResponseHeaders();
+
         auto version = http_client.readStringUntil('\n');
-        netLog("OTA update for " + config.short_name + " at version " + version);
         return version.toInt();
+    }
+
+    void performOtaUpdate(uint32_t version)
+    {
+        netLog("Performing OTA update for " + config.short_name + " v" + version + "..");
+
+        WiFiClient wifi_client;
+        HttpClient http_client(wifi_client);
+
+        String path(DOSA_OTA_PATH);
+        path += config.short_name + "/build-" + String(version) + ".bin";
+        http_client.get(DOSA_OTA_HOST, DOSA_OTA_PORT, path.c_str(), DOSA_OTA_UA);
+
+        auto status = http_client.responseStatusCode();
+        if (status != 200) {
+            http_client.stop();
+            netLog("OTA update download failed: " + String(status), NetLogLevel::ERROR);
+            return;
+        }
+
+        http_client.skipResponseHeaders();
+        auto content_length = http_client.contentLength();
+
+        if (content_length == 0) {
+            netLog("Cannot update via OTA; null content-length", NetLogLevel::ERROR);
+            return;
+        } else if (content_length < DOSA_OTA_SIZE_MIN) {
+            netLog("Cannot update via OTA; payload size too small", NetLogLevel::ERROR);
+            return;
+        } else if (content_length > DOSA_OTA_SIZE_MAX) {
+            netLog("Cannot update via OTA; payload size too large", NetLogLevel::ERROR);
+            return;
+        }
+
+        if (!InternalStorage.open(content_length)) {
+            http_client.stop();
+            netLog("Insufficient space for OTA update", NetLogLevel::ERROR);
+            return;
+        }
+
+        // We can only write to internal storage 1-byte at a time, so download the OTA update and write as we go
+        byte b;
+        while (content_length > 0) {
+            if (!http_client.readBytes(&b, 1)) {
+                // Timeout occurred
+                netLog("Timeout while downloading OTA update");
+                return;
+            }
+
+            InternalStorage.write(b);
+            --content_length;
+        }
+
+        InternalStorage.close();
+        http_client.stop();
+
+        netLog("Device applying OTA update");
+        InternalStorage.apply();
     }
 
     /**

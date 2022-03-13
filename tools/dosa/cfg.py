@@ -34,25 +34,50 @@ class Config:
 
         opt = self.user_select_opt()
         if opt == 1:
-            self.exec_config_mode(device)
+            # Debug dump
+            self.exec_debug_dump(device)
         elif opt == 2:
-            self.exec_device_password(device, self.get_values(["New password"]))
+            # BT config mode
+            self.exec_config_mode(device)
         elif opt == 3:
-            self.exec_device_name(device, self.get_values(["Device name"]))
+            # Set BT password
+            self.exec_device_password(device, self.get_values(["New password"]))
         elif opt == 4:
-            self.exec_wifi_ap(device, self.get_values(["Wifi SSID", "Wifi Password"]))
+            # Set device name
+            self.exec_device_name(device, self.get_values(["Device name"]))
         elif opt == 5:
+            # Set wifi details
+            self.exec_wifi_ap(device, self.get_values(["Wifi SSID", "Wifi Password"]))
+        elif opt == 6:
+            # IR sensor calibration
             self.exec_sensor_calibration(device, self.get_values(
                 ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
             ))
-        elif opt == 6:
-            self.exec_door_calibration(device, self.get_values(
-                ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
-            ))
         elif opt == 7:
+            # Sonar sensor calibration
             self.exec_sonar_calibration(device, self.get_values(
                 ["Trigger threshold"]
             ))
+        elif opt == 8:
+            # Winch driver calibration
+            self.exec_door_calibration(device, self.get_values(
+                ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
+            ))
+
+    def exec_debug_dump(self, device):
+        self.comms.send(self.comms.build_payload(dosa.Messages.DEBUG), tgt=device.address,
+                        wait_for_ack=False)
+
+        timeout = 2.0
+        start_time = time.perf_counter()
+        while time.perf_counter() - start_time < timeout:
+            msg = self.comms.receive(timeout=timeout)
+
+            if msg is None or msg.msg_code != dosa.Messages.LOG:
+                continue
+
+            print("[" + dosa.Messages.get_log_level(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
+                  msg.payload[28:msg.payload_size].decode("utf-8"))
 
     def exec_config_mode(self, device):
         print("Sending Bluetooth fallback mode request..", end="")
@@ -245,13 +270,14 @@ class Config:
 
     @staticmethod
     def user_select_opt():
-        print("[1] Order device into Bluetooth configuration mode")
-        print("[2] Set device password")
-        print("[3] Set device name")
-        print("[4] Set wifi configuration")
-        print("[5] Sensor calibration")
-        print("[6] Door calibration")
+        print("[1] Request debug dump")
+        print("[2] Order device into Bluetooth configuration mode")
+        print("[3] Set device password")
+        print("[4] Set device name")
+        print("[5] Set wifi configuration")
+        print("[6] Sensor calibration")
         print("[7] Sonar calibration")
+        print("[8] Door calibration")
 
         while True:
             try:
@@ -262,7 +288,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 8:
+            if 0 < opt < 9:
                 print()
                 return opt
             else:

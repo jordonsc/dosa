@@ -78,7 +78,7 @@ class App : public StatefulApplication
             container.getSerial().wait();
         }
 
-        logln("-- " + config.app_name + " --");
+        logln("-- " + config.app_name + " v" + String(DOSA_VERSION) + " --");
 #ifdef DOSA_DEBUG
         logln("// Debug Mode //");
 #endif
@@ -113,7 +113,7 @@ class App : public StatefulApplication
         // Debug auto-responder
         getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
             DOSA_COMMS_MSG_DEBUG,
-            &pingMessageForwarder,
+            &debugMessageForwarder,
             this);
 
         // Config setting handler
@@ -204,11 +204,13 @@ class App : public StatefulApplication
      */
     void netLog(char const* msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
     {
+        cascadeNetLogMsg(msg, lvl);
         getContainer().getComms().dispatch(target, messages::LogMessage(msg, getDeviceNameBytes(), lvl));
     }
 
     void netLog(String const& msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
     {
+        cascadeNetLogMsg(msg, lvl);
         getContainer().getComms().dispatch(target, messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
     }
 
@@ -474,24 +476,23 @@ class App : public StatefulApplication
      */
     void cascadeNetLogMsg(String const& msg, NetLogLevel lvl)
     {
-        static char const* prefix = "Net: ";
         switch (lvl) {
             case messages::LogMessageLevel::DEBUG:
-                logln(prefix + msg, LogLevel::DEBUG);
+                logln(msg, LogLevel::DEBUG);
                 break;
             default:
             case messages::LogMessageLevel::INFO:
             case messages::LogMessageLevel::STATUS:
-                logln(prefix + msg, LogLevel::INFO);
+                logln(msg, LogLevel::INFO);
                 break;
             case messages::LogMessageLevel::WARNING:
-                logln(prefix + msg, LogLevel::WARNING);
+                logln(msg, LogLevel::WARNING);
                 break;
             case messages::LogMessageLevel::ERROR:
-                logln(prefix + msg, LogLevel::ERROR);
+                logln(msg, LogLevel::ERROR);
                 break;
             case messages::LogMessageLevel::CRITICAL:
-                logln(prefix + msg, LogLevel::CRITICAL);
+                logln(msg, LogLevel::CRITICAL);
                 break;
         }
     }

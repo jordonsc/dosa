@@ -50,8 +50,9 @@ class Snoop:
                                 index += 1
                             aux += "|\n"
                         aux += "+--------+"
-            elif msg.msg_code == dosa.Messages.ERROR:
-                aux = " // ERROR: " + msg.payload[27:msg.payload_size].decode("utf-8")
+            elif msg.msg_code == dosa.Messages.LOG:
+                aux = " // [" + dosa.Messages.get_log_level(struct.unpack("<B", msg.payload[27:28])[0]) + "] " + \
+                      msg.payload[28:msg.payload_size].decode("utf-8")
             elif msg.msg_code == dosa.Messages.ONLINE:
                 aux = " // ONLINE"
             elif msg.msg_code == dosa.Messages.BEGIN:
