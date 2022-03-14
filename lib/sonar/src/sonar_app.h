@@ -51,6 +51,8 @@ class SonarApp final : public dosa::OtaApplication
 
         if (millis() - last_fired < REFIRE_DELAY) {
             return;
+        } else if (getDeviceState() == messages::DeviceState::WORKING) {
+            setDeviceState(messages::DeviceState::OK);
         }
 
         // Zero distance implies the sensor didn't receive a bounce-back (beyond range)
@@ -122,13 +124,6 @@ class SonarApp final : public dosa::OtaApplication
             calibrated_distance = distance;
             calibration_count = 0;
             logln("Distance calibration set to " + String(calibrated_distance), LogLevel::DEBUG);
-
-            if (calibrated_distance == 0) {
-                // We'll consider an infinite distance to be a 'minor issue'
-                setDeviceState(messages::DeviceState::MINOR_FAULT);
-            } else {
-                setDeviceState(messages::DeviceState::OK);
-            }
         }
     }
 
