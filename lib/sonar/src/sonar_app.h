@@ -17,6 +17,7 @@ class SonarApp final : public dosa::OtaApplication
     {
         OtaApplication::init();
         logln("Trigger threshold: " + String(container.getSettings().getSonarTriggerThreshold()), LogLevel::DEBUG);
+        logln("Fixed calibration: " + String(container.getSettings().getSonarFixedCalibration()), LogLevel::DEBUG);
     }
 
     void loop() override
@@ -33,7 +34,9 @@ class SonarApp final : public dosa::OtaApplication
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
         App::onDebugRequest(msg, sender);
-        netLog("Sonar threshold: " + String(getContainer().getSettings().getSonarTriggerThreshold()), sender);
+        auto const& settings = getContainer().getSettings();
+        netLog("Sonar calibration threshold: " + String(settings.getSonarTriggerThreshold()), sender);
+        netLog("Sonar fixed calibration: " + String(settings.getSonarFixedCalibration()), sender);
         netLog("Sonar distance: " + String(container.getSonar().getDistance()), sender);
     }
 
@@ -55,7 +58,7 @@ class SonarApp final : public dosa::OtaApplication
             setDeviceState(messages::DeviceState::OK);
         }
 
-        // Zero distance implies the sensor didn't receive a bounce-back (beyond range)
+        // Zero distance implies the sensor didn't receive a bounce-back (beyond range, aimed at carpet, etc)
         auto distance = container.getSonar().getDistance();
 
         if ((distance > 0) &&
@@ -64,7 +67,15 @@ class SonarApp final : public dosa::OtaApplication
             considerTrigger(distance, trigger_count);
         } else {
             trigger_count = 0;
-            calibrateSensor(distance, calibration_count);
+            auto fixed_calibration = getContainer().getSettings().getSonarFixedCalibration();
+
+            if (fixed_calibration == 0) {
+                // Using automatic calibration
+                calibrateSensor(distance, calibration_count);
+            } else {
+                // Fixed-distance calibration
+                calibrated_distance = fixed_calibration;
+            }
         }
     }
 

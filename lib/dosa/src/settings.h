@@ -2,7 +2,9 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS17"
+#define DOSA_SETTINGS_V17 "DS17"
+#define DOSA_SETTINGS_V18 "DS18"
+#define DOSA_SETTINGS_HEADER DOSA_SETTINGS_V18
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -51,7 +53,14 @@
  *
  * Increase to reduce noise.
  */
-#define SONAR_TRIGGER_THRESHOLD 2
+#define SONAR_TRIGGER_THRESHOLD 3
+
+/**
+ * Fixed distance for the sonar resting state. Set to zero for automatic detection.
+ *
+ * Recommended you set this value for outdoor devices, or devices aiming at non-perpendicular or non-solid surfaces.
+ */
+#define SONAR_FIXED_CALIBRATION 0
 
 namespace dosa {
 
@@ -76,6 +85,7 @@ namespace dosa {
  *   4      uint32    Door cfg: DOOR_COOL_DOWN
  *   4      uint32    Door cfg: DOOR_CLOSE_TICKS
  *   2      uint16    Sonar cfg: SONAR_TRIGGER_THRESHOLD
+ *   2      uint16    Sonar cfg: SONAR_FIXED_CALIBRATION
  */
 class Settings : public Loggable
 {
@@ -100,11 +110,19 @@ class Settings : public Loggable
             reInitRam();
         }
 
-        if (ram.readHeader() != DOSA_SETTINGS_HEADER) {
-            // Settings missing or out-of-date, use default values
-            logln("FRAM header incorrect, using default settings", dosa::LogLevel::WARNING);
-            setDefaults();
-            return false;
+        String currentSettingsVersion = ram.readHeader();
+        bool upgrading = false;
+
+        if (currentSettingsVersion != DOSA_SETTINGS_HEADER) {
+            // Settings missing or out-of-date
+            if (canUpgrade(currentSettingsVersion)) {
+                upgrading = true;
+                logln("Upgrading settings from previous build", dosa::LogLevel::WARNING);
+            } else {
+                logln("FRAM header incorrect, using default settings", dosa::LogLevel::WARNING);
+                setDefaults();
+                return false;
+            }
         }
 
         uint32_t ptr = 4;  // Size of header
@@ -146,6 +164,12 @@ class Settings : public Loggable
         read_var(&door_close_ticks, 4);
 
         read_var(&sonar_trigger_threshold, 2);
+        read_var(&sonar_fixed_calibration, 2);
+
+        // Check what we need to upgrade
+        if (upgrading) {
+            doUpgrade(currentSettingsVersion);
+        }
 
         // Validate values
         bool valid = true;
@@ -164,7 +188,8 @@ class Settings : public Loggable
 
         updateDeviceNameBytes();
 
-        return valid;
+        // A save operation should be performed if validation failed, or we performed an upgrade
+        return valid && !upgrading;
     }
 
     /**
@@ -184,11 +209,11 @@ class Settings : public Loggable
          *   4x 2  Variable size markers
          *      9  Sensor calibration
          *     14  Door calibration
-         *      2  Sonar calibration
+         *      4  Sonar calibration
          * ---------------------------
-         *     37  Total
+         *     39  Total
          */
-        size_t size = 37 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 39 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -223,6 +248,7 @@ class Settings : public Loggable
         write_var(&door_close_ticks, 4);
 
         write_var(&sonar_trigger_threshold, 2);
+        write_var(&sonar_fixed_calibration, 2);
 
         if (size == (ptr - payload)) {
             ram.write(0, payload, size);
@@ -395,6 +421,16 @@ class Settings : public Loggable
         sonar_trigger_threshold = sonarTriggerThreshold;
     }
 
+    [[nodiscard]] uint16_t getSonarFixedCalibration() const
+    {
+        return sonar_fixed_calibration;
+    }
+
+    void setSonarFixedCalibration(uint16_t sonarFixedCalibration)
+    {
+        sonar_fixed_calibration = sonarFixedCalibration;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -419,6 +455,27 @@ class Settings : public Loggable
     uint32_t door_cool_down = 0;
     uint32_t door_close_ticks = 0;
     uint16_t sonar_trigger_threshold = 0;
+    uint16_t sonar_fixed_calibration = 0;
+
+    /**
+     * Check if we can upgrade the settings config from given version, instead of wiping clean the entire settings.
+     */
+    virtual bool canUpgrade(String const& version)
+    {
+        if (version == DOSA_SETTINGS_V17) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    virtual void doUpgrade(String const& version)
+    {
+        if (version == DOSA_SETTINGS_V17) {
+            // Added in v18: sonar fixed calibration
+            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
+        }
+    }
 
     /**
      * Rebuild the 20x char array for the device name.

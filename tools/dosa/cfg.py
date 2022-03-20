@@ -56,7 +56,7 @@ class Config:
         elif opt == 7:
             # Sonar sensor calibration
             self.exec_sonar_calibration(device, self.get_values(
-                ["Trigger threshold"]
+                ["Trigger threshold", "Fixed calibration"]
             ))
         elif opt == 8:
             # Winch driver calibration
@@ -187,6 +187,7 @@ class Config:
         else:
             try:
                 aux[1:3] = struct.pack("<H", int(values[0]))  # Trigger threshold
+                aux[3:5] = struct.pack("<H", int(values[1]))  # Fixed calibration
             except ValueError:
                 print("Malformed calibration data, aborting")
                 exit()

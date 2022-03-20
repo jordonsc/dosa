@@ -778,20 +778,22 @@ class App : public StatefulApplication
 
     void settingSonarCalibration(uint8_t const* data, uint16_t size)
     {
-        if (size != 2) {
+        if (size != 4) {
             logln("ERROR: incorrect payload size for sonar calibration data", LogLevel::ERROR);
             return;
         }
 
-        uint16_t trigger_threshold;
-
+        uint16_t trigger_threshold, fixed_calibration;
         memcpy(&trigger_threshold, data, 2);
+        memcpy(&fixed_calibration, data + 2, 2);
 
         logln("SONAR CALIBRATION");
         logln(" > trigger threshold: " + String(trigger_threshold));
+        logln(" > fixed calibration: " + String(fixed_calibration));
 
         auto& settings = getContainer().getSettings();
         settings.setSonarTriggerThreshold(trigger_threshold);
+        settings.setSonarFixedCalibration(fixed_calibration);
         settings.save();
     }
 
