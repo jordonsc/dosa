@@ -16,8 +16,9 @@ class SonarApp final : public dosa::OtaApplication
     void init() override
     {
         OtaApplication::init();
-        logln("Trigger threshold: " + String(container.getSettings().getSonarTriggerThreshold()), LogLevel::DEBUG);
-        logln("Fixed calibration: " + String(container.getSettings().getSonarFixedCalibration()), LogLevel::DEBUG);
+        logln("Trigger threshold:   " + String(container.getSettings().getSonarTriggerThreshold()), LogLevel::DEBUG);
+        logln("Trigger coefficient: " + String(container.getSettings().getSonarTriggerCoefficient()), LogLevel::DEBUG);
+        logln("Fixed calibration:   " + String(container.getSettings().getSonarFixedCalibration()), LogLevel::DEBUG);
     }
 
     void loop() override
@@ -36,6 +37,7 @@ class SonarApp final : public dosa::OtaApplication
         App::onDebugRequest(msg, sender);
         auto const& settings = getContainer().getSettings();
         netLog("Sonar calibration threshold: " + String(settings.getSonarTriggerThreshold()), sender);
+        netLog("Sonar trigger coefficient: " + String(settings.getSonarTriggerCoefficient()), sender);
         netLog("Sonar fixed calibration: " + String(settings.getSonarFixedCalibration()), sender);
         netLog("Sonar distance: " + String(container.getSonar().getDistance()), sender);
     }
@@ -52,6 +54,8 @@ class SonarApp final : public dosa::OtaApplication
             return;
         }
 
+        auto const& settings = getContainer().getSettings();
+
         if (millis() - last_fired < REFIRE_DELAY) {
             return;
         } else if (getDeviceState() == messages::DeviceState::WORKING) {
@@ -61,13 +65,13 @@ class SonarApp final : public dosa::OtaApplication
         // Zero distance implies the sensor didn't receive a bounce-back (beyond range, aimed at carpet, etc)
         auto distance = container.getSonar().getDistance();
 
-        if ((distance > 0) &&
-            (distance < calibrated_distance * SONAR_TRIGGER_COEFFICIENT || calibrated_distance == 0)) {
+        if ((distance > 0) && (distance < int(float(calibrated_distance) * settings.getSonarTriggerCoefficient()) ||
+                               calibrated_distance == 0)) {
             calibration_count = 0;
             considerTrigger(distance, trigger_count);
         } else {
             trigger_count = 0;
-            auto fixed_calibration = getContainer().getSettings().getSonarFixedCalibration();
+            auto fixed_calibration = settings.getSonarFixedCalibration();
 
             if (fixed_calibration == 0) {
                 // Using automatic calibration

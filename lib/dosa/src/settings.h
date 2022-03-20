@@ -4,7 +4,8 @@
 
 #define DOSA_SETTINGS_V17 "DS17"
 #define DOSA_SETTINGS_V18 "DS18"
-#define DOSA_SETTINGS_HEADER DOSA_SETTINGS_V18
+#define DOSA_SETTINGS_V19 "DS19"
+#define DOSA_SETTINGS_HEADER DOSA_SETTINGS_V19
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -56,6 +57,11 @@
 #define SONAR_TRIGGER_THRESHOLD 3
 
 /**
+ * Percentage of previous distance that's considered a trigger.
+ */
+#define SONAR_TRIGGER_COEFFICIENT 0.9
+
+/**
  * Fixed distance for the sonar resting state. Set to zero for automatic detection.
  *
  * Recommended you set this value for outdoor devices, or devices aiming at non-perpendicular or non-solid surfaces.
@@ -86,6 +92,7 @@ namespace dosa {
  *   4      uint32    Door cfg: DOOR_CLOSE_TICKS
  *   2      uint16    Sonar cfg: SONAR_TRIGGER_THRESHOLD
  *   2      uint16    Sonar cfg: SONAR_FIXED_CALIBRATION
+ *   4      float     Sonar cfg: SONAR_TRIGGER_COEFFICIENT
  */
 class Settings : public Loggable
 {
@@ -165,6 +172,7 @@ class Settings : public Loggable
 
         read_var(&sonar_trigger_threshold, 2);
         read_var(&sonar_fixed_calibration, 2);
+        read_var(&sonar_trigger_coefficient, 4);
 
         // Check what we need to upgrade
         if (upgrading) {
@@ -209,11 +217,11 @@ class Settings : public Loggable
          *   4x 2  Variable size markers
          *      9  Sensor calibration
          *     14  Door calibration
-         *      4  Sonar calibration
+         *      8  Sonar calibration
          * ---------------------------
-         *     39  Total
+         *     43  Total
          */
-        size_t size = 39 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 43 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -249,6 +257,7 @@ class Settings : public Loggable
 
         write_var(&sonar_trigger_threshold, 2);
         write_var(&sonar_fixed_calibration, 2);
+        write_var(&sonar_trigger_coefficient, 4);
 
         if (size == (ptr - payload)) {
             ram.write(0, payload, size);
@@ -279,6 +288,8 @@ class Settings : public Loggable
 
         // Sonar specific
         sonar_trigger_threshold = SONAR_TRIGGER_THRESHOLD;
+        sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
+        sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
 
         updateDeviceNameBytes();
     }
@@ -431,6 +442,16 @@ class Settings : public Loggable
         sonar_fixed_calibration = sonarFixedCalibration;
     }
 
+    [[nodiscard]] float getSonarTriggerCoefficient() const
+    {
+        return sonar_trigger_coefficient;
+    }
+
+    void setSonarTriggerCoefficient(float sonarTriggerCoefficient)
+    {
+        sonar_trigger_coefficient = sonarTriggerCoefficient;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -456,24 +477,26 @@ class Settings : public Loggable
     uint32_t door_close_ticks = 0;
     uint16_t sonar_trigger_threshold = 0;
     uint16_t sonar_fixed_calibration = 0;
+    float sonar_trigger_coefficient = 0.9;
 
     /**
      * Check if we can upgrade the settings config from given version, instead of wiping clean the entire settings.
      */
     virtual bool canUpgrade(String const& version)
     {
-        if (version == DOSA_SETTINGS_V17) {
-            return true;
-        } else {
-            return false;
-        }
+        return (version == DOSA_SETTINGS_V17 || version == DOSA_SETTINGS_V18);
     }
 
+    /**
+     * Fix data that would be corrupt from previous settings schema.
+     */
     virtual void doUpgrade(String const& version)
     {
         if (version == DOSA_SETTINGS_V17) {
-            // Added in v18: sonar fixed calibration
-            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
+            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;      // added v18
+            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;  // added v19
+        } else if (version == DOSA_SETTINGS_V18) {
+            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
         }
     }
 
