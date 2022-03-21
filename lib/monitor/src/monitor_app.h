@@ -358,7 +358,7 @@ class MonitorApp final : public InkplateApp
                     glyph_fn = state == messages::DeviceState::OK ? images::sensor_inactive : images::sensor_active;
                     break;
                 case messages::DeviceType::BUTTON:
-                case messages::DeviceType::SWITCH:
+                case messages::DeviceType::POWER_TOGGLE:
                 case messages::DeviceType::MOTOR_WINCH:
                 case messages::DeviceType::LIGHT:
                     glyph_fn = state == messages::DeviceState::OK ? images::winch_inactive : images::winch_active;

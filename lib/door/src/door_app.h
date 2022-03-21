@@ -4,8 +4,6 @@
 
 #include "door_container.h"
 
-#define SENSOR_TRIGGER_VALUE 2  // "active" state for sensors
-
 #define DOSA_DOOR_ERR_UNKNOWN "Door unknown error"
 #define DOSA_DOOR_ERR_OPEN "Door OPEN timeout"
 #define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
@@ -91,9 +89,14 @@ class DoorApp final : public dosa::OtaApplication
             last_msg_id = trigger.getMessageId();
         }
 
-        container.getSerial().writeln(
+        logln(
             "Received trigger message from '" + Comms::getDeviceName(trigger) + "' (" + comms::nodeToString(sender) +
             "), msg ID: " + String(trigger.getMessageId()));
+
+        if (isLocked()) {
+            netLog("Lock violation by " + Comms::getDeviceName(trigger), NetLogLevel::SECURITY);
+            return;
+        }
 
         // Send reply ack
         container.getComms().dispatch(sender, messages::Ack(trigger, container.getSettings().getDeviceNameBytes()));
@@ -107,6 +110,11 @@ class DoorApp final : public dosa::OtaApplication
      */
     void doorSequence()
     {
+        if (isLocked()) {
+            // Locks should be checked at their trigger-point, this is a final just-in-case
+            return;
+        }
+
         setDeviceState(messages::DeviceState::WORKING);
         dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
         container.getDoorLights().activity();
@@ -121,6 +129,11 @@ class DoorApp final : public dosa::OtaApplication
         return container;
     }
 
+    Container const& getContainer() const override
+    {
+        return container;
+    }
+
     /**
      * When the door switch (blue button) changes state.
      */
@@ -131,6 +144,12 @@ class DoorApp final : public dosa::OtaApplication
         }
 
         container.getSerial().writeln("Door switch pressed");
+
+        if (isLocked()) {
+            netLog("Lock violation by physical button press", NetLogLevel::SECURITY);
+            return;
+        }
+
         doorSequence();
     }
 

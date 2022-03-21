@@ -2,12 +2,16 @@ import time
 import dosa
 import struct
 
+from dosa.device import DeviceType
 
 class Device:
     def __init__(self, device_type, device_state, addr):
         self.device_type = device_type
         self.device_state = device_state
         self.address = addr
+
+    def device_setting_option(self):
+        pass
 
 
 class Config:
@@ -49,19 +53,32 @@ class Config:
             # Set wifi details
             self.exec_wifi_ap(device, self.get_values(["Wifi SSID", "Wifi Password"]))
         elif opt == 6:
-            # IR sensor calibration
-            self.exec_sensor_calibration(device, self.get_values(
-                ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
-            ))
+            # Device configuration
+            if device.device_type == DeviceType.IR_PASSIVE:
+                # IR sensor calibration
+                print("IR configuration")
+                self.exec_sensor_calibration(device, self.get_values(
+                    ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
+                ))
+            elif device.device_type == DeviceType.SONAR:
+                # Sonar sensor calibration
+                print("Sonar configuration")
+                self.exec_sonar_calibration(device, self.get_values(
+                    ["Trigger threshold", "Fixed calibration", "Trigger Coefficient"]
+                ))
+            elif device.device_type == DeviceType.MOTOR:
+                # Winch driver calibration
+                print("Motorised winch configuration")
+                self.exec_door_calibration(device, self.get_values(
+                    ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
+                ))
+            else:
+                print("Device cannot be configured (" + str(device.device_type) + ")")
+                return
         elif opt == 7:
-            # Sonar sensor calibration
-            self.exec_sonar_calibration(device, self.get_values(
-                ["Trigger threshold", "Fixed calibration", "Trigger Coefficient"]
-            ))
-        elif opt == 8:
-            # Winch driver calibration
-            self.exec_door_calibration(device, self.get_values(
-                ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
+            # Set lock state
+            self.exec_lock_state(device, self.get_values(
+                ["Lock state (0 unlocked, 1 locked)"]
             ))
 
     def exec_debug_dump(self, device):
@@ -198,6 +215,25 @@ class Config:
                         wait_for_ack=True)
         print(" done")
 
+    def exec_lock_state(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 6)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:2] = struct.pack("<B", int(values[0]))  # Lock state
+            except ValueError:
+                print("Malformed lock data, aborting")
+                exit()
+
+        print("Sending new calibration data..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
+        print(" done")
+
     @staticmethod
     def get_values(vals):
         """
@@ -277,9 +313,8 @@ class Config:
         print("[3] Set device password")
         print("[4] Set device name")
         print("[5] Set wifi configuration")
-        print("[6] Sensor calibration")
-        print("[7] Sonar calibration")
-        print("[8] Door calibration")
+        print("[6] Configure device settings")
+        print("[7] Set device lock")
 
         while True:
             try:
@@ -290,7 +325,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 9:
+            if 0 < opt < 8:
                 print()
                 return opt
             else:

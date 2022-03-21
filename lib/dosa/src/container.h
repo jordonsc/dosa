@@ -19,7 +19,17 @@ class Container
         return serial;
     }
 
+    [[nodiscard]] SerialComms const& getSerial() const
+    {
+        return serial;
+    }
+
     [[nodiscard]] Lights& getLights()
+    {
+        return lights;
+    }
+
+    [[nodiscard]] Lights const& getLights() const
     {
         return lights;
     }
@@ -29,7 +39,17 @@ class Container
         return bluetooth;
     }
 
+    [[nodiscard]] Bluetooth const& getBluetooth() const
+    {
+        return bluetooth;
+    }
+
     [[nodiscard]] Wifi& getWiFi()
+    {
+        return wifi;
+    }
+
+    [[nodiscard]] Wifi const& getWiFi() const
     {
         return wifi;
     }
@@ -39,7 +59,17 @@ class Container
         return comms;
     }
 
+    [[nodiscard]] Comms const& getComms() const
+    {
+        return comms;
+    }
+
     [[nodiscard]] Settings& getSettings()
+    {
+        return settings;
+    }
+
+    [[nodiscard]] Settings const& getSettings() const
     {
         return settings;
     }

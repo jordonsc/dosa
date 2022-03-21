@@ -2,10 +2,7 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_V17 "DS17"
-#define DOSA_SETTINGS_V18 "DS18"
-#define DOSA_SETTINGS_V19 "DS19"
-#define DOSA_SETTINGS_HEADER DOSA_SETTINGS_V19
+#define DOSA_SETTINGS_HEADER "DS20"
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -75,6 +72,7 @@ namespace dosa {
  *   Size   Type      Detail
  *   ----------------------------------
  *   1      char      Header - validates we've got a DOSA settings stored (and correct version)
+ *   1      uint8     Device lock state
  *   2      uint16    Size of device password
  *   ?      char      Device password (aka pin)
  *   2      uint16    Size of device name
@@ -149,6 +147,13 @@ class Settings : public Loggable
             ptr += size;
         };
 
+        if (upgrading && getSettingsVersion(currentSettingsVersion) < 20) {
+            // device lock was introduced in v20
+            locked = 0;
+        } else {
+            read_var(&locked, 1);
+        }
+
         if (!read_block(pin))
             return false;
 
@@ -214,14 +219,15 @@ class Settings : public Loggable
         /**
          * Fixed length sizes:
          *      4  Header
+         *      1  Locked state
          *   4x 2  Variable size markers
          *      9  Sensor calibration
          *     14  Door calibration
          *      8  Sonar calibration
          * ---------------------------
-         *     43  Total
+         *     44  Total
          */
-        size_t size = 43 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 44 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -240,6 +246,8 @@ class Settings : public Loggable
             memcpy(ptr, value, sz);
             ptr += sz;
         };
+
+        write_var(&locked, 1);
 
         write_block(pin);
         write_block(device_name);
@@ -270,6 +278,7 @@ class Settings : public Loggable
     void setDefaults()
     {
         // Common
+        locked = 0;
         pin = DOSA_SETTINGS_DEFAULT_PIN;
         device_name = "DOSA " + String(random(1000, 9999));
         wifi_ssid = "";
@@ -452,6 +461,16 @@ class Settings : public Loggable
         sonar_trigger_coefficient = sonarTriggerCoefficient;
     }
 
+    bool getLockState() const
+    {
+        return locked != 0;
+    }
+
+    void setLocked(bool lock_enabled)
+    {
+        locked = lock_enabled ? 1 : 0;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -471,6 +490,7 @@ class Settings : public Loggable
     uint8_t sensor_min_pixels = 0;
     float sensor_pixel_delta = 0;
     float sensor_total_delta = 0;
+    uint8_t locked = 0;
     uint16_t door_open_distance = 0;
     uint32_t door_open_wait = 0;
     uint32_t door_cool_down = 0;
@@ -479,25 +499,48 @@ class Settings : public Loggable
     uint16_t sonar_fixed_calibration = 0;
     float sonar_trigger_coefficient = 0.9;
 
+    [[nodiscard]] static uint8_t getSettingsVersion(String const& version)
+    {
+        if (version.length() != 4 || version.substring(0, 2) != "DS") {
+            return 0;
+        }
+
+        return version.substring(2).toInt();
+    }
+
     /**
      * Check if we can upgrade the settings config from given version, instead of wiping clean the entire settings.
      */
     virtual bool canUpgrade(String const& version)
     {
-        return (version == DOSA_SETTINGS_V17 || version == DOSA_SETTINGS_V18);
+        auto version_num = getSettingsVersion(version);
+        return (version_num >= 17 && version_num <= 19);
     }
 
     /**
      * Fix data that would be corrupt from previous settings schema.
      */
-    virtual void doUpgrade(String const& version)
+    virtual bool doUpgrade(String const& version)
     {
-        if (version == DOSA_SETTINGS_V17) {
-            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;      // added v18
-            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;  // added v19
-        } else if (version == DOSA_SETTINGS_V18) {
-            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
+        if (version.substring(0, 2) != "DS") {
+            return false;
         }
+
+        auto version_num = getSettingsVersion(version);
+
+        switch (version_num) {
+            default:
+                return false;
+            case 17:
+                sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
+            case 18:
+                sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
+            case 19:
+                // in v20 we added locks, but locks are pre-pended to settings and thus handled in load()
+                break;
+        }
+
+        return true;
     }
 
     /**

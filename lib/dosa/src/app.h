@@ -164,6 +164,14 @@ class App : public StatefulApplication
         }
     }
 
+    /**
+     * Check if device is locked.
+     */
+    bool isLocked() const
+    {
+        return getContainer().getSettings().getLockState();
+    }
+
    protected:
     /**
      * Dispatch a generic message on the UDP multicast address.
@@ -368,6 +376,7 @@ class App : public StatefulApplication
     }
 
     [[nodiscard]] virtual Container& getContainer() = 0;
+    [[nodiscard]] virtual Container const& getContainer() const = 0;
 
     Config config;
 
@@ -458,9 +467,11 @@ class App : public StatefulApplication
      */
     virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
     {
+        auto const& settings = getContainer().getSettings();
         logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
         netLog("DOSA version: " + String(DOSA_VERSION), sender);
-        netLog("Wifi AP: " + getContainer().getSettings().getWifiSsid(), sender);
+        netLog("Device lock: " + String(settings.getLockState() ? "LOCKED" : "unlocked"), sender);
+        netLog("Wifi AP: " + settings.getWifiSsid(), sender);
     }
 
    private:
@@ -802,6 +813,24 @@ class App : public StatefulApplication
         settings.save();
     }
 
+    void settingDeviceLock(uint8_t const* data, uint16_t size)
+    {
+        if (size != 1) {
+            logln("ERROR: incorrect payload size for lock configuration", LogLevel::ERROR);
+            return;
+        }
+
+        uint8_t lock_state;
+        memcpy(&lock_state, data, 1);
+
+        logln("SET LOCK STATE");
+        logln(" > new state: " + String(lock_state == 0 ? "unlocked" : "locked"));
+
+        auto& settings = getContainer().getSettings();
+        settings.setLocked(lock_state != 0);
+        settings.save();
+    }
+
     /**
      * Config setting packet received, update FRAM.
      */
@@ -840,6 +869,9 @@ class App : public StatefulApplication
                 break;
             case messages::Configuration::ConfigItem::SONAR_CALIBRATION:
                 settingSonarCalibration(msg.getConfigData(), msg.getConfigSize());
+                break;
+            case messages::Configuration::ConfigItem::DEVICE_LOCK:
+                settingDeviceLock(msg.getConfigData(), msg.getConfigSize());
                 break;
             default:
                 logln("UNKNOWN SETTING");

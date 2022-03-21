@@ -147,16 +147,27 @@ class SonarApp final : public dosa::OtaApplication
      */
     void sendTrigger(uint16_t previous, uint16_t current)
     {
+        logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
+
+        if (isLocked()) {
+            logln("(locked, not firing)");
+            return;
+        }
+
         // Trigger data will contain two 16-bit numbers, the previous and new distance measurements
         uint8_t map[64] = {0};
         memcpy(map, &previous, 2);
         memcpy(map + 2, &current, 2);
 
-        logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
         dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
     }
 
     Container& getContainer() override
+    {
+        return container;
+    }
+
+    Container const& getContainer() const override
     {
         return container;
     }

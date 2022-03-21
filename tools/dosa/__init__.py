@@ -45,6 +45,8 @@ class Messages:
             return "ERROR"
         elif log_level == 60:
             return "CRITICAL"
+        elif log_level == 100:
+            return "SECURITY"
         else:
             return "UNKNOWN LOG-LEVEL"
 

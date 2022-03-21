@@ -1,3 +1,19 @@
+class DeviceType:
+    UNKNOWN = 0
+    MONITOR = 1
+    UTILITY = 2
+    IR_PASSIVE = 10
+    IR_ACTIVE = 11
+    OPTICAL = 12
+    SONAR = 20
+    BUTTON = 40
+    TOGGLE = 41
+    POWER_TOGGLE = 110
+    POWER_DELAY = 111
+    MOTOR = 112
+    LIGHT = 113
+
+
 def device_type_str(x):
     if x == 1:
         return "Monitor"
@@ -12,9 +28,13 @@ def device_type_str(x):
     elif x == 20:
         return "Sonar Sensor"
     elif x == 40:
-        return "Button"
+        return "Push Button"
+    elif x == 41:
+        return "Toggle Switch"
     elif x == 110:
-        return "Switch"
+        return "Power Toggle"
+    elif x == 111:
+        return "Power Time Delay"
     elif x == 112:
         return "Motorised Winch"
     elif x == 113:

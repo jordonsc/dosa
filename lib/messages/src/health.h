@@ -17,18 +17,20 @@ enum class DeviceType : uint8_t
     SENSOR_OPTICAL = 12,    // Optical camera
 
     // Sonic sensors
-    SENSOR_SONAR = 20,  // Ultrasonic
+    SENSOR_SONAR = 20,  // Ultrasonic ranging trip sensor
 
     // Hydration sensors
     // Reserved: 30-39
 
     // Tactile sensors
-    BUTTON = 40,  // Physical button
+    BUTTON = 40,  // Physical push-button
+    TOGGLE = 41,  // Physical toggle-switch
 
     // Action devices
-    SWITCH = 110,       // Toggles power state
-    MOTOR_WINCH = 112,  // Motorised winch
-    LIGHT = 113,        // Light controller
+    POWER_TOGGLE = 110,  // Power toggle switch
+    POWER_DELAY = 111,   // Power time-delay switch
+    MOTOR_WINCH = 112,   // Motorised winch
+    LIGHT = 113,         // Light controller
 };
 
 enum class DeviceState : uint8_t

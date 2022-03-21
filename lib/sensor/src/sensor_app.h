@@ -83,6 +83,12 @@ class SensorApp final : public dosa::OtaApplication
         } else {
             container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
             last_fired = millis();
+
+            if (isLocked()) {
+                logln("(locked, not firing)");
+                return false;
+            }
+
             dispatchMessage(
                 messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()),
                 true);
@@ -99,6 +105,11 @@ class SensorApp final : public dosa::OtaApplication
     }
 
     Container& getContainer() override
+    {
+        return container;
+    }
+
+    Container const& getContainer() const override
     {
         return container;
     }

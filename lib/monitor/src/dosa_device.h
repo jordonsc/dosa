@@ -123,7 +123,7 @@ class DosaDevice
                 return "Sonar Sensor";
             case messages::DeviceType::BUTTON:
                 return "Button";
-            case messages::DeviceType::SWITCH:
+            case messages::DeviceType::POWER_TOGGLE:
                 return "Switch";
             case messages::DeviceType::MOTOR_WINCH:
                 return "Motor Winch";
