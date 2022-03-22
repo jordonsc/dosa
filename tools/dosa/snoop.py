@@ -2,7 +2,6 @@ import dosa
 import struct
 import time
 
-
 class Snoop:
     def __init__(self, comms=None, ignore=False, ack=False, map=False, ignore_pings=False):
         if comms is None:
@@ -14,7 +13,6 @@ class Snoop:
         self.auto_ack = ack
         self.print_map = map
         self.ignore_pings = ignore_pings
-        self.tts = dosa.Tts()
 
     def run_snoop(self):
         while True:
