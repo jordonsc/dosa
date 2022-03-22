@@ -5,6 +5,7 @@ Devices include sensors, physical motor drivers and display monitors.
 
 Docs
 ====
+* [Physical Device Construction](docs/Construction.md)
 * [Setup](docs/Setup.md)
 * [Building](docs/Building.md)
 * [Configuring Devices](docs/Configuring.md)

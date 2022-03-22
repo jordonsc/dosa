@@ -10,7 +10,6 @@ from dosa.ping import Ping
 from dosa.trigger import Trigger
 from dosa.ota import Ota
 from dosa.flush import Flush
-from dosa.tts import Tts
 from dosa import device
 
 

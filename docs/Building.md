@@ -4,13 +4,15 @@ Code Layout
 -----------
 The project is broken into primary applications the `src/` directory, and supporting libraries:
 
-* `door`: the primary door driver master unit that runs the door winch
-* `sensor`: satellite sensor units that can connect to any master unit, contains sensors such as PIR, etc
+* `door`: the motor-winch device, listens for trigger messages
+* `sensor`: motion sensor, sends trigger messages when it detects IR movement
+* `sonar`: sonar ranging sensor, acts as a trip sensor, sends trigger messages
 
 Libraries are in the `lib/` directory and follow Arduino 2.8 library standards:
 
 * `dosa`: common library consumed by all applications
 * `door`: library for supporting the door application
+
 
 Ino Files
 ---------
