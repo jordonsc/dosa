@@ -18,7 +18,7 @@ class Tts:
         self.voice = "Amy"
         self.engine = "neural"
         self.output_format = "mp3"
-        self.tts_cache = "~/.dosa/tts-cache"
+        self.tts_cache = os.path.join(os.path.expanduser("~"), ".dosa", "tts-cache")
 
     def play(self, msg, wait=False, no_cache=False):
         msg_hash = self.get_msg_hash(msg)

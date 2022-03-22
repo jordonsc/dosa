@@ -55,10 +55,6 @@ class Snoop:
                 log_level = struct.unpack("<B", msg.payload[27:28])[0]
                 log_message = msg.payload[28:msg.payload_size].decode("utf-8")
                 aux = " // [" + dosa.Messages.get_log_level(log_level) + "] " + log_message
-
-                if log_level == 100:
-                    self.tts.play("Security alert. " + msg.device_name + ". " + log_message)
-
             elif msg.msg_code == dosa.Messages.ONLINE:
                 aux = " // ONLINE"
             elif msg.msg_code == dosa.Messages.BEGIN:
@@ -71,11 +67,6 @@ class Snoop:
                 aux = " // PONG"
             elif msg.msg_code == dosa.Messages.FLUSH:
                 aux = " // FLUSH"
-                try:
-                    # This is just for testing for the moment -
-                    self.tts.play("Security alert. Network flush initiated by " + msg.device_name)
-                except Exception as e:
-                    print("TTS error: ", e)
 
             # Timestamp of message
             t = time.strftime("%H:%M:%S", time.localtime())
