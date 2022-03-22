@@ -24,7 +24,7 @@ using NetLogLevel = messages::LogMessageLevel;
  * Bluetooth is used to update device settings.
  */
 #define CENTRAL_CON_CHECK 500  // Time between checking health of central connection (ms)
-#define CONFIG_CHECK 50  // Time between checking if config values updated (ms)
+#define CONFIG_CHECK 50        // Time between checking if config values updated (ms)
 
 /**
  * Wifi settings.
@@ -34,10 +34,10 @@ using NetLogLevel = messages::LogMessageLevel;
  *
  * If a user connects via BT, we will NOT attempt to reconnect wifi until they disconnect.
  */
-#define WIFI_CON_CHECK 500  // Time between checking health of wifi connection (ms)
+#define WIFI_CON_CHECK 500         // Time between checking health of wifi connection (ms)
 #define WIFI_RECONNECT_WAIT 15000  // Time before reattempting to connect wifi (ms)
-#define WIFI_INITIAL_ATTEMPTS 5  // Default number of attempts to connect wifi (first-run uses default)
-#define WIFI_RETRY_ATTEMPTS 5  // Number of attempts to connect wifi after init
+#define WIFI_INITIAL_ATTEMPTS 5    // Default number of attempts to connect wifi (first-run uses default)
+#define WIFI_RETRY_ATTEMPTS 5      // Number of attempts to connect wifi after init
 
 /**
  * Abstract App class that all devices should inherit.
@@ -472,6 +472,18 @@ class App : public StatefulApplication
         netLog("DOSA version: " + String(DOSA_VERSION), sender);
         netLog("Device lock: " + String(settings.getLockState() ? "LOCKED" : "unlocked"), sender);
         netLog("Wifi AP: " + settings.getWifiSsid(), sender);
+
+        auto const& listen_devices = settings.getListenDevices();
+        if (listen_devices.length() == 0) {
+            netLog("Listening to: <all devices>");
+        } else {
+            int index, pos = 0;
+            String listen_msg = "Listening to:";
+            while ((index = listen_devices.indexOf('\n', pos)) != -1) {
+                listen_msg += " '" + listen_devices.substring(pos, index) + "'";
+                pos = index + 1;
+            }
+        }
     }
 
    private:
@@ -758,6 +770,18 @@ class App : public StatefulApplication
         settings.save();
     }
 
+    void settingListenDevices(String const& value)
+    {
+        auto& settings = getContainer().getSettings();
+
+        String msg = value;
+        msg.replace("\n", "; ");
+        logln("SET LISTEN DEVICES: '" + msg + "'");
+
+        settings.setListenDevices(value);
+        settings.save();
+    }
+
     void settingDoorCalibration(uint8_t const* data, uint16_t size)
     {
         if (size != 14) {
@@ -872,6 +896,9 @@ class App : public StatefulApplication
                 break;
             case messages::Configuration::ConfigItem::DEVICE_LOCK:
                 settingDeviceLock(msg.getConfigData(), msg.getConfigSize());
+                break;
+            case messages::Configuration::ConfigItem::LISTEN_DEVICES:
+                settingListenDevices(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
                 break;
             default:
                 logln("UNKNOWN SETTING");

@@ -2,6 +2,7 @@ import dosa
 import struct
 import time
 
+
 class Snoop:
     def __init__(self, comms=None, ignore=False, ack=False, map=False, ignore_pings=False):
         if comms is None:

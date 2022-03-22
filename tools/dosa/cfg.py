@@ -4,6 +4,7 @@ import struct
 
 from dosa.device import DeviceType
 
+
 class Device:
     def __init__(self, device_type, device_state, addr):
         self.device_type = device_type
@@ -80,6 +81,15 @@ class Config:
             self.exec_lock_state(device, self.get_values(
                 ["Lock state (0 unlocked, 1 locked)"]
             ))
+        elif opt == 8:
+            # Set listen devices
+            print("Enter devices, one per line. Ctrl+C to abort, no devices for listen to all:")
+            devices = []
+            while True:
+                d = input("> ")
+                if d is None or len(d) == 0:
+                    break
+            self.exec_listen_devices(device, devices)
 
     def exec_debug_dump(self, device):
         self.comms.send(self.comms.build_payload(dosa.Messages.DEBUG), tgt=device.address,
@@ -229,7 +239,20 @@ class Config:
                 print("Malformed lock data, aborting")
                 exit()
 
-        print("Sending new calibration data..", end="")
+        print("Sending new lock state..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
+        print(" done")
+
+    def exec_listen_devices(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 7)
+        if len(values) > 0:
+            aux[1:] = ("\n".join(values) + "\n").encode()
+            print("Sending new device list..", end="")
+        else:
+            print("Set listen mode to all devices..", end="")
+
         self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
                         wait_for_ack=True)
         print(" done")
