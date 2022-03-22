@@ -252,7 +252,8 @@ class Settings : public Loggable
          * ---------------------------
          *     46  Total
          */
-        size_t size = 46 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 46 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
+                      listen_devices.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;

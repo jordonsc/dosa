@@ -475,7 +475,7 @@ class App : public StatefulApplication
 
         auto const& listen_devices = settings.getListenDevices();
         if (listen_devices.length() == 0) {
-            netLog("Listening to: <all devices>");
+            netLog("Listening to: <all devices>", sender);
         } else {
             int index, pos = 0;
             String listen_msg = "Listening to:";
@@ -483,6 +483,7 @@ class App : public StatefulApplication
                 listen_msg += " '" + listen_devices.substring(pos, index) + "'";
                 pos = index + 1;
             }
+            netLog(listen_msg, sender);
         }
     }
 

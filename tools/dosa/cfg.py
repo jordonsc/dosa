@@ -89,6 +89,8 @@ class Config:
                 d = input("> ")
                 if d is None or len(d) == 0:
                     break
+                else:
+                    devices.append(d)
             self.exec_listen_devices(device, devices)
 
     def exec_debug_dump(self, device):
@@ -338,6 +340,7 @@ class Config:
         print("[5] Set wifi configuration")
         print("[6] Configure device settings")
         print("[7] Set device lock")
+        print("[8] Set listen devices")
 
         while True:
             try:
@@ -348,7 +351,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 8:
+            if 0 < opt < 9:
                 print()
                 return opt
             else:
