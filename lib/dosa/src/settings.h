@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS20"
+#define DOSA_SETTINGS_HEADER "DS21"
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 #define DOSA_SETTINGS_DEFAULT_PIN "dosa"
 
@@ -116,6 +116,7 @@ class Settings : public Loggable
         }
 
         String currentSettingsVersion = ram.readHeader();
+        auto currentSettingsNumber = getSettingsVersion(currentSettingsVersion);
         bool upgrading = false;
 
         if (currentSettingsVersion != DOSA_SETTINGS_HEADER) {
@@ -132,56 +133,78 @@ class Settings : public Loggable
 
         uint32_t ptr = 4;  // Size of header
 
-        auto read_block = [this, &ptr](String& s) -> bool {
+        auto read_block = [this, &ptr, currentSettingsNumber](String& s, uint8_t req_ver = 0) -> bool {
+            if (req_ver > 0 && currentSettingsNumber < req_ver) {
+                return false;
+            }
+
             s = readVarChar(ptr);
             if (s == DOSA_SETTINGS_OVERSIZE_READ) {
-                setDefaults();
+                logln("Oversize read warning", LogLevel::ERROR);
                 return false;
             }
             ptr += s.length() + 2;
             return true;
         };
 
-        auto read_var = [this, &ptr](void* s, size_t size) -> void {
+        auto read_var = [this, &ptr, currentSettingsNumber](void* s, size_t size, uint8_t req_ver = 0) -> bool {
+            if (req_ver > 0 && currentSettingsNumber < req_ver) {
+                return false;
+            }
+
             ram.read(ptr, (uint8_t*)s, size);
             ptr += size;
+
+            return true;
         };
 
-        if (upgrading && getSettingsVersion(currentSettingsVersion) < 20) {
-            // device lock was introduced in v20
+        if (!read_var(&locked, 1, 20)) {
             locked = 0;
-        } else {
-            read_var(&locked, 1);
         }
 
-        if (!read_block(pin))
+        if (!read_block(pin)) {
+            logln("Bad read: PIN", LogLevel::ERROR);
+            setDefaults();
             return false;
+        }
 
-        if (!read_block(device_name))
+        if (!read_block(device_name)) {
+            logln("Bad read: device name", LogLevel::ERROR);
+            setDefaults();
             return false;
+        }
 
-        if (!read_block(wifi_ssid))
+        if (!read_block(wifi_ssid)) {
+            logln("Bad read: wifi SSID", LogLevel::ERROR);
+            setDefaults();
             return false;
+        }
 
-        if (!read_block(wifi_password))
+        if (!read_block(wifi_password)) {
+            logln("Bad read: wifi password", LogLevel::ERROR);
+            setDefaults();
             return false;
+        }
 
         read_var(&sensor_min_pixels, 1);
         read_var(&sensor_pixel_delta, 4);
         read_var(&sensor_total_delta, 4);
-
         read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
         read_var(&door_close_ticks, 4);
-
         read_var(&sonar_trigger_threshold, 2);
-        read_var(&sonar_fixed_calibration, 2);
-        read_var(&sonar_trigger_coefficient, 4);
 
-        // Check what we need to upgrade
-        if (upgrading) {
-            doUpgrade(currentSettingsVersion);
+        if (!read_var(&sonar_fixed_calibration, 2, 18)) {
+            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
+        }
+
+        if (!read_var(&sonar_trigger_coefficient, 4, 19)) {
+            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
+        }
+
+        if (!read_block(listen_devices, 21)) {
+            listen_devices = "";
         }
 
         // Validate values
@@ -189,13 +212,15 @@ class Settings : public Loggable
 
         if (pin == "") {
             // Not allowed a blank pin
-            pin = "dosa";
+            pin = DOSA_SETTINGS_DEFAULT_PIN;
+            logln("Device PIN invalid, resetting to default", LogLevel::ERROR);
             valid = false;
         }
 
         if (device_name == "") {
             // Device name cannot be blank
             device_name = "DOSA " + String(random(1000, 9999));
+            logln("Device name invalid, creating new name", LogLevel::ERROR);
             valid = false;
         }
 
@@ -220,14 +245,15 @@ class Settings : public Loggable
          * Fixed length sizes:
          *      4  Header
          *      1  Locked state
-         *   4x 2  Variable size markers
+         *   5x 2  Variable size markers
          *      9  Sensor calibration
          *     14  Door calibration
          *      8  Sonar calibration
          * ---------------------------
-         *     44  Total
+         *     46  Total
          */
-        size_t size = 44 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length();
+        size_t size = 46 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
+                      listen_devices.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -248,7 +274,6 @@ class Settings : public Loggable
         };
 
         write_var(&locked, 1);
-
         write_block(pin);
         write_block(device_name);
         write_block(wifi_ssid);
@@ -267,6 +292,8 @@ class Settings : public Loggable
         write_var(&sonar_fixed_calibration, 2);
         write_var(&sonar_trigger_coefficient, 4);
 
+        write_block(listen_devices);
+
         if (size == (ptr - payload)) {
             ram.write(0, payload, size);
             logln("Settings written to FRAM", dosa::LogLevel::INFO);
@@ -283,6 +310,7 @@ class Settings : public Loggable
         device_name = "DOSA " + String(random(1000, 9999));
         wifi_ssid = "";
         wifi_password = "";
+        listen_devices = "";
 
         // IR grid specific
         sensor_min_pixels = SENSOR_MIN_PIXELS_THRESHOLD;
@@ -471,6 +499,35 @@ class Settings : public Loggable
         locked = lock_enabled ? 1 : 0;
     }
 
+    void addListenDevice(String const& v)
+    {
+        if (!hasListenDevice(v)) {
+            listen_devices += v + '\n';
+        }
+    }
+
+    void setListenDevices(String const& v)
+    {
+        listen_devices = v;
+    }
+
+    String const& getListenDevices() const
+    {
+        return listen_devices;
+    }
+
+    bool hasListenDevice(String const& v) const
+    {
+        int index, pos = 0;
+        while ((index = listen_devices.indexOf('\n', pos)) != -1) {
+            if (listen_devices.substring(pos, index) == v) {
+                return true;
+            }
+            pos = index + 1;
+        }
+        return false;
+    }
+
     /**
      * If you're using the wifi, it may interrupt the SPI bus. You will need to re-init the FRAM chip before doing
      * anything if the wifi has been used.
@@ -483,6 +540,7 @@ class Settings : public Loggable
    protected:
     Fram& ram;
     String device_name;
+    String listen_devices;
     char device_name_bytes[20] = {0};
     String pin;
     String wifi_ssid;
@@ -513,34 +571,8 @@ class Settings : public Loggable
      */
     virtual bool canUpgrade(String const& version)
     {
-        auto version_num = getSettingsVersion(version);
-        return (version_num >= 17 && version_num <= 19);
-    }
-
-    /**
-     * Fix data that would be corrupt from previous settings schema.
-     */
-    virtual bool doUpgrade(String const& version)
-    {
-        if (version.substring(0, 2) != "DS") {
-            return false;
-        }
-
-        auto version_num = getSettingsVersion(version);
-
-        switch (version_num) {
-            default:
-                return false;
-            case 17:
-                sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
-            case 18:
-                sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
-            case 19:
-                // in v20 we added locks, but locks are pre-pended to settings and thus handled in load()
-                break;
-        }
-
-        return true;
+        auto v = getSettingsVersion(version);
+        return v >= 17 && v <= getSettingsVersion(DOSA_SETTINGS_HEADER);
     }
 
     /**
@@ -570,7 +602,7 @@ class Settings : public Loggable
             char buffer[size + 1];
             ram.read(addr + 2, buffer, size);
             buffer[size] = 0;
-            return String(buffer);
+            return {buffer};
         }
     }
 };

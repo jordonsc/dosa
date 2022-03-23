@@ -14,7 +14,6 @@ class Snoop:
         self.auto_ack = ack
         self.print_map = map
         self.ignore_pings = ignore_pings
-        self.tts = dosa.Tts()
 
     def run_snoop(self):
         while True:

@@ -58,6 +58,11 @@ class Configuration : public Payload
          * uint8 (1 byte):    lock state
          */
         DEVICE_LOCK = 6,
+
+        /**
+         * Byte-string, max 500 bytes.
+         */
+        LISTEN_DEVICES = 7,
     };
 
     /**
