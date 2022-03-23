@@ -511,12 +511,17 @@ class Settings : public Loggable
         listen_devices = v;
     }
 
-    String const& getListenDevices() const
+    [[nodiscard]] String const& getListenDevices() const
     {
         return listen_devices;
     }
 
-    bool hasListenDevice(String const& v) const
+    [[nodiscard]] bool isListenForAllDevices() const
+    {
+        return listen_devices.length() == 0;
+    }
+
+    [[nodiscard]] bool hasListenDevice(String const& v) const
     {
         int index, pos = 0;
         while ((index = listen_devices.indexOf('\n', pos)) != -1) {

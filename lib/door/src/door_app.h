@@ -41,7 +41,7 @@ class DoorApp final : public dosa::OtaApplication
         // Check the door switch
         container.getDoorSwitch().process();
 
-        // Check if the wifi handler has picked up an trigger request
+        // Check if the wifi handler has picked up a trigger request
         if (door_fire_from_udp && !isErrorState()) {
             doorSequence();
 
@@ -66,10 +66,10 @@ class DoorApp final : public dosa::OtaApplication
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
         App::onDebugRequest(msg, sender);
-        netLog("Open stop distance: " + String(getContainer().getSettings().getDoorOpenDistance()), sender);
-        netLog("Open wait: " + String(getContainer().getSettings().getDoorOpenWait()), sender);
+        netLog("Open-stop distance: " + String(getContainer().getSettings().getDoorOpenDistance()), sender);
+        netLog("Open-wait: " + String(getContainer().getSettings().getDoorOpenWait()), sender);
         netLog("Close ticks: " + String(getContainer().getSettings().getDoorCloseTicks()), sender);
-        netLog("Cooldown: " + String(getContainer().getSettings().getDoorCoolDown()), sender);
+        netLog("Cool-down: " + String(getContainer().getSettings().getDoorCoolDown()), sender);
         netLog("Sonar distance: " + String(container.getSonar().getDistance()), sender);
     }
 
@@ -89,13 +89,18 @@ class DoorApp final : public dosa::OtaApplication
             last_msg_id = trigger.getMessageId();
         }
 
-        logln(
-            "Received trigger message from '" + Comms::getDeviceName(trigger) + "' (" + comms::nodeToString(sender) +
-            "), msg ID: " + String(trigger.getMessageId()));
+        String sender_name = Comms::getDeviceName(trigger);
+        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
+        auto const& settings = getContainer().getSettings();
 
-        if (isLocked()) {
-            netLog("Lock violation by " + Comms::getDeviceName(trigger), NetLogLevel::SECURITY);
+        if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
+            logln("Ignoring trigger from " + sender_str);
             return;
+        } else if (isLocked()) {
+            netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+            return;
+        } else {
+            logln("Executing trigger from " + sender_str);
         }
 
         // Send reply ack
