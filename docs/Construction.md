@@ -26,12 +26,12 @@ to create an extension allowing multiple inbound wires to these pins.
 #### Arduino
 Install headers on pins:
 * VIN, GND
-* D13 
+* D13, 3.3v
 * D10, D11, D12
 
 Create hubs on pins:
-* 3.3v
-* GND
+* 3.3v (next to D13)
+* GND (next to D2)
 
 Connect the FRAM wires:
 * yellow -> D13, red -> 3.3v
@@ -79,3 +79,16 @@ Install headers on pins:
 Connect the sonar sensor to pins:
   * yellow -> TX1
   * white -> RX0
+
+### Switch Devices
+#### Arduino
+Hubs:
+* 3.3v: 2x
+* GND: 2x
+
+Extend the D10-D12 header to include D9. 
+
+From the relay, connect:
+* green -> D9
+* red -> 3.3v hub
+* black -> GND hub
