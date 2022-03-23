@@ -10,7 +10,10 @@ cc_library(
         "boards/samd/cores/arduino",
         "boards/samd/cores/arduino/api",
     ] + glob(
-        ["boards/samd/libraries/*/src"],
+        [
+            "boards/samd/libraries/*/src",
+            "boards/samd/libraries/Wire",
+        ],
         exclude_directories = 0,
     ),
     visibility = ["//visibility:public"],

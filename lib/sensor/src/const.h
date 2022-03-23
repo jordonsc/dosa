@@ -14,4 +14,4 @@
 /**
  * Time (in ms) before firing a second trigger message.
  */
-#define REFIRE_DELAY 3000
+#define REFIRE_DELAY 5000

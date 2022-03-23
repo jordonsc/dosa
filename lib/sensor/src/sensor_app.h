@@ -89,9 +89,7 @@ class SensorApp final : public dosa::OtaApplication
                 return false;
             }
 
-            dispatchMessage(
-                messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()),
-                true);
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()), true);
             return true;
         }
     }
