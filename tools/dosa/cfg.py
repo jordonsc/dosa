@@ -73,6 +73,12 @@ class Config:
                 self.exec_door_calibration(device, self.get_values(
                     ["Open distance (mm)", "Open-wait time (ms)", "Cool-down (ms)", "Close ticks (int)"]
                 ))
+            elif device.device_type == DeviceType.POWER_TOGGLE:
+                # Relay calibration
+                print("Relay configuration")
+                self.exec_relay_calibration(device, self.get_values(
+                    ["Relay activation time"]
+                ))
             else:
                 print("Device cannot be configured (" + str(device.device_type) + ")")
                 return
@@ -223,6 +229,25 @@ class Config:
                 exit()
 
         print("Sending new calibration data..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
+        print(" done")
+
+    def exec_relay_calibration(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 8)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:5] = struct.pack("<L", int(values[0]))  # Relay activation time
+            except ValueError:
+                print("Malformed relay settings, aborting")
+                exit()
+
+        print("Sending new relay settings..", end="")
         self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
                         wait_for_ack=True)
         print(" done")

@@ -28,7 +28,6 @@ enum class DeviceType : uint8_t
 
     // Action devices
     POWER_TOGGLE = 110,  // Power toggle switch
-    POWER_DELAY = 111,   // Power time-delay switch
     MOTOR_WINCH = 112,   // Motorised winch
     LIGHT = 113,         // Light controller
 };

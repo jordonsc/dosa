@@ -30,6 +30,7 @@ function syntax() {
   echo
   echo "Applications:"
   echo "  door           : Winch door driver"
+  echo "  relay          : Power toggle switch"
   echo "  sensor         : Passive infrared motion sensor"
   echo "  sonar          : Sonar ranging trigger sensor"
   echo "  monitor        : DOSA display monitor"

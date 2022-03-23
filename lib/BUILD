@@ -153,6 +153,20 @@ cc_library(
     ],
 )
 
+# Relay switch
+cc_library(
+    name = "relay",
+    srcs = glob(["relay/src/**/*.cpp"]),
+    hdrs = glob(["relay/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["relay/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:ota",
+    ],
+)
+
 # Display monitor
 cc_library(
     name = "monitor",

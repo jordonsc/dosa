@@ -39,6 +39,17 @@ cc_binary(
 )
 
 cc_binary(
+    name = "relay",
+    srcs = glob(["relay/relay.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:relay",
+    ],
+)
+
+cc_binary(
     name = "monitor",
     srcs = glob(["monitor/monitor.cc"]),
     copts = ["-std=c++11"],

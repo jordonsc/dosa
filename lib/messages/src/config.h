@@ -63,6 +63,11 @@ class Configuration : public Payload
          * Byte-string, max 500 bytes.
          */
         LISTEN_DEVICES = 7,
+
+        /**
+         * uint32 (4 bytes):  relay activation time
+         */
+        RELAY_CALIBRATION = 8,
     };
 
     /**

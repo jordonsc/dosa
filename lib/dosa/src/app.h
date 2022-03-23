@@ -838,6 +838,24 @@ class App : public StatefulApplication
         settings.save();
     }
 
+    void settingRelayCalibration(uint8_t const* data, uint16_t size)
+    {
+        if (size != 4) {
+            logln("ERROR: incorrect payload size for relay calibration data", LogLevel::ERROR);
+            return;
+        }
+
+        uint32_t relay_delay;
+        memcpy(&relay_delay, data, 4);
+
+        logln("RELAY CALIBRATION");
+        logln(" > relay activation time: " + String(relay_delay));
+
+        auto& settings = getContainer().getSettings();
+        settings.setRelayActivationTime(relay_delay);
+        settings.save();
+    }
+
     void settingDeviceLock(uint8_t const* data, uint16_t size)
     {
         if (size != 1) {
@@ -894,6 +912,9 @@ class App : public StatefulApplication
                 break;
             case messages::Configuration::ConfigItem::SONAR_CALIBRATION:
                 settingSonarCalibration(msg.getConfigData(), msg.getConfigSize());
+                break;
+            case messages::Configuration::ConfigItem::RELAY_CALIBRATION:
+                settingRelayCalibration(msg.getConfigData(), msg.getConfigSize());
                 break;
             case messages::Configuration::ConfigItem::DEVICE_LOCK:
                 settingDeviceLock(msg.getConfigData(), msg.getConfigSize());

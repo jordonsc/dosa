@@ -4,6 +4,9 @@ function getFqbn() {
   "door")
     echo "arduino:samd:nano_33_iot"
     ;;
+  "relay")
+    echo "arduino:samd:nano_33_iot"
+    ;;
   "sensor")
     echo "arduino:samd:nano_33_iot"
     ;;
@@ -23,6 +26,9 @@ function getAppKey() {
   case "$1" in
   "door")
     echo "DOSA-D"
+    ;;
+  "relay")
+    echo "DOSA-R"
     ;;
   "sensor")
     echo "DOSA-M"

@@ -2,68 +2,81 @@
 
 #include <Arduino.h>
 
-#define DOSA_SETTINGS_HEADER "DS21"
-#define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
-#define DOSA_SETTINGS_DEFAULT_PIN "dosa"
+#define DOSA_SETTINGS_HEADER "DS22"
+
+/**
+ * Default device Bluetooth password.
+ */
+constexpr static char const* default_pin = "dosa";
 
 /**
  * Minimum number of pixels that are considered 'changed' before we accept a trigger. Increase this to eliminate
  * single-pixel or edge anomalies.
  */
-#define SENSOR_MIN_PIXELS_THRESHOLD 3
+constexpr static uint8_t default_sensor_min_pixels = 3;
 
 /**
  * Temp change (in Celsius) before considering any single pixel as "changed". This is a de-noising threshold, increase
  * this number to reduce the amount of noise the algorithm is sensitive to.
  */
-#define SENSOR_SINGLE_DELTA_THRESHOLD 1.0
+constexpr static float default_sensor_pixel_delta = 1.5;
 
 /**
  * The total temperature delta across all pixels before firing a trigger. This is the primary sensitivity metric, it
  * is also filtered against noise by SENSOR_SINGLE_DELTA_THRESHOLD so it won't show a true full-grid delta.
  */
-#define SENSOR_TOTAL_DELTA_THRESHOLD 10.0
+constexpr static float default_sensor_total_delta = 25.0;
 
 /**
  * Distance in mm the sonar should be <= when halting the door open sequence. The sonar should be reading the door's
  * distance from its apex/threshold.
  */
-#define DOOR_OPEN_DISTANCE 500
+constexpr static uint16_t default_door_open_distance = 500;
 
 /**
  * Time in milliseconds the door spends in then open-wait status, holding in an open position before closing again.
  */
-#define DOOR_OPEN_WAIT_TIME 2000
+constexpr static uint32_t default_door_open_wait = 3000;
 
 /**
  * Time in milliseconds we wait before allowing further action after a trigger sequence.
  */
-#define DOOR_COOL_DOWN 3000
+constexpr static uint32_t default_door_cool_down = 3000;
 
 /**
  * Fixed number of ticks we close the door for. This will translate to an approximate distance, it should be a small
  * amount greater than required.
  */
-#define DOOR_CLOSE_TICKS 15000
+constexpr static uint32_t default_door_close_ticks = 15000;
 
 /**
  * Number of consecutive reads with a reduced distance before firing the trigger.
  *
  * Increase to reduce noise.
  */
-#define SONAR_TRIGGER_THRESHOLD 3
+constexpr static uint16_t default_sonar_trigger_threshold = 3;
 
 /**
  * Percentage of previous distance that's considered a trigger.
  */
-#define SONAR_TRIGGER_COEFFICIENT 0.9
+constexpr static float default_sonar_trigger_coefficient = 0.9;
 
 /**
  * Fixed distance for the sonar resting state. Set to zero for automatic detection.
  *
  * Recommended you set this value for outdoor devices, or devices aiming at non-perpendicular or non-solid surfaces.
  */
-#define SONAR_FIXED_CALIBRATION 0
+constexpr static uint16_t default_sonar_fixed_calibration = 0;
+
+/**
+ * Time the relay is active once triggered. If set to 0, the relay will be a toggle.
+ */
+constexpr static uint32_t default_relay_activation_time = 5000;
+
+#define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
+constexpr static char const* current_settings_header = DOSA_SETTINGS_HEADER;
+constexpr static char const* null_str = "";
+constexpr static uint8_t default_locked = 0;
 
 namespace dosa {
 
@@ -91,6 +104,7 @@ namespace dosa {
  *   2      uint16    Sonar cfg: SONAR_TRIGGER_THRESHOLD
  *   2      uint16    Sonar cfg: SONAR_FIXED_CALIBRATION
  *   4      float     Sonar cfg: SONAR_TRIGGER_COEFFICIENT
+ *   4      float     Relay cfg: RELAY_ACTIVATION_TIME
  */
 class Settings : public Loggable
 {
@@ -116,10 +130,10 @@ class Settings : public Loggable
         }
 
         String currentSettingsVersion = ram.readHeader();
-        auto currentSettingsNumber = getSettingsVersion(currentSettingsVersion);
+        auto c_ver = getSettingsVersion(currentSettingsVersion);
         bool upgrading = false;
 
-        if (currentSettingsVersion != DOSA_SETTINGS_HEADER) {
+        if (currentSettingsVersion != current_settings_header) {
             // Settings missing or out-of-date
             if (canUpgrade(currentSettingsVersion)) {
                 upgrading = true;
@@ -133,9 +147,10 @@ class Settings : public Loggable
 
         uint32_t ptr = 4;  // Size of header
 
-        auto read_block = [this, &ptr, currentSettingsNumber](String& s, uint8_t req_ver = 0) -> bool {
-            if (req_ver > 0 && currentSettingsNumber < req_ver) {
-                return false;
+        auto read_block = [this, &ptr, c_ver](String& s, uint8_t req_ver = 0, char const* src = nullptr) -> bool {
+            if (req_ver > 0 && c_ver < req_ver) {
+                s = String(src);
+                return true;
             }
 
             s = readVarChar(ptr);
@@ -147,20 +162,17 @@ class Settings : public Loggable
             return true;
         };
 
-        auto read_var = [this, &ptr, currentSettingsNumber](void* s, size_t size, uint8_t req_ver = 0) -> bool {
-            if (req_ver > 0 && currentSettingsNumber < req_ver) {
-                return false;
+        auto read_var = [this, &ptr, c_ver](void* s, size_t size, uint8_t req_ver = 0, void* src = nullptr) -> void {
+            if (req_ver > 0 && c_ver < req_ver) {
+                memcpy(s, src, size);
+                return;
             }
 
             ram.read(ptr, (uint8_t*)s, size);
             ptr += size;
-
-            return true;
         };
 
-        if (!read_var(&locked, 1, 20)) {
-            locked = 0;
-        }
+        read_var(&locked, 1, 20, (void*)(&default_locked));
 
         if (!read_block(pin)) {
             logln("Bad read: PIN", LogLevel::ERROR);
@@ -194,17 +206,14 @@ class Settings : public Loggable
         read_var(&door_cool_down, 4);
         read_var(&door_close_ticks, 4);
         read_var(&sonar_trigger_threshold, 2);
+        read_var(&sonar_fixed_calibration, 2, 18, (void*)(&default_sonar_fixed_calibration));
+        read_var(&sonar_trigger_coefficient, 4, 19, (void*)(&default_sonar_trigger_coefficient));
+        read_var(&relay_activation_time, 4, 22, (void*)(&default_relay_activation_time));
 
-        if (!read_var(&sonar_fixed_calibration, 2, 18)) {
-            sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
-        }
-
-        if (!read_var(&sonar_trigger_coefficient, 4, 19)) {
-            sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
-        }
-
-        if (!read_block(listen_devices, 21)) {
-            listen_devices = "";
+        if (!read_block(listen_devices, 21, null_str)) {
+            logln("Bad read: listen devices", LogLevel::ERROR);
+            setDefaults();
+            return false;
         }
 
         // Validate values
@@ -212,7 +221,7 @@ class Settings : public Loggable
 
         if (pin == "") {
             // Not allowed a blank pin
-            pin = DOSA_SETTINGS_DEFAULT_PIN;
+            pin = default_pin;
             logln("Device PIN invalid, resetting to default", LogLevel::ERROR);
             valid = false;
         }
@@ -242,6 +251,8 @@ class Settings : public Loggable
         }
 
         /**
+         * This is a safeguard to ensure we've correctly formatted the FRAM payload.
+         *
          * Fixed length sizes:
          *      4  Header
          *      1  Locked state
@@ -249,16 +260,17 @@ class Settings : public Loggable
          *      9  Sensor calibration
          *     14  Door calibration
          *      8  Sonar calibration
+         *      4  Relay calibration
          * ---------------------------
-         *     46  Total
+         *     50  Total
          */
-        size_t size = 46 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
+        size_t size = 50 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
                       listen_devices.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
 
-        memcpy(ptr, DOSA_SETTINGS_HEADER, 4);
+        memcpy(ptr, current_settings_header, 4);
         ptr += 4;
 
         auto write_block = [&ptr](String const& s) {
@@ -292,6 +304,8 @@ class Settings : public Loggable
         write_var(&sonar_fixed_calibration, 2);
         write_var(&sonar_trigger_coefficient, 4);
 
+        write_var(&relay_activation_time, 4);
+
         write_block(listen_devices);
 
         if (size == (ptr - payload)) {
@@ -306,27 +320,30 @@ class Settings : public Loggable
     {
         // Common
         locked = 0;
-        pin = DOSA_SETTINGS_DEFAULT_PIN;
+        pin = default_pin;
         device_name = "DOSA " + String(random(1000, 9999));
-        wifi_ssid = "";
-        wifi_password = "";
-        listen_devices = "";
+        wifi_ssid = null_str;
+        wifi_password = null_str;
+        listen_devices = null_str;
 
         // IR grid specific
-        sensor_min_pixels = SENSOR_MIN_PIXELS_THRESHOLD;
-        sensor_pixel_delta = SENSOR_SINGLE_DELTA_THRESHOLD;
-        sensor_total_delta = SENSOR_TOTAL_DELTA_THRESHOLD;
+        sensor_min_pixels = default_sensor_min_pixels;
+        sensor_pixel_delta = default_sensor_pixel_delta;
+        sensor_total_delta = default_sensor_total_delta;
 
         // Door winch specific
-        door_open_distance = DOOR_OPEN_DISTANCE;
-        door_open_wait = DOOR_OPEN_WAIT_TIME;
-        door_cool_down = DOOR_COOL_DOWN;
-        door_close_ticks = DOOR_CLOSE_TICKS;
+        door_open_distance = default_door_open_distance;
+        door_open_wait = default_door_open_wait;
+        door_cool_down = default_door_cool_down;
+        door_close_ticks = default_door_close_ticks;
 
         // Sonar specific
-        sonar_trigger_threshold = SONAR_TRIGGER_THRESHOLD;
-        sonar_fixed_calibration = SONAR_FIXED_CALIBRATION;
-        sonar_trigger_coefficient = SONAR_TRIGGER_COEFFICIENT;
+        sonar_trigger_threshold = default_sonar_trigger_threshold;
+        sonar_fixed_calibration = default_sonar_fixed_calibration;
+        sonar_trigger_coefficient = default_sonar_trigger_coefficient;
+
+        // Relay specific
+        relay_activation_time = default_relay_activation_time;
 
         updateDeviceNameBytes();
     }
@@ -489,7 +506,7 @@ class Settings : public Loggable
         sonar_trigger_coefficient = sonarTriggerCoefficient;
     }
 
-    bool getLockState() const
+    [[nodiscard]] bool getLockState() const
     {
         return locked != 0;
     }
@@ -497,6 +514,16 @@ class Settings : public Loggable
     void setLocked(bool lock_enabled)
     {
         locked = lock_enabled ? 1 : 0;
+    }
+
+    [[nodiscard]] uint32_t getRelayActivationTime() const
+    {
+        return relay_activation_time;
+    }
+
+    void setRelayActivationTime(uint32_t t)
+    {
+        relay_activation_time = t;
     }
 
     void addListenDevice(String const& v)
@@ -560,7 +587,8 @@ class Settings : public Loggable
     uint32_t door_close_ticks = 0;
     uint16_t sonar_trigger_threshold = 0;
     uint16_t sonar_fixed_calibration = 0;
-    float sonar_trigger_coefficient = 0.9;
+    float sonar_trigger_coefficient = 0;
+    uint32_t relay_activation_time = 0;
 
     [[nodiscard]] static uint8_t getSettingsVersion(String const& version)
     {
@@ -577,7 +605,7 @@ class Settings : public Loggable
     virtual bool canUpgrade(String const& version)
     {
         auto v = getSettingsVersion(version);
-        return v >= 17 && v <= getSettingsVersion(DOSA_SETTINGS_HEADER);
+        return v >= 17 && v <= getSettingsVersion(current_settings_header);
     }
 
     /**

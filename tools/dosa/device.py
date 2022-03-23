@@ -9,7 +9,6 @@ class DeviceType:
     BUTTON = 40
     TOGGLE = 41
     POWER_TOGGLE = 110
-    POWER_DELAY = 111
     MOTOR = 112
     LIGHT = 113
 
@@ -33,8 +32,6 @@ def device_type_str(x):
         return "Toggle Switch"
     elif x == 110:
         return "Power Toggle"
-    elif x == 111:
-        return "Power Time Delay"
     elif x == 112:
         return "Motorised Winch"
     elif x == 113:
