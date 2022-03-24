@@ -45,6 +45,10 @@ class RelayApp final : public dosa::OtaApplication
 
     void setRelay(bool state)
     {
+        if (relay_state == state) {
+            return;
+        }
+
         logln(String("Set power state: ") + (state ? "active" : "inactive"));
         relay_state = state;
         relay_last_moved = millis();
