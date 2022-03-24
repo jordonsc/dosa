@@ -49,6 +49,8 @@ class RelayApp final : public dosa::OtaApplication
         relay_state = state;
         relay_last_moved = millis();
         digitalWrite(DOSA_RELAY_PIN, relay_state ? HIGH : LOW);
+        setDeviceState(relay_state ? messages::DeviceState::WORKING : messages::DeviceState::OK);
+        dispatchGenericMessage(relay_state ? DOSA_COMMS_MSG_BEGIN : DOSA_COMMS_MSG_END);
     }
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
