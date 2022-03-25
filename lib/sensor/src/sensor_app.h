@@ -80,18 +80,19 @@ class SensorApp final : public dosa::OtaApplication
         if (grid[0] == 0 || ttl_delta < settings.getSensorTotalDelta() ||
             pixels_changed < settings.getSensorMinPixels() || millis() - last_fired < REFIRE_DELAY) {
             return false;
-        } else {
-            container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
-            last_fired = millis();
-
-            if (isLocked()) {
-                logln("(locked, not firing)");
-                return false;
-            }
-
-            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()), true);
-            return true;
         }
+
+        container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
+        last_fired = millis();
+
+        if (isLocked()) {
+            // Security mode: dispatch sec alert
+            netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+        } else {
+            // Normal mode: dispatch trigger
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()), true);
+        }
+        return true;
     }
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override

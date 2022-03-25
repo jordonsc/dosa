@@ -10,8 +10,36 @@ from dosa.ping import Ping
 from dosa.trigger import Trigger
 from dosa.ota import Ota
 from dosa.flush import Flush
-from dosa.tts import Tts
 from dosa import device
+
+
+class LogLevel:
+    DEBUG = 10
+    INFO = 20
+    STATUS = 30
+    WARNING = 40
+    ERROR = 50
+    CRITICAL = 60
+    SECURITY = 100
+
+    @staticmethod
+    def as_string(log_level):
+        if log_level == LogLevel.DEBUG:
+            return "DEBUG"
+        elif log_level == LogLevel.INFO:
+            return "INFO"
+        elif log_level == LogLevel.STATUS:
+            return "STATUS"
+        elif log_level == LogLevel.WARNING:
+            return "WARNING"
+        elif log_level == LogLevel.ERROR:
+            return "ERROR"
+        elif log_level == LogLevel.CRITICAL:
+            return "CRITICAL"
+        elif log_level == LogLevel.SECURITY:
+            return "SECURITY"
+        else:
+            return "UNKNOWN LOG-LEVEL"
 
 
 class Messages:
@@ -31,25 +59,6 @@ class Messages:
     PING = b"pin"
     PONG = b"pon"
     CONFIG_SETTING = b"cfg"
-
-    @staticmethod
-    def get_log_level(log_level):
-        if log_level == 10:
-            return "DEBUG"
-        elif log_level == 20:
-            return "INFO"
-        elif log_level == 30:
-            return "STATUS"
-        elif log_level == 40:
-            return "WARNING"
-        elif log_level == 50:
-            return "ERROR"
-        elif log_level == 60:
-            return "CRITICAL"
-        elif log_level == 100:
-            return "SECURITY"
-        else:
-            return "UNKNOWN LOG-LEVEL"
 
 
 class Message:

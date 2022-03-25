@@ -150,7 +150,7 @@ class SonarApp final : public dosa::OtaApplication
         logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
 
         if (isLocked()) {
-            logln("(locked, not firing)");
+            netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
             return;
         }
 

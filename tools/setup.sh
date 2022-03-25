@@ -42,8 +42,8 @@ else
   git clone https://github.com/e-radionicacom/Inkplate-Arduino-library.git "${inkplate_dir}"
 fi
 
-# For Python console tool
-pip3 install pySerial
+# For Python applications
+pip3 install -r ${app}/pip-reqs.txt
 
 echo
 echo "Done"

@@ -1,0 +1,3 @@
+pySerial
+daemon
+boto3

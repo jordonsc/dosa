@@ -5,6 +5,11 @@
  */
 #define FRAM_CS_PIN 10
 
+/**
+ * Security alert message for locked sensors.
+ */
+#define DOSA_SEC_SENSOR_TRIP "Activity detected"
+
 namespace dosa {
 
 /**
