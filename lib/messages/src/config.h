@@ -37,7 +37,7 @@ class Configuration : public Payload
          * float  (4 bytes):  min temperature change before consider pixel changed
          * float  (4 bytes):  overall required temperature change
          */
-        SENSOR_CALIBRATION = 3,
+        PIR_CALIBRATION = 3,
 
         /**
          * uint16 (2 bytes):  open distance (mm)
@@ -68,6 +68,12 @@ class Configuration : public Payload
          * uint32 (4 bytes):  relay activation time
          */
         RELAY_CALIBRATION = 8,
+
+        /**
+         * uint16 (2 bytes):  server port
+         * Byte-string:       server address
+         */
+        STATS_SERVER = 9,
     };
 
     /**

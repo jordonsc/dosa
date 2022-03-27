@@ -13,6 +13,5 @@ class Trigger:
         for i in range(64):
             aux += b'\x00'
 
-        trg = self.comms.build_payload(dosa.Messages.TRIGGER, aux)
-        self.comms.send(trg, target)
+        self.comms.send(self.comms.build_payload(dosa.Messages.TRIGGER, aux), target)
         print("Trigger dispatched")

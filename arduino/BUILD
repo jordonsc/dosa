@@ -133,3 +133,11 @@ cc_library(
     includes = ["libraries/HttpClient"],
     visibility = ["//visibility:public"],
 )
+
+cc_library(
+    name = "StatsD",
+    srcs = glob(["libraries/StatsD/src/**/*.cpp"]),
+    hdrs = glob(["libraries/StatsD/src/**/*.h"]),
+    includes = ["libraries/StatsD/src"],
+    visibility = ["//visibility:public"],
+)

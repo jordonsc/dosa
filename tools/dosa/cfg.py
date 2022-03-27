@@ -37,7 +37,7 @@ class Config:
         else:
             device = Device(0, 0, (target, 6901))
 
-        opt = self.user_select_opt()
+        opt = self.user_select_opt(device.device_type == DeviceType.UNKNOWN)
         if opt == 1:
             # Debug dump
             self.exec_debug_dump(device)
@@ -96,6 +96,9 @@ class Config:
                 else:
                     devices.append(d)
             self.exec_listen_devices(device, devices)
+        elif opt == 9:
+            # Set stats server
+            self.exec_stats_server(device, self.get_values(["Stats server address", "Stats server port"]))
 
     def exec_debug_dump(self, device):
         self.comms.send(self.comms.build_payload(dosa.Messages.DEBUG), tgt=device.address,
@@ -282,6 +285,26 @@ class Config:
                         wait_for_ack=True)
         print(" done")
 
+    def exec_stats_server(self, device, values):
+        aux = bytearray()
+        aux[0:1] = struct.pack("<B", 9)
+
+        if values is None:
+            print("Aborting")
+            exit()
+        else:
+            try:
+                aux[1:3] = struct.pack("<H", int(values[1]))  # Server port
+                aux[3:] = values[0].encode()  # Server address
+            except ValueError:
+                print("Malformed server settings, aborting")
+                exit()
+
+        print("Sending new stats server information..", end="")
+        self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                        wait_for_ack=True)
+        print(" done")
+
     @staticmethod
     def get_values(vals):
         """
@@ -305,6 +328,8 @@ class Config:
         retries = 2
         timeout = 1.0
         self.devices = []
+
+        print("[0]: <All Devices>")
 
         for attempt in range(retries):
             self.comms.send(ping)
@@ -345,25 +370,28 @@ class Config:
             except ValueError:
                 opt = None
 
-            if opt is None or opt == 0:
+            if opt is None:
                 return None
 
-            if 0 < opt <= len(self.devices):
+            if opt == 0:
+                return Device(DeviceType.UNKNOWN, 0, (self.comms.MULTICAST_GROUP, self.comms.MULTICAST_PORT))
+            elif 0 < opt <= len(self.devices):
                 print()
                 return self.devices[opt - 1]
             else:
                 print("Invalid device")
 
     @staticmethod
-    def user_select_opt():
+    def user_select_opt(all_devices=False):
         print("[1] Request debug dump")
         print("[2] Order device into Bluetooth configuration mode")
         print("[3] Set device password")
-        print("[4] Set device name")
+        print("[4] N/A" if all_devices else "[4] Set device name")
         print("[5] Set wifi configuration")
-        print("[6] Configure device settings")
+        print("[6] N/A" if all_devices else "[6] Configure device settings")
         print("[7] Set device lock")
         print("[8] Set listen devices")
+        print("[9] Set stats server")
 
         while True:
             try:
@@ -374,7 +402,7 @@ class Config:
             if opt is None or opt == 0:
                 return None
 
-            if 0 < opt < 9:
+            if 0 < opt < 10:
                 print()
                 return opt
             else:

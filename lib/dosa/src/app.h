@@ -8,6 +8,7 @@
 #include "config.h"
 #include "const.h"
 #include "container.h"
+#include "stats.h"
 
 namespace dosa {
 
@@ -44,7 +45,7 @@ using NetLogLevel = messages::LogMessageLevel;
  *
  * Contains support for FRAM, Bluetooth and Wifi - all bundled in this class. (Consider breaking it out?)
  */
-class App : public StatefulApplication
+class App : public StatefulApplication, public virtual StatsApplication
 {
    public:
     explicit App(Config config)
@@ -86,7 +87,7 @@ class App : public StatefulApplication
         device_type = config.device_type;
 
         // Load settings from FRAM
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         if (!settings.load(false)) {
             // FRAM didn't contain valid settings, write default values to chip -
             settings.save(false);
@@ -156,6 +157,8 @@ class App : public StatefulApplication
 
     virtual void onWifiConnect()
     {
+        setStatsServer(getSettings().getStatsServerAddr(), getSettings().getStatsServerPort());
+
         if (getContainer().getComms().bindMulticast(comms::multicastAddr)) {
             logln("Listening for multicast packets", LogLevel::DEBUG);
             dispatchGenericMessage(DOSA_COMMS_MSG_ONLINE);
@@ -169,15 +172,25 @@ class App : public StatefulApplication
      */
     bool isLocked() const
     {
-        return getContainer().getSettings().getLockState() > LockState::UNLOCKED;
+        return getSettings().getLockState() > LockState::UNLOCKED;
     }
 
     LockState getLockState() const
     {
-        return getContainer().getSettings().getLockState();
+        return getSettings().getLockState();
     }
 
    protected:
+    Settings& getSettings()
+    {
+        return getContainer().getSettings();
+    }
+
+    Settings const& getSettings() const
+    {
+        return getContainer().getSettings();
+    }
+
     /**
      * Dispatch a generic message on the UDP multicast address.
      */
@@ -234,7 +247,7 @@ class App : public StatefulApplication
      */
     char const* getDeviceNameBytes()
     {
-        return getContainer().getSettings().getDeviceNameBytes();
+        return getSettings().getDeviceNameBytes();
     }
 
     /**
@@ -242,7 +255,7 @@ class App : public StatefulApplication
      */
     bool enableBluetooth()
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         auto& bt = getContainer().getBluetooth();
 
         static bool bt_service_init = false;
@@ -336,7 +349,7 @@ class App : public StatefulApplication
      */
     void checkWifi()
     {
-        if (getContainer().getSettings().getWifiSsid().length() == 0) {
+        if (getSettings().getWifiSsid().length() == 0) {
             return;
         }
 
@@ -399,7 +412,7 @@ class App : public StatefulApplication
      */
     void setWifi(String const& ssid, String const& password)
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
 
         logln("Updating wifi AP to '" + ssid + "'");
         settings.setWifiSsid(ssid);
@@ -426,7 +439,7 @@ class App : public StatefulApplication
      */
     bool connectWifi(uint8_t attempts = WIFI_INITIAL_ATTEMPTS)
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
 
         if (getContainer().getBluetooth().isEnabled()) {
             getContainer().getBluetooth().setEnabled(false);
@@ -472,7 +485,11 @@ class App : public StatefulApplication
      */
     virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
     {
-        auto const& settings = getContainer().getSettings();
+        if (hasStatsServer()) {
+            getStats().increment("dosa.request.debug");
+        }
+
+        auto const& settings = getSettings();
         logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
         netLog("DOSA version: " + String(DOSA_VERSION), sender);
         switch (settings.getLockState()) {
@@ -493,6 +510,12 @@ class App : public StatefulApplication
                 break;
         }
         netLog("Wifi AP: " + settings.getWifiSsid(), sender);
+
+        if (settings.hasStatsServer()) {
+            netLog("Stats server: " + settings.getStatsServerAddr() + ":" + settings.getStatsServerPort(), sender);
+        } else {
+            netLog("Stats server: none", sender);
+        }
 
         auto const& listen_devices = settings.getListenDevices();
         if (listen_devices.length() == 0) {
@@ -544,10 +567,8 @@ class App : public StatefulApplication
 
     bool authCheck(String const& v)
     {
-        if (v != getContainer().getSettings().getPin()) {
-            logln(
-                "BT auth error: '" + v + "', should be: '" + getContainer().getSettings().getPin() + "'",
-                dosa::LogLevel::ERROR);
+        if (v != getSettings().getPin()) {
+            logln("BT auth error: '" + v + "', should be: '" + getSettings().getPin() + "'", dosa::LogLevel::ERROR);
             return false;
         } else {
             return true;
@@ -579,7 +600,7 @@ class App : public StatefulApplication
         auto data_value = v.substring(brk + 1);
 
         if (data_value.length() >= 4 && data_value.length() < 50) {
-            auto& settings = getContainer().getSettings();
+            auto& settings = getSettings();
             settings.setPin(data_value);
             settings.save();
             logln("Pin set to '" + data_value + "'");
@@ -593,7 +614,7 @@ class App : public StatefulApplication
      */
     void checkSetDeviceName()
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
 
         auto v = bt_device_name.value();
         if (v == settings.getDeviceName()) {
@@ -678,7 +699,7 @@ class App : public StatefulApplication
         getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
 
         // Disconnect wifi and bring BT back online
-        getContainer().getSettings().setWifiSsid("");  // to prevent reconnects (don't write to FRAM!)
+        getSettings().setWifiSsid("");  // to prevent reconnects (don't write to FRAM!)
         getContainer().getWiFi().disconnect();
         wifi_connected = false;
         enableBluetooth();
@@ -700,12 +721,12 @@ class App : public StatefulApplication
         // Send reply pong
         getContainer().getComms().dispatch(
             sender,
-            messages::Pong(device_type, getDeviceState(), getContainer().getSettings().getDeviceNameBytes()));
+            messages::Pong(device_type, getDeviceState(), getSettings().getDeviceNameBytes()));
     }
 
     void settingPassword(String const& value)
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         logln("SET PASSWORD: '" + value + "'");
 
         if (settings.setPin(value)) {
@@ -717,7 +738,7 @@ class App : public StatefulApplication
 
     void settingDeviceName(String const& value)
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         logln("SET DEVICE NAME: '" + value + "'");
 
         if (settings.setDeviceName(value)) {
@@ -737,7 +758,7 @@ class App : public StatefulApplication
         } else if (pos == 0) {
             logln("CLEAR WIFI AP");
 
-            auto& settings = getContainer().getSettings();
+            auto& settings = getSettings();
             settings.setWifiSsid("");
             settings.setWifiPassword("");
             settings.save();
@@ -753,7 +774,7 @@ class App : public StatefulApplication
 
             logln("SET WIFI AP: '" + ap + "' / '" + pw + "'");
 
-            auto& settings = getContainer().getSettings();
+            auto& settings = getSettings();
             settings.setWifiSsid(ap);
             settings.setWifiPassword(pw);
             settings.save();
@@ -785,7 +806,7 @@ class App : public StatefulApplication
         logln(" > pixel delta: " + String(pixel_delta));
         logln(" > total delta: " + String(total_delta));
 
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         settings.setSensorMinPixels(min_pixels);
         settings.setSensorPixelDelta(pixel_delta);
         settings.setSensorTotalDelta(total_delta);
@@ -794,13 +815,28 @@ class App : public StatefulApplication
 
     void settingListenDevices(String const& value)
     {
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
 
         String msg = value;
         msg.replace("\n", "; ");
         logln("SET LISTEN DEVICES: '" + msg + "'");
 
         settings.setListenDevices(value);
+        settings.save();
+    }
+
+    void settingStatsServer(uint8_t const* data, uint16_t size)
+    {
+        auto& settings = getSettings();
+
+        uint16_t server_port;
+        memcpy(&server_port, data, 2);
+        String server_addr = stringFromBytes(data + 2, size - 2);
+
+        logln("SET STATS SERVER: " + server_addr + ":" + String(server_port));
+
+        settings.setStatsServerAddr(server_addr);
+        settings.setStatsServerPort(server_port);
         settings.save();
     }
 
@@ -825,7 +861,7 @@ class App : public StatefulApplication
         logln(" > cool-down:     " + String(cool_down));
         logln(" > close ticks:   " + String(close_ticks));
 
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         settings.setDoorOpenDistance(open_distance);
         settings.setDoorOpenWait(open_wait);
         settings.setDoorCoolDown(cool_down);
@@ -852,7 +888,7 @@ class App : public StatefulApplication
         logln(" > fixed calibration: " + String(fixed_calibration));
         logln(" > trigger coefficient: " + String(trigger_coefficient));
 
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         settings.setSonarTriggerThreshold(trigger_threshold);
         settings.setSonarFixedCalibration(fixed_calibration);
         settings.setSonarTriggerCoefficient(trigger_coefficient);
@@ -872,7 +908,7 @@ class App : public StatefulApplication
         logln("RELAY CALIBRATION");
         logln(" > relay activation time: " + String(relay_delay));
 
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         settings.setRelayActivationTime(relay_delay);
         settings.save();
     }
@@ -906,7 +942,7 @@ class App : public StatefulApplication
                 break;
         }
 
-        auto& settings = getContainer().getSettings();
+        auto& settings = getSettings();
         settings.setLockState(lock_state);
         settings.save();
     }
@@ -919,9 +955,7 @@ class App : public StatefulApplication
         static uint16_t last_message_id = 0;
 
         // Send reply ack even for retries, but we won't double-set the config for duplicate message
-        getContainer().getComms().dispatch(
-            sender,
-            messages::Ack(msg, getContainer().getSettings().getDeviceNameBytes()));
+        getContainer().getComms().dispatch(sender, messages::Ack(msg, getSettings().getDeviceNameBytes()));
 
         if (msg.getMessageId() == last_message_id) {
             return;
@@ -931,37 +965,56 @@ class App : public StatefulApplication
 
         log("Config setting from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ") // ");
 
+        String metric("dosa.request.config");
         switch (msg.getConfigItem()) {
             case messages::Configuration::ConfigItem::PASSWORD:
                 settingPassword(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                metric += ".password";
                 break;
             case messages::Configuration::ConfigItem::DEVICE_NAME:
                 settingDeviceName(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                metric += ".device_name";
                 break;
             case messages::Configuration::ConfigItem::WIFI_AP:
                 settingWifiAp(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                metric += ".wifi_ap";
                 break;
-            case messages::Configuration::ConfigItem::SENSOR_CALIBRATION:
+            case messages::Configuration::ConfigItem::PIR_CALIBRATION:
                 settingSensorCalibration(msg.getConfigData(), msg.getConfigSize());
+                metric += ".pir";
                 break;
             case messages::Configuration::ConfigItem::DOOR_CALIBRATION:
                 settingDoorCalibration(msg.getConfigData(), msg.getConfigSize());
+                metric += ".motor";
                 break;
             case messages::Configuration::ConfigItem::SONAR_CALIBRATION:
                 settingSonarCalibration(msg.getConfigData(), msg.getConfigSize());
+                metric += ".sonar";
                 break;
             case messages::Configuration::ConfigItem::RELAY_CALIBRATION:
                 settingRelayCalibration(msg.getConfigData(), msg.getConfigSize());
+                metric += ".relay";
                 break;
             case messages::Configuration::ConfigItem::DEVICE_LOCK:
                 settingDeviceLock(msg.getConfigData(), msg.getConfigSize());
+                metric += ".lock";
                 break;
             case messages::Configuration::ConfigItem::LISTEN_DEVICES:
                 settingListenDevices(stringFromBytes(msg.getConfigData(), msg.getConfigSize()));
+                metric += ".listen_devices";
+                break;
+            case messages::Configuration::ConfigItem::STATS_SERVER:
+                settingStatsServer(msg.getConfigData(), msg.getConfigSize());
+                metric += ".stats_server";
                 break;
             default:
                 logln("UNKNOWN SETTING");
+                metric += ".unknown";
                 break;
+        }
+
+        if (hasStatsServer()) {
+            getStats().increment(metric);
         }
     }
 

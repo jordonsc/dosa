@@ -33,6 +33,7 @@ cc_library(
         "//arduino:Adafruit_FRAM_SPI",
         "//arduino:ArduinoBLE",
         "//arduino:SparkFun_GridEYE",
+        "//arduino:StatsD",
         "//arduino:WiFiNINA",
         "//arduino:board_samd",
         "//arduino:variant_nano_33_iot",

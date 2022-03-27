@@ -1,10 +1,11 @@
 #pragma once
 
 #include <Arduino.h>
+#include <dosa_comms.h>
 
 #include "const.h"
 
-#define DOSA_SETTINGS_HEADER "DS22"
+#define DOSA_SETTINGS_HEADER "DS23"
 
 /**
  * Default device Bluetooth password.
@@ -78,7 +79,8 @@ constexpr static uint32_t default_relay_activation_time = 5000;
 #define DOSA_SETTINGS_OVERSIZE_READ "#ERR-OVERSIZE"
 constexpr static char const* current_settings_header = DOSA_SETTINGS_HEADER;
 constexpr static char const* null_str = "";
-constexpr static uint8_t default_locked = 0;
+constexpr static uint8_t zero_8 = 0;
+constexpr static uint16_t zero_16 = 0;
 
 namespace dosa {
 
@@ -96,6 +98,9 @@ namespace dosa {
  *   ?      char      Wifi SSID
  *   2      uint16    Size of wifi password
  *   ?      char      Wifi password
+ *   2      uint16    Logging platform
+ *   2      uint16    Size of log API key
+ *   ?      char      API key
  *   1      uint8     Sensor cfg: SENSOR_MIN_PIXELS_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_SINGLE_DELTA_THRESHOLD
  *   4      float     Sensor cfg: SENSOR_TOTAL_DELTA_THRESHOLD
@@ -174,7 +179,7 @@ class Settings : public Loggable
             ptr += size;
         };
 
-        read_var(&locked, 1, 20, (void*)(&default_locked));
+        read_var(&locked, 1, 20, (void*)(&zero_8));
 
         if (!read_block(pin)) {
             logln("Bad read: PIN", LogLevel::ERROR);
@@ -200,16 +205,26 @@ class Settings : public Loggable
             return false;
         }
 
+        if (!read_block(stats_server_addr, 23, null_str)) {
+            logln("Bad read: stats server", LogLevel::ERROR);
+            setDefaults();
+            return false;
+        }
+        read_var(&stats_server_port, 2, 23, (void*)(&zero_16));
+
         read_var(&sensor_min_pixels, 1);
         read_var(&sensor_pixel_delta, 4);
         read_var(&sensor_total_delta, 4);
+
         read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
         read_var(&door_close_ticks, 4);
+
         read_var(&sonar_trigger_threshold, 2);
         read_var(&sonar_fixed_calibration, 2, 18, (void*)(&default_sonar_fixed_calibration));
         read_var(&sonar_trigger_coefficient, 4, 19, (void*)(&default_sonar_trigger_coefficient));
+
         read_var(&relay_activation_time, 4, 22, (void*)(&default_relay_activation_time));
 
         if (!read_block(listen_devices, 21, null_str)) {
@@ -257,17 +272,18 @@ class Settings : public Loggable
          *
          * Fixed length sizes:
          *      4  Header
+         *   6x 2  Variable size markers
          *      1  Locked state
-         *   5x 2  Variable size markers
-         *      9  Sensor calibration
+         *      2  Stats server port
+         *      9  PIR calibration
          *     14  Door calibration
          *      8  Sonar calibration
          *      4  Relay calibration
          * ---------------------------
-         *     50  Total
+         *     54  Total fixed (not incl. string sizes)
          */
-        size_t size = 50 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
-                      listen_devices.length();
+        size_t size = 54 + pin.length() + device_name.length() + wifi_ssid.length() + wifi_password.length() +
+                      stats_server_addr.length() + listen_devices.length();
 
         uint8_t payload[size];
         uint8_t* ptr = payload;
@@ -292,6 +308,9 @@ class Settings : public Loggable
         write_block(device_name);
         write_block(wifi_ssid);
         write_block(wifi_password);
+
+        write_block(stats_server_addr);
+        write_var(&stats_server_port, 2);
 
         write_var(&sensor_min_pixels, 1);
         write_var(&sensor_pixel_delta, 4);
@@ -327,6 +346,8 @@ class Settings : public Loggable
         wifi_ssid = null_str;
         wifi_password = null_str;
         listen_devices = null_str;
+        stats_server_addr = null_str;
+        stats_server_port = zero_16;
 
         // IR grid specific
         sensor_min_pixels = default_sensor_min_pixels;
@@ -406,6 +427,44 @@ class Settings : public Loggable
     void setWifiPassword(String const& wifiPassword)
     {
         wifi_password = wifiPassword;
+    }
+
+    [[nodiscard]] comms::Node getStatsServer() const
+    {
+        IPAddress addr;
+        addr.fromString(getStatsServerAddr());
+        return {addr, getStatsServerPort()};
+    }
+
+    void setStatsServer(comms::Node const& statsServer)
+    {
+        setStatsServerAddr(comms::ipToString(statsServer.ip));
+        setStatsServerPort(statsServer.port);
+    }
+
+    [[nodiscard]] String const& getStatsServerAddr() const
+    {
+        return stats_server_addr;
+    }
+
+    [[nodiscard]] bool hasStatsServer() const
+    {
+        return stats_server_addr.length() > 0;
+    }
+
+    void setStatsServerAddr(String const& statsServerAddr)
+    {
+        stats_server_addr = statsServerAddr;
+    }
+
+    [[nodiscard]] uint16_t getStatsServerPort() const
+    {
+        return stats_server_port;
+    }
+
+    void setStatsServerPort(uint16_t statsServerPort)
+    {
+        stats_server_port = statsServerPort;
     }
 
     [[nodiscard]] uint8_t getSensorMinPixels() const
@@ -579,6 +638,8 @@ class Settings : public Loggable
     String pin;
     String wifi_ssid;
     String wifi_password;
+    String stats_server_addr;
+    uint16_t stats_server_port;
     uint8_t sensor_min_pixels = 0;
     float sensor_pixel_delta = 0;
     float sensor_total_delta = 0;
