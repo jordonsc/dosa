@@ -7,7 +7,7 @@
 
 #include <dosa_door.h>
 
-dosa::AppBuilder<dosa::door::DoorApp> builder;
+dosa::AppBuilder<dosa::DoorApp> builder;
 
 /**
  * Arduino setup

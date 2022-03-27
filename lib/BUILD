@@ -127,11 +127,11 @@ cc_library(
 
 # IR grid motion sensor
 cc_library(
-    name = "sensor",
-    srcs = glob(["sensor/src/**/*.cpp"]),
-    hdrs = glob(["sensor/src/**/*.h"]),
+    name = "pir",
+    srcs = glob(["pir/src/**/*.cpp"]),
+    hdrs = glob(["pir/src/**/*.h"]),
     copts = COPTS,
-    includes = ["sensor/src"],
+    includes = ["pir/src"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [

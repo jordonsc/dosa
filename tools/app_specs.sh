@@ -7,10 +7,13 @@ function getFqbn() {
   "relay")
     echo "arduino:samd:nano_33_iot"
     ;;
-  "sensor")
+  "pir")
     echo "arduino:samd:nano_33_iot"
     ;;
   "sonar")
+    echo "arduino:samd:nano_33_iot"
+    ;;
+  "laser")
     echo "arduino:samd:nano_33_iot"
     ;;
   "monitor")
@@ -30,11 +33,14 @@ function getAppKey() {
   "relay")
     echo "DOSA-R"
     ;;
-  "sensor")
+  "pir")
     echo "DOSA-M"
     ;;
   "sonar")
     echo "DOSA-S"
+    ;;
+  "laser")
+    echo "DOSA-L"
     ;;
   *) ;;
 

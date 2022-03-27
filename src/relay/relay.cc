@@ -7,7 +7,7 @@
 
 #include <dosa_relay.h>
 
-dosa::AppBuilder<dosa::relay::RelayApp> builder;
+dosa::AppBuilder<dosa::RelayApp> builder;
 
 /**
  * Arduino setup

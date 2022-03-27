@@ -6,7 +6,6 @@
 #include "sonar_container.h"
 
 namespace dosa {
-namespace sonar {
 
 class SonarApp final : public dosa::OtaApplication
 {
@@ -150,7 +149,18 @@ class SonarApp final : public dosa::OtaApplication
         logln("Sonar TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
 
         if (isLocked()) {
-            netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+            switch (getLockState()) {
+                case LockState::LOCKED:
+                    logln("Ignoring trip: locked");
+                    break;
+                default:
+                case LockState::ALERT:
+                    netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+                    break;
+                case LockState::BREACH:
+                    netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
+                    break;
+            }
             return;
         }
 
@@ -173,5 +183,4 @@ class SonarApp final : public dosa::OtaApplication
     }
 };
 
-}  // namespace sonar
 }  // namespace dosa

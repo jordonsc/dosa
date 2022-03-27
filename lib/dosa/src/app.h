@@ -169,6 +169,11 @@ class App : public StatefulApplication
      */
     bool isLocked() const
     {
+        return getContainer().getSettings().getLockState() > LockState::UNLOCKED;
+    }
+
+    LockState getLockState() const
+    {
         return getContainer().getSettings().getLockState();
     }
 
@@ -470,7 +475,23 @@ class App : public StatefulApplication
         auto const& settings = getContainer().getSettings();
         logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
         netLog("DOSA version: " + String(DOSA_VERSION), sender);
-        netLog("Device lock: " + String(settings.getLockState() ? "LOCKED" : "unlocked"), sender);
+        switch (settings.getLockState()) {
+            default:
+                netLog("Device lock: unknown state", sender);
+                break;
+            case LockState::UNLOCKED:
+                netLog("Device lock: unlocked", sender);
+                break;
+            case LockState::LOCKED:
+                netLog("Device lock: LOCKED", sender);
+                break;
+            case LockState::ALERT:
+                netLog("Device lock: ALERT", sender);
+                break;
+            case LockState::BREACH:
+                netLog("Device lock: BREACH", sender);
+                break;
+        }
         netLog("Wifi AP: " + settings.getWifiSsid(), sender);
 
         auto const& listen_devices = settings.getListenDevices();
@@ -863,14 +884,30 @@ class App : public StatefulApplication
             return;
         }
 
-        uint8_t lock_state;
+        LockState lock_state;
         memcpy(&lock_state, data, 1);
 
         logln("SET LOCK STATE");
-        logln(" > new state: " + String(lock_state == 0 ? "unlocked" : "locked"));
+        switch (lock_state) {
+            default:
+                logln(" > new state: UNKNOWN");
+                break;
+            case LockState::UNLOCKED:
+                logln(" > new state: unlocked");
+                break;
+            case LockState::LOCKED:
+                logln(" > new state: locked");
+                break;
+            case LockState::ALERT:
+                logln(" > new state: alert");
+                break;
+            case LockState::BREACH:
+                logln(" > new state: breach");
+                break;
+        }
 
         auto& settings = getContainer().getSettings();
-        settings.setLocked(lock_state != 0);
+        settings.setLockState(lock_state);
         settings.save();
     }
 

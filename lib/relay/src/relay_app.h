@@ -5,7 +5,6 @@
 #include "const.h"
 
 namespace dosa {
-namespace relay {
 
 class RelayApp final : public dosa::OtaApplication
 {
@@ -45,13 +44,14 @@ class RelayApp final : public dosa::OtaApplication
 
     void setRelay(bool state)
     {
+        relay_last_moved = millis();
+
         if (relay_state == state) {
             return;
         }
 
         logln(String("Set power state: ") + (state ? "active" : "inactive"));
         relay_state = state;
-        relay_last_moved = millis();
         digitalWrite(DOSA_RELAY_PIN, relay_state ? HIGH : LOW);
         setDeviceState(relay_state ? messages::DeviceState::WORKING : messages::DeviceState::OK);
         dispatchGenericMessage(relay_state ? DOSA_COMMS_MSG_BEGIN : DOSA_COMMS_MSG_END);
@@ -112,7 +112,19 @@ class RelayApp final : public dosa::OtaApplication
             logln("Ignoring trigger from " + sender_str);
             return;
         } else if (isLocked()) {
-            netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+            switch (getLockState()) {
+                default:
+                case LockState::LOCKED:
+                    logln("Ignoring trigger while device is locked");
+                    break;
+                case LockState::ALERT:
+                    netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+                    break;
+                case LockState::BREACH:
+                    // This lock state makes little sense for a relay, but we'll alter the message a little
+                    netLog("Lock breach by " + sender_str, NetLogLevel::SECURITY);
+                    break;
+            }
             return;
         } else {
             logln("Executing trigger from " + sender_str);
@@ -134,5 +146,4 @@ class RelayApp final : public dosa::OtaApplication
     }
 };
 
-}  // namespace relay
 }  // namespace dosa

@@ -7,7 +7,7 @@
 
 #include <dosa_sonar.h>
 
-dosa::AppBuilder<dosa::sonar::SonarApp> builder;
+dosa::AppBuilder<dosa::SonarApp> builder;
 
 /**
  * Arduino setup

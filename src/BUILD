@@ -17,13 +17,13 @@ cc_binary(
 )
 
 cc_binary(
-    name = "sensor",
-    srcs = glob(["sensor/sensor.cc"]),
+    name = "pir",
+    srcs = glob(["pir/pir.cc"]),
     copts = COPTS,
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:sensor",
+        "//lib:pir",
     ],
 )
 

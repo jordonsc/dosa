@@ -84,9 +84,7 @@ class Config:
                 return
         elif opt == 7:
             # Set lock state
-            self.exec_lock_state(device, self.get_values(
-                ["Lock state (0 unlocked, 1 locked)"]
-            ))
+            self.exec_lock_state(device, self.user_select_lock_state())
         elif opt == 8:
             # Set listen devices
             print("Enter devices, one per line. Ctrl+C to abort, no devices for listen to all:")
@@ -111,7 +109,7 @@ class Config:
             if msg is None or msg.msg_code != dosa.Messages.LOG:
                 continue
 
-            print("[" + dosa.Messages.get_log_level(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
+            print("[" + dosa.LogLevel.as_string(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
                   msg.payload[28:msg.payload_size].decode("utf-8"))
 
     def exec_config_mode(self, device):
@@ -379,5 +377,27 @@ class Config:
             if 0 < opt < 9:
                 print()
                 return opt
+            else:
+                print("Invalid option")
+
+    @staticmethod
+    def user_select_lock_state():
+        print("[1] Unlocked")
+        print("[2] Locked")
+        print("[3] Locked: alert")
+        print("[4] Locked: breach")
+
+        while True:
+            try:
+                opt = int(input("> "))
+            except ValueError:
+                opt = None
+
+            if opt is None or opt == 0:
+                return None
+
+            if 0 < opt < 5:
+                print()
+                return opt - 1
             else:
                 print("Invalid option")

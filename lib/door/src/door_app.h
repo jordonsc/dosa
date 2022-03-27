@@ -10,7 +10,6 @@
 #define DOSA_DOOR_ERR_JAM "Door JAMMED"
 
 namespace dosa {
-namespace door {
 
 class DoorApp final : public dosa::OtaApplication
 {
@@ -244,5 +243,4 @@ class DoorApp final : public dosa::OtaApplication
     }
 };
 
-}  // namespace door
 }  // namespace dosa

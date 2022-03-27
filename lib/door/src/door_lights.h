@@ -11,7 +11,7 @@
 #define PIN_LED_ACTIVITY 16
 #define PIN_LED_ERROR 17
 
-namespace dosa::door {
+namespace dosa {
 
 class DoorLights
 {
@@ -110,4 +110,4 @@ class DoorLights
     }
 };
 
-}  // namespace dosa::door
+}  // namespace dosa

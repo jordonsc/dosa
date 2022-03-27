@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "const.h"
+
 #define DOSA_SETTINGS_HEADER "DS22"
 
 /**
@@ -319,7 +321,7 @@ class Settings : public Loggable
     void setDefaults()
     {
         // Common
-        locked = 0;
+        locked = LockState::UNLOCKED;
         pin = default_pin;
         device_name = "DOSA " + String(random(1000, 9999));
         wifi_ssid = null_str;
@@ -506,14 +508,14 @@ class Settings : public Loggable
         sonar_trigger_coefficient = sonarTriggerCoefficient;
     }
 
-    [[nodiscard]] bool getLockState() const
+    [[nodiscard]] LockState getLockState() const
     {
-        return locked != 0;
+        return locked;
     }
 
-    void setLocked(bool lock_enabled)
+    void setLockState(LockState state)
     {
-        locked = lock_enabled ? 1 : 0;
+        locked = state;
     }
 
     [[nodiscard]] uint32_t getRelayActivationTime() const
@@ -580,7 +582,7 @@ class Settings : public Loggable
     uint8_t sensor_min_pixels = 0;
     float sensor_pixel_delta = 0;
     float sensor_total_delta = 0;
-    uint8_t locked = 0;
+    LockState locked = LockState::UNLOCKED;
     uint16_t door_open_distance = 0;
     uint32_t door_open_wait = 0;
     uint32_t door_cool_down = 0;

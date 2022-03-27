@@ -4,10 +4,10 @@
 
 namespace dosa {
 
-class SensorContainer : public Container
+class PirContainer : public Container
 {
    public:
-    SensorContainer() : Container(), ir(&serial) {}
+    PirContainer() : Container(), ir(&serial) {}
 
     [[nodiscard]] IrGrid& getIrGrid()
     {

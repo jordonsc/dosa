@@ -3,12 +3,11 @@
 #include <dosa_ota.h>
 
 #include "const.h"
-#include "sensor_container.h"
+#include "pir_container.h"
 
 namespace dosa {
-namespace sensor {
 
-class SensorApp final : public dosa::OtaApplication
+class PirApp final : public dosa::OtaApplication
 {
    public:
     using dosa::OtaApplication::OtaApplication;
@@ -27,7 +26,7 @@ class SensorApp final : public dosa::OtaApplication
     }
 
    private:
-    SensorContainer container;
+    PirContainer container;
 
     float grid[64] = {0};
     unsigned long last_fired = 0;
@@ -82,15 +81,30 @@ class SensorApp final : public dosa::OtaApplication
             return false;
         }
 
-        container.getSerial().writeln("IR grid motion detected", LogLevel::DEBUG);
+        logln("IR grid motion detected");
         last_fired = millis();
 
-        if (isLocked()) {
-            // Security mode: dispatch sec alert
-            netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
-        } else {
-            // Normal mode: dispatch trigger
-            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()), true);
+        switch (getLockState()) {
+            case LockState::UNLOCKED:
+                // Normal mode: dispatch trigger
+                logln("IR grid motion detected");
+                dispatchMessage(
+                    messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()),
+                    true);
+                break;
+            default:
+            case LockState::LOCKED:
+                // Standard lock, ignore
+                logln("Ignoring trip: locked");
+                break;
+            case LockState::ALERT:
+                // Security mode: dispatch sec alert
+                netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+                break;
+            case LockState::BREACH:
+                // Security mode: dispatch sec alert
+                netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
+                break;
         }
         return true;
     }
@@ -114,5 +128,4 @@ class SensorApp final : public dosa::OtaApplication
     }
 };
 
-}  // namespace sensor
 }  // namespace dosa

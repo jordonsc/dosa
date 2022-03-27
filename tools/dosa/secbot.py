@@ -34,9 +34,9 @@ class SecBot:
                 if log_level == dosa.LogLevel.SECURITY:
                     msg = "Security alert, " + packet.device_name + ". " + log_message + "."
                 elif log_level == dosa.LogLevel.CRITICAL:
-                    msg = packet.device_name + " critical! " + log_message + "."
-                elif log_level == dosa.LogLevel.CRITICAL:
-                    msg = packet.device_name + " error. " + log_message + "."
+                    msg = "Warning, " + packet.device_name + " critical. " + log_message + "."
+                elif log_level == dosa.LogLevel.ERROR:
+                    msg = "Warning, " + packet.device_name + " error. " + log_message + "."
 
             elif packet.msg_code == dosa.Messages.FLUSH:
                 msg = "Network flush initiated by " + packet.device_name

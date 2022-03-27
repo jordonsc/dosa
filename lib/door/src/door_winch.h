@@ -22,7 +22,6 @@
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
 
 namespace dosa {
-namespace door {
 
 namespace {
 
@@ -340,5 +339,4 @@ class DoorWinch : public Loggable
     }
 };
 
-}  // namespace door
 }  // namespace dosa

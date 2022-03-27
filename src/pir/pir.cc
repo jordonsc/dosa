@@ -5,9 +5,9 @@
  * Contains an infrared grid that is used to passively detect motion.
  */
 
-#include <dosa_sensor.h>
+#include <dosa_pir.h>
 
-dosa::AppBuilder<dosa::sensor::SensorApp> builder;
+dosa::AppBuilder<dosa::PirApp> builder;
 
 /**
  * Arduino setup
