@@ -20,12 +20,12 @@ rm -rf arduino/boards arduino/variants arduino/libraries
 
 # Link board cores, their libraries & appropriate variants -
 mkdir -p arduino/libraries arduino/boards/samd arduino/boards/inkplate arduino/variants
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores arduino/boards/samd/cores
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries arduino/boards/samd/libraries
-ln -s ${arduino_path}/packages/arduino/hardware/samd/${samd_version}/variants/nano_33_iot arduino/variants/nano_33_iot
-ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/cores arduino/boards/inkplate/cores
-ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries arduino/boards/inkplate/libraries
-ln -s ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/variants/Inkplate arduino/variants/inkplate
+ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores" arduino/boards/samd/cores
+ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries" arduino/boards/samd/libraries
+ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/variants/nano_33_iot" arduino/variants/nano_33_iot
+ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/cores" arduino/boards/inkplate/cores
+ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries" arduino/boards/inkplate/libraries
+ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/variants/Inkplate" arduino/variants/inkplate
 
 # Link custom Arduino libs -
 ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/libraries/Adafruit_BusIO
@@ -54,6 +54,7 @@ ln -s ${app}/../lib/messages ~/Arduino/libraries/dosa_messages
 ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
 ln -s ${app}/../lib/relay ~/Arduino/libraries/dosa_relay
 ln -s ${app}/../lib/pir ~/Arduino/libraries/dosa_pir
+ln -s ${app}/../lib/ranging ~/Arduino/libraries/dosa_ranging
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
 ln -s ${app}/../lib/laser ~/Arduino/libraries/dosa_laser
 ln -s ${app}/../lib/monitor ~/Arduino/libraries/dosa_monitor

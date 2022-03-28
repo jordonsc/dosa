@@ -35,45 +35,7 @@ class Laser
    public:
     Laser()
     {
-        while (!Serial) {
-        }
-        Serial.println("Laser init");
-
         Serial1.begin(9600);
-
-        auto printResponseCode = [](LaserResponseCode r) -> void {
-            switch (r) {
-                case LaserResponseCode::SUCCESS:
-                    Serial.println("> SUCCESS");
-                    break;
-                case LaserResponseCode::FAIL:
-                    Serial.println("> FAIL");
-                    break;
-                case LaserResponseCode::UNKNOWN:
-                    Serial.println("> UNKNOWN");
-                    break;
-                case LaserResponseCode::TIMEOUT:
-                    Serial.println("> TIMEOUT");
-                    break;
-            }
-        };
-
-        stop();
-        hardFlush();
-
-        Serial.println("Disable control laser..");
-        printResponseCode(setControlLaser(false));
-        flush();
-        delay(2000);
-
-        Serial.println("Enable control laser..");
-        printResponseCode(setControlLaser(true));
-        flush();
-
-        Serial.println("Start measurement..");
-        startContinuousMeasurement();
-
-        Serial.println("Laser init complete");
     }
 
     LaserResponseCode setAddress(uint8_t addr)
@@ -115,7 +77,7 @@ class Laser
         data[3] = getChecksum(data, 3);
 
         tx(data, 4);
-        flush(50);
+        hardFlush(250);
     }
 
     /**
@@ -142,21 +104,12 @@ class Laser
             }
 
             if (pos == 0 && b != device_addr) {
-                Serial.print("err 0: ");
-                Serial.print(b, HEX);
-                Serial.println("");
                 pos = 0;
                 continue;
             } else if (pos == 1 && b != 0x06) {
-                Serial.print("err 1: ");
-                Serial.print(b, HEX);
-                Serial.println("");
                 pos = 0;
                 continue;
             } else if (pos == 2 && b != 0x83) {
-                Serial.print("err 2: ");
-                Serial.print(data[2], HEX);
-                Serial.println("");
                 continue;
             }
 
@@ -165,36 +118,25 @@ class Laser
 
             if (pos == 11) {
                 if (data[10] != getChecksum(data, 10)) {
-                    Serial.println("Checksum fail");
                     return false;
                 }
 
                 // Device prints ASCII 'ERR' when it can't make a measurement
-                if (data[3] == 'E' && data[4] == 'R' && data[5] == 'R') {
-                    Serial.println("Out of range");
+                if ((data[3] == 'E' && data[4] == 'R' && data[5] == 'R') || (data[6] != '.')) {
                     return false;
                 }
 
-                for (int i = 0; i < 11; ++i) {
-                    Serial.print(data[i], HEX);
-                    Serial.print(' ');
-                }
-                Serial.print("  ");
-
-                for (int i = 0; i < 11; ++i) {
-                    if (data[i] > 31 && data[i] < 127) {
-                        Serial.print((char)(data[i]));
-                    } else {
-                        Serial.print('*');
-                    }
-                }
-
-                Serial.println("");
+                distance = 0;
+                distance += data[9] - 0x30;
+                distance += (data[8] - 0x30) * 10;
+                distance += (data[7] - 0x30) * 100;
+                distance += (data[5] - 0x30) * 1000;
+                distance += (data[4] - 0x30) * 10000;
+                distance += (data[3] - 0x30) * 100000;
                 pos = 0;
+                return true;
             }
         }
-
-        return true;
     }
 
     [[nodiscard]] uint32_t getDistance() const
@@ -271,21 +213,6 @@ class Laser
                 }
             }
         }
-
-        // Debug
-        Serial.println("Buffer:");
-        for (size_t i = 0; i < max_read; ++i) {
-            Serial.print(buffer[i], HEX);
-            Serial.print(" ");
-        }
-        Serial.println("");
-
-        Serial.println("Success:");
-        for (size_t i = 0; i < success.size; ++i) {
-            Serial.print(success.payload[i], HEX);
-            Serial.print(" ");
-        }
-        Serial.println("");
 
         return LaserResponseCode::UNKNOWN;
     }

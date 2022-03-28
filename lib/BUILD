@@ -141,6 +141,20 @@ cc_library(
     ],
 )
 
+# Ranging trip sensor base application
+cc_library(
+    name = "ranging",
+    srcs = glob(["ranging/src/**/*.cpp"]),
+    hdrs = glob(["ranging/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["ranging/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:ota",
+    ],
+)
+
 # Sonar trip sensor
 cc_library(
     name = "sonar",
@@ -151,7 +165,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:ota",
+        "//lib:ranging",
     ],
 )
 
@@ -165,7 +179,7 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
-        "//lib:ota",
+        "//lib:ranging",
     ],
 )
 
