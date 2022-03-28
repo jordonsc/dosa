@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dosa.h>
+#include <dosa_sonar.h>
 
 #include "door_lights.h"
 #include "door_winch.h"

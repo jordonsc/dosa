@@ -55,5 +55,6 @@ ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
 ln -s ${app}/../lib/relay ~/Arduino/libraries/dosa_relay
 ln -s ${app}/../lib/pir ~/Arduino/libraries/dosa_pir
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
+ln -s ${app}/../lib/laser ~/Arduino/libraries/dosa_laser
 ln -s ${app}/../lib/monitor ~/Arduino/libraries/dosa_monitor
 ln -s ${app}/../lib/ota ~/Arduino/libraries/dosa_ota

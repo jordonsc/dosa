@@ -11,5 +11,4 @@
 #include "grideye.h"
 #include "lights.h"
 #include "settings.h"
-#include "sonar.h"
 #include "switch.h"

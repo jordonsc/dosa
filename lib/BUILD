@@ -123,6 +123,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//lib:ota",
+        "//lib:sonar",
     ],
 )
 
@@ -147,6 +148,20 @@ cc_library(
     hdrs = glob(["sonar/src/**/*.h"]),
     copts = COPTS,
     includes = ["sonar/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:ota",
+    ],
+)
+
+# Laser trip sensor
+cc_library(
+    name = "laser",
+    srcs = glob(["laser/src/**/*.cpp"]),
+    hdrs = glob(["laser/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["laser/src"],
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [

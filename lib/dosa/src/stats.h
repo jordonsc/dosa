@@ -64,7 +64,7 @@ class Stats : public virtual Loggable
 
     void send(String payload) const
     {
-        if (stats_server.port == 0) {
+        if (stats_server.port == 0 || !comms.isOnline()) {
             return;
         }
 
@@ -72,9 +72,6 @@ class Stats : public virtual Loggable
             payload += "|#" + tags;
         }
 
-        logln(
-            "Send \"" + payload + "\" to " + comms::ipToString(stats_server.ip) + ":" + String(stats_server.port),
-            LogLevel::DEBUG);
         if (!comms.dispatchRaw(stats_server, payload.c_str(), payload.length())) {
             logln("Stats dispatch failed!", LogLevel::ERROR);
         }

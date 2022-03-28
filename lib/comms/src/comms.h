@@ -24,6 +24,11 @@ class Comms : public Loggable
         }
     }
 
+    bool isOnline()
+    {
+        return wifi.isConnected();
+    }
+
     /**
      * Listen on wifi UDP port.
      */

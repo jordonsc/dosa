@@ -39,6 +39,17 @@ cc_binary(
 )
 
 cc_binary(
+    name = "laser",
+    srcs = glob(["laser/laser.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:laser",
+    ],
+)
+
+cc_binary(
     name = "relay",
     srcs = glob(["relay/relay.cc"]),
     copts = COPTS,

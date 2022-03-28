@@ -1,5 +1,7 @@
 #pragma once
 
+#include <dosa.h>
+
 namespace dosa {
 
 class Sonar
