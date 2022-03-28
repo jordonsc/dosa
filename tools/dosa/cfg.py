@@ -112,8 +112,13 @@ class Config:
             if msg is None or msg.msg_code != dosa.Messages.LOG:
                 continue
 
-            print("[" + dosa.LogLevel.as_string(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
-                  msg.payload[28:msg.payload_size].decode("utf-8"))
+            if device.device_type == DeviceType.UNKNOWN:
+                print("[" + dosa.LogLevel.as_string(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
+                      msg.addr[0].ljust(18) + msg.device_name.ljust(22) +
+                      msg.payload[28:msg.payload_size].decode("utf-8"))
+            else:
+                print("[" + dosa.LogLevel.as_string(struct.unpack("<B", msg.payload[27:28])[0]) + "] " +
+                      msg.payload[28:msg.payload_size].decode("utf-8"))
 
     def exec_config_mode(self, device):
         print("Sending Bluetooth fallback mode request..", end="")
