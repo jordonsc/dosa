@@ -152,12 +152,15 @@ class SonarApp final : public dosa::OtaApplication
             switch (getLockState()) {
                 case LockState::LOCKED:
                     logln("Ignoring trip: locked");
+                    getStats().count(stats::sec_locked);
                     break;
                 default:
                 case LockState::ALERT:
+                    getStats().count(stats::sec_alert);
                     netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
                     break;
                 case LockState::BREACH:
+                    getStats().count(stats::sec_breached);
                     netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
                     break;
             }
@@ -169,6 +172,7 @@ class SonarApp final : public dosa::OtaApplication
         memcpy(map, &previous, 2);
         memcpy(map + 2, &current, 2);
 
+        getStats().count(stats::trigger);
         dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
     }
 

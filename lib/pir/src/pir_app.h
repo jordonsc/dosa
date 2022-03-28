@@ -91,19 +91,23 @@ class PirApp final : public dosa::OtaApplication
                 dispatchMessage(
                     messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()),
                     true);
+                getStats().count(stats::trigger);
                 break;
             default:
             case LockState::LOCKED:
                 // Standard lock, ignore
                 logln("Ignoring trip: locked");
+                getStats().count(stats::sec_locked);
                 break;
             case LockState::ALERT:
                 // Security mode: dispatch sec alert
                 netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+                getStats().count(stats::sec_alert);
                 break;
             case LockState::BREACH:
                 // Security mode: dispatch sec alert
                 netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
+                getStats().count(stats::sec_breached);
                 break;
         }
         return true;

@@ -37,7 +37,6 @@ ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 ln -s ~/Arduino/libraries/Array arduino/libraries/Array
 ln -s ~/Arduino/libraries/ArduinoOTA arduino/libraries/ArduinoOTA
 ln -s ~/Arduino/libraries/HttpClient arduino/libraries/HttpClient
-ln -s ~/Arduino/libraries/StatsD arduino/libraries/StatsD
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."

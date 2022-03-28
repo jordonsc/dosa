@@ -101,6 +101,37 @@ class Comms : public Loggable
     }
 
     /**
+     * Send a raw message via UDP.
+     */
+    bool dispatchRaw(comms::Node const& recipient, char const* payload, uint32_t size)
+    {
+        if (!wifi.isConnected()) {
+            logln("Cannot dispatch packet when wifi is down", dosa::LogLevel::ERROR);
+            return false;
+        }
+
+        auto& udp = wifi.getUdp();
+        ack_msg_id = 0;
+
+        if (udp.beginPacket(recipient.ip, recipient.port) != 1) {
+            logln("ERROR: UDP begin failed", dosa::LogLevel::ERROR);
+            return false;
+        }
+
+#ifdef ARDUINO_ARCH_SAMD
+        udp.write(payload, size);
+#endif
+#ifdef ARDUINO_ESP32_DEV
+        udp.write((uint8_t const*)(payload), size);
+#endif
+
+        if (udp.endPacket() != 1) {
+            logln("ERROR: UDP end failed", dosa::LogLevel::ERROR);
+            return false;
+        }
+    }
+
+    /**
      * Process inbound packets.
      *
      * Fires events if a packet is received.

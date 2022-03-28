@@ -86,6 +86,7 @@ class OtaApplication : public App
     void performOtaUpdate(uint32_t version)
     {
         netLog("Performing OTA update for " + config.short_name + " v" + version + "..");
+        getStats().count(stats::ota);
 
         WiFiClient wifi_client;
         HttpClient http_client(wifi_client);

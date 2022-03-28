@@ -93,10 +93,24 @@ class DoorApp final : public dosa::OtaApplication
         auto const& settings = getContainer().getSettings();
 
         if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str);
+            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
             return;
         } else if (isLocked()) {
-            netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+            switch (getLockState()) {
+                case LockState::LOCKED:
+                default:
+                    getStats().count(stats::sec_locked);
+                    logln("Ignoring trigger while device is locked");
+                    break;
+                case LockState::ALERT:
+                    getStats().count(stats::sec_alert);
+                    netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+                    break;
+                case LockState::BREACH:
+                    getStats().count(stats::sec_breached);
+                    netLog("Lock breach by " + sender_str, NetLogLevel::SECURITY);
+                    break;
+            }
             return;
         } else {
             logln("Executing trigger from " + sender_str);

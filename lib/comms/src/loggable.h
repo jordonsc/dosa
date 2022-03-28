@@ -26,6 +26,11 @@ class Loggable
         }
     }
 
+    void setSerial(SerialComms* s)
+    {
+        serial = s;
+    }
+
     SerialComms* serial;
 };
 

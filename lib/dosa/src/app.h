@@ -45,7 +45,7 @@ using NetLogLevel = messages::LogMessageLevel;
  *
  * Contains support for FRAM, Bluetooth and Wifi - all bundled in this class. (Consider breaking it out?)
  */
-class App : public StatefulApplication, public virtual StatsApplication
+class App : public virtual Loggable, public StatefulApplication
 {
    public:
     explicit App(Config config)
@@ -78,6 +78,7 @@ class App : public StatefulApplication, public virtual StatsApplication
         if (config.wait_for_serial) {
             container.getSerial().wait();
         }
+        setSerial(&(container.getSerial()));
 
         logln("-- " + config.app_name + " v" + String(DOSA_VERSION) + " --");
 #ifdef DOSA_DEBUG
@@ -93,6 +94,11 @@ class App : public StatefulApplication, public virtual StatsApplication
             settings.save(false);
         }
         logln("Device name: " + settings.getDeviceName());
+
+        IPAddress addr;
+        addr.fromString(getSettings().getStatsServerAddr());
+        getStats().setStatsServer({addr, getSettings().getStatsServerPort()});
+        getStats().setTags("app:" + settings.getDeviceName());
 
         // Bring BT online only if the wifi failed to connect
         if (settings.getWifiSsid().length() == 0 || !connectWifi()) {
@@ -157,11 +163,10 @@ class App : public StatefulApplication, public virtual StatsApplication
 
     virtual void onWifiConnect()
     {
-        setStatsServer(getSettings().getStatsServerAddr(), getSettings().getStatsServerPort());
-
         if (getContainer().getComms().bindMulticast(comms::multicastAddr)) {
             logln("Listening for multicast packets", LogLevel::DEBUG);
             dispatchGenericMessage(DOSA_COMMS_MSG_ONLINE);
+            getStats().count(stats::online);
         } else {
             logln("Failed to bind multicast", LogLevel::ERROR);
         }
@@ -189,6 +194,16 @@ class App : public StatefulApplication, public virtual StatsApplication
     Settings const& getSettings() const
     {
         return getContainer().getSettings();
+    }
+
+    Stats& getStats()
+    {
+        return getContainer().getStats();
+    }
+
+    Stats const& getStats() const
+    {
+        return getContainer().getStats();
     }
 
     /**
@@ -458,16 +473,6 @@ class App : public StatefulApplication, public virtual StatsApplication
         }
     }
 
-    void log(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
-    {
-        getContainer().getSerial().write(s, lvl);
-    }
-
-    void logln(String const& s, dosa::LogLevel lvl = dosa::LogLevel::INFO)
-    {
-        getContainer().getSerial().writeln(s, lvl);
-    }
-
     [[nodiscard]] bool isWifiConnected() const
     {
         return wifi_connected;
@@ -485,9 +490,7 @@ class App : public StatefulApplication, public virtual StatsApplication
      */
     virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
     {
-        if (hasStatsServer()) {
-            getStats().increment("dosa.request.debug");
-        }
+        getStats().count("dosa.request.debug");
 
         auto const& settings = getSettings();
         logln("Debug request from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
@@ -742,6 +745,7 @@ class App : public StatefulApplication, public virtual StatsApplication
         logln("SET DEVICE NAME: '" + value + "'");
 
         if (settings.setDeviceName(value)) {
+            getStats().setTags("app:" + settings.getDeviceName());
             bt_device_name.writeValue(settings.getDeviceName());  // update BT value to new value
             settings.save();
         } else {
@@ -838,6 +842,10 @@ class App : public StatefulApplication, public virtual StatsApplication
         settings.setStatsServerAddr(server_addr);
         settings.setStatsServerPort(server_port);
         settings.save();
+
+        IPAddress addr;
+        addr.fromString(server_addr);
+        getStats().setStatsServer({addr, server_port});
     }
 
     void settingDoorCalibration(uint8_t const* data, uint16_t size)
@@ -1013,9 +1021,7 @@ class App : public StatefulApplication, public virtual StatsApplication
                 break;
         }
 
-        if (hasStatsServer()) {
-            getStats().increment(metric);
-        }
+        getStats().count(metric);
     }
 
     /**

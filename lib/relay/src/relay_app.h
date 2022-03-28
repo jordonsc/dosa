@@ -52,9 +52,18 @@ class RelayApp final : public dosa::OtaApplication
 
         logln(String("Set power state: ") + (state ? "active" : "inactive"));
         relay_state = state;
-        digitalWrite(DOSA_RELAY_PIN, relay_state ? HIGH : LOW);
-        setDeviceState(relay_state ? messages::DeviceState::WORKING : messages::DeviceState::OK);
-        dispatchGenericMessage(relay_state ? DOSA_COMMS_MSG_BEGIN : DOSA_COMMS_MSG_END);
+
+        if (relay_state) {
+            digitalWrite(DOSA_RELAY_PIN, HIGH);
+            setDeviceState(messages::DeviceState::WORKING);
+            dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
+            getStats().count(stats::begin);
+        } else {
+            digitalWrite(DOSA_RELAY_PIN, LOW);
+            setDeviceState(messages::DeviceState::OK);
+            dispatchGenericMessage(DOSA_COMMS_MSG_END);
+            getStats().count(stats::end);
+        }
     }
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
@@ -109,20 +118,23 @@ class RelayApp final : public dosa::OtaApplication
         auto const& settings = getContainer().getSettings();
 
         if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str);
+            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
             return;
         } else if (isLocked()) {
             switch (getLockState()) {
                 default:
                 case LockState::LOCKED:
                     logln("Ignoring trigger while device is locked");
+                    getStats().count(stats::sec_locked);
                     break;
                 case LockState::ALERT:
                     netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+                    getStats().count(stats::sec_alert);
                     break;
                 case LockState::BREACH:
                     // This lock state makes little sense for a relay, but we'll alter the message a little
                     netLog("Lock breach by " + sender_str, NetLogLevel::SECURITY);
+                    getStats().count(stats::sec_breached);
                     break;
             }
             return;

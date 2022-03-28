@@ -6,13 +6,21 @@
 #include "fram.h"
 #include "lights.h"
 #include "settings.h"
+#include "stats.h"
 
 namespace dosa {
 
 class Container
 {
    public:
-    Container() : ram(&serial), bluetooth(&serial), wifi(&serial), comms(wifi, &serial), settings(ram, &serial) {}
+    Container()
+        : ram(&serial),
+          bluetooth(&serial),
+          wifi(&serial),
+          comms(wifi, &serial),
+          stats(comms, &serial),
+          settings(ram, &serial)
+    {}
 
     [[nodiscard]] SerialComms& getSerial()
     {
@@ -64,6 +72,16 @@ class Container
         return comms;
     }
 
+    Stats& getStats()
+    {
+        return stats;
+    }
+
+    Stats const& getStats() const
+    {
+        return stats;
+    }
+
     [[nodiscard]] Settings& getSettings()
     {
         return settings;
@@ -81,6 +99,7 @@ class Container
     Bluetooth bluetooth;
     Wifi wifi;
     Comms comms;
+    Stats stats;
     Settings settings;
 };
 
