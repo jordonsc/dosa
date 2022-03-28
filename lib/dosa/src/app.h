@@ -791,10 +791,10 @@ class App : public virtual Loggable, public StatefulApplication
         }
     }
 
-    void settingSensorCalibration(uint8_t const* data, uint16_t size)
+    void settingPirCalibration(uint8_t const* data, uint16_t size)
     {
         if (size != 9) {
-            logln("ERROR: incorrect payload size for sensor calibration data", LogLevel::ERROR);
+            logln("ERROR: incorrect payload size for PIR calibration data", LogLevel::ERROR);
             return;
         }
 
@@ -805,15 +805,15 @@ class App : public virtual Loggable, public StatefulApplication
         memcpy(&pixel_delta, data + 1, 4);
         memcpy(&total_delta, data + 5, 4);
 
-        logln("SENSOR CALIBRATION");
+        logln("PIR CALIBRATION");
         logln(" > min pixels:  " + String(min_pixels));
         logln(" > pixel delta: " + String(pixel_delta));
         logln(" > total delta: " + String(total_delta));
 
         auto& settings = getSettings();
-        settings.setSensorMinPixels(min_pixels);
-        settings.setSensorPixelDelta(pixel_delta);
-        settings.setSensorTotalDelta(total_delta);
+        settings.setPirMinPixels(min_pixels);
+        settings.setPirPixelDelta(pixel_delta);
+        settings.setPirTotalDelta(total_delta);
         settings.save();
     }
 
@@ -877,10 +877,10 @@ class App : public virtual Loggable, public StatefulApplication
         settings.save();
     }
 
-    void settingSonarCalibration(uint8_t const* data, uint16_t size)
+    void settingRangeCalibration(uint8_t const* data, uint16_t size)
     {
         if (size != 8) {
-            logln("ERROR: incorrect payload size for sonar calibration data", LogLevel::ERROR);
+            logln("ERROR: incorrect payload size for range calibration data", LogLevel::ERROR);
             return;
         }
 
@@ -891,15 +891,15 @@ class App : public virtual Loggable, public StatefulApplication
         memcpy(&fixed_calibration, data + 2, 2);
         memcpy(&trigger_coefficient, data + 4, 4);
 
-        logln("SONAR CALIBRATION");
+        logln("RANGE CALIBRATION");
         logln(" > trigger threshold: " + String(trigger_threshold));
         logln(" > fixed calibration: " + String(fixed_calibration));
         logln(" > trigger coefficient: " + String(trigger_coefficient));
 
         auto& settings = getSettings();
-        settings.setSonarTriggerThreshold(trigger_threshold);
-        settings.setSonarFixedCalibration(fixed_calibration);
-        settings.setSonarTriggerCoefficient(trigger_coefficient);
+        settings.setRangeTriggerThreshold(trigger_threshold);
+        settings.setRangeFixedCalibration(fixed_calibration);
+        settings.setRangeTriggerCoefficient(trigger_coefficient);
         settings.save();
     }
 
@@ -988,16 +988,16 @@ class App : public virtual Loggable, public StatefulApplication
                 metric += ".wifi_ap";
                 break;
             case messages::Configuration::ConfigItem::PIR_CALIBRATION:
-                settingSensorCalibration(msg.getConfigData(), msg.getConfigSize());
+                settingPirCalibration(msg.getConfigData(), msg.getConfigSize());
                 metric += ".pir";
                 break;
             case messages::Configuration::ConfigItem::DOOR_CALIBRATION:
                 settingDoorCalibration(msg.getConfigData(), msg.getConfigSize());
                 metric += ".motor";
                 break;
-            case messages::Configuration::ConfigItem::SONAR_CALIBRATION:
-                settingSonarCalibration(msg.getConfigData(), msg.getConfigSize());
-                metric += ".sonar";
+            case messages::Configuration::ConfigItem::RANGE_CALIBRATION:
+                settingRangeCalibration(msg.getConfigData(), msg.getConfigSize());
+                metric += ".range";
                 break;
             case messages::Configuration::ConfigItem::RELAY_CALIBRATION:
                 settingRelayCalibration(msg.getConfigData(), msg.getConfigSize());

@@ -14,9 +14,9 @@ class RangingApp : public dosa::OtaApplication
     void init() override
     {
         OtaApplication::init();
-        logln("Trigger threshold:   " + String(getSettings().getSonarTriggerThreshold()), LogLevel::DEBUG);
-        logln("Trigger coefficient: " + String(getSettings().getSonarTriggerCoefficient()), LogLevel::DEBUG);
-        logln("Fixed calibration:   " + String(getSettings().getSonarFixedCalibration()), LogLevel::DEBUG);
+        logln("Trigger threshold:   " + String(getSettings().getRangeTriggerThreshold()), LogLevel::DEBUG);
+        logln("Trigger coefficient: " + String(getSettings().getRangeTriggerCoefficient()), LogLevel::DEBUG);
+        logln("Fixed calibration:   " + String(getSettings().getRangeFixedCalibration()), LogLevel::DEBUG);
     }
 
     void loop() override
@@ -37,9 +37,9 @@ class RangingApp : public dosa::OtaApplication
     {
         App::onDebugRequest(msg, sender);
         auto const& settings = getSettings();
-        netLog("Sensor calibration threshold: " + String(settings.getSonarTriggerThreshold()), sender);
-        netLog("Sensor trigger coefficient: " + String(settings.getSonarTriggerCoefficient()), sender);
-        netLog("Sensor fixed calibration: " + String(settings.getSonarFixedCalibration()), sender);
+        netLog("Sensor calibration threshold: " + String(settings.getRangeTriggerThreshold()), sender);
+        netLog("Sensor trigger coefficient: " + String(settings.getRangeTriggerCoefficient()), sender);
+        netLog("Sensor fixed calibration: " + String(settings.getRangeFixedCalibration()), sender);
         netLog("Sensor distance: " + String(getSensorDistance()), sender);
     }
 
@@ -68,13 +68,13 @@ class RangingApp : public dosa::OtaApplication
         // Zero distance implies the sensor didn't receive a bounce-back (beyond range, aimed at carpet, etc)
         auto distance = getSensorDistance();
 
-        if ((distance > 0) && (distance < int(float(calibrated_distance) * settings.getSonarTriggerCoefficient()) ||
+        if ((distance > 0) && (distance < int(float(calibrated_distance) * settings.getRangeTriggerCoefficient()) ||
                                calibrated_distance == 0)) {
             calibration_count = 0;
             considerTrigger(distance, trigger_count);
         } else {
             trigger_count = 0;
-            auto fixed_calibration = settings.getSonarFixedCalibration();
+            auto fixed_calibration = settings.getRangeFixedCalibration();
 
             if (fixed_calibration == 0) {
                 // Using automatic calibration
@@ -96,7 +96,7 @@ class RangingApp : public dosa::OtaApplication
     {
         ++trigger_count;
 
-        if (trigger_count >= getContainer().getSettings().getSonarTriggerThreshold()) {
+        if (trigger_count >= getSettings().getRangeTriggerThreshold()) {
             // Trigger-warn state surpassed, fire trigger message
             setDeviceState(messages::DeviceState::WORKING);
             sendTrigger(calibrated_distance, distance);
@@ -137,7 +137,7 @@ class RangingApp : public dosa::OtaApplication
             ++calibration_count;
         }
 
-        if (calibration_count >= getSettings().getSonarTriggerThreshold()) {
+        if (calibration_count >= getSettings().getRangeTriggerThreshold()) {
             // OK, really looks like the distance has increased, accept the new distance as our calibrated marker
             calibrated_distance = distance;
             calibration_count = 0;

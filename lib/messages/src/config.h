@@ -52,7 +52,7 @@ class Configuration : public Payload
          * uint16 (2 bytes):  fixed-distance calibration
          * float (4 bytes):   trigger coefficient
          */
-        SONAR_CALIBRATION = 5,
+        RANGE_CALIBRATION = 5,
 
         /**
          * uint8 (1 byte):    lock state

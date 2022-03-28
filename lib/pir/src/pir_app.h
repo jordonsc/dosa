@@ -52,7 +52,7 @@ class PirApp final : public dosa::OtaApplication
                     new_grid[index] = ir.getPixelTemp(index);
 
                     float delta = abs(new_grid[index] - grid[index]);
-                    if (delta >= settings.getSensorPixelDelta()) {
+                    if (delta >= settings.getPirPixelDelta()) {
                         ++changed;
                         ttl_delta += delta;
                         map[index] = delta * 10;  // NB: truncated precision
@@ -76,8 +76,8 @@ class PirApp final : public dosa::OtaApplication
     {
         auto& settings = container.getSettings();
 
-        if (grid[0] == 0 || ttl_delta < settings.getSensorTotalDelta() ||
-            pixels_changed < settings.getSensorMinPixels() || millis() - last_fired < REFIRE_DELAY) {
+        if (grid[0] == 0 || ttl_delta < settings.getPirTotalDelta() ||
+            pixels_changed < settings.getPirMinPixels() || millis() - last_fired < REFIRE_DELAY) {
             return false;
         }
 
@@ -116,9 +116,9 @@ class PirApp final : public dosa::OtaApplication
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
         App::onDebugRequest(msg, sender);
-        netLog("Min pixels: " + String(getContainer().getSettings().getSensorMinPixels()), sender);
-        netLog("Per-pixel delta: " + String(getContainer().getSettings().getSensorPixelDelta()), sender);
-        netLog("Aggregate delta: " + String(getContainer().getSettings().getSensorTotalDelta()), sender);
+        netLog("Min pixels: " + String(getContainer().getSettings().getPirMinPixels()), sender);
+        netLog("Per-pixel delta: " + String(getContainer().getSettings().getPirPixelDelta()), sender);
+        netLog("Aggregate delta: " + String(getContainer().getSettings().getPirTotalDelta()), sender);
     }
 
     Container& getContainer() override

@@ -16,19 +16,19 @@ constexpr static char const* default_pin = "dosa";
  * Minimum number of pixels that are considered 'changed' before we accept a trigger. Increase this to eliminate
  * single-pixel or edge anomalies.
  */
-constexpr static uint8_t default_sensor_min_pixels = 3;
+constexpr static uint8_t default_pir_min_pixels = 3;
 
 /**
  * Temp change (in Celsius) before considering any single pixel as "changed". This is a de-noising threshold, increase
  * this number to reduce the amount of noise the algorithm is sensitive to.
  */
-constexpr static float default_sensor_pixel_delta = 1.5;
+constexpr static float default_pir_pixel_delta = 1.5;
 
 /**
  * The total temperature delta across all pixels before firing a trigger. This is the primary sensitivity metric, it
  * is also filtered against noise by SENSOR_SINGLE_DELTA_THRESHOLD so it won't show a true full-grid delta.
  */
-constexpr static float default_sensor_total_delta = 25.0;
+constexpr static float default_pir_total_delta = 25.0;
 
 /**
  * Distance in mm the sonar should be <= when halting the door open sequence. The sonar should be reading the door's
@@ -57,19 +57,19 @@ constexpr static uint32_t default_door_close_ticks = 15000;
  *
  * Increase to reduce noise.
  */
-constexpr static uint16_t default_sonar_trigger_threshold = 3;
+constexpr static uint16_t default_range_trigger_threshold = 3;
 
 /**
  * Percentage of previous distance that's considered a trigger.
  */
-constexpr static float default_sonar_trigger_coefficient = 0.9;
+constexpr static float default_range_trigger_coefficient = 0.9;
 
 /**
  * Fixed distance for the sonar resting state. Set to zero for automatic detection.
  *
  * Recommended you set this value for outdoor devices, or devices aiming at non-perpendicular or non-solid surfaces.
  */
-constexpr static uint16_t default_sonar_fixed_calibration = 0;
+constexpr static uint16_t default_range_fixed_calibration = 0;
 
 /**
  * Time the relay is active once triggered. If set to 0, the relay will be a toggle.
@@ -98,19 +98,19 @@ namespace dosa {
  *   ?      char      Wifi SSID
  *   2      uint16    Size of wifi password
  *   ?      char      Wifi password
- *   2      uint16    Logging platform
- *   2      uint16    Size of log API key
- *   ?      char      API key
- *   1      uint8     Sensor cfg: SENSOR_MIN_PIXELS_THRESHOLD
- *   4      float     Sensor cfg: SENSOR_SINGLE_DELTA_THRESHOLD
- *   4      float     Sensor cfg: SENSOR_TOTAL_DELTA_THRESHOLD
+ *   2      uint16    Size of log server address
+ *   ?      char      Log server address
+ *   2      uint16    Log server port
+ *   1      uint8     PIR cfg: PIR_MIN_PIXELS_THRESHOLD
+ *   4      float     PIR cfg: PIR_SINGLE_DELTA_THRESHOLD
+ *   4      float     PIR cfg: PIR_TOTAL_DELTA_THRESHOLD
  *   2      uint16    Door cfg: DOOR_OPEN_DISTANCE
  *   4      uint32    Door cfg: DOOR_OPEN_WAIT_TIME
  *   4      uint32    Door cfg: DOOR_COOL_DOWN
  *   4      uint32    Door cfg: DOOR_CLOSE_TICKS
- *   2      uint16    Sonar cfg: SONAR_TRIGGER_THRESHOLD
- *   2      uint16    Sonar cfg: SONAR_FIXED_CALIBRATION
- *   4      float     Sonar cfg: SONAR_TRIGGER_COEFFICIENT
+ *   2      uint16    Range cfg: RANGE_TRIGGER_THRESHOLD
+ *   2      uint16    Range cfg: RANGE_FIXED_CALIBRATION
+ *   4      float     Range cfg: RANGE_TRIGGER_COEFFICIENT
  *   4      float     Relay cfg: RELAY_ACTIVATION_TIME
  */
 class Settings : public Loggable
@@ -212,18 +212,18 @@ class Settings : public Loggable
         }
         read_var(&stats_server_port, 2, 23, (void*)(&zero_16));
 
-        read_var(&sensor_min_pixels, 1);
-        read_var(&sensor_pixel_delta, 4);
-        read_var(&sensor_total_delta, 4);
+        read_var(&pir_min_pixels, 1);
+        read_var(&pir_pixel_delta, 4);
+        read_var(&pir_total_delta, 4);
 
         read_var(&door_open_distance, 2);
         read_var(&door_open_wait, 4);
         read_var(&door_cool_down, 4);
         read_var(&door_close_ticks, 4);
 
-        read_var(&sonar_trigger_threshold, 2);
-        read_var(&sonar_fixed_calibration, 2, 18, (void*)(&default_sonar_fixed_calibration));
-        read_var(&sonar_trigger_coefficient, 4, 19, (void*)(&default_sonar_trigger_coefficient));
+        read_var(&range_trigger_threshold, 2);
+        read_var(&range_fixed_calibration, 2, 18, (void*)(&default_range_fixed_calibration));
+        read_var(&range_trigger_coefficient, 4, 19, (void*)(&default_range_trigger_coefficient));
 
         read_var(&relay_activation_time, 4, 22, (void*)(&default_relay_activation_time));
 
@@ -277,7 +277,7 @@ class Settings : public Loggable
          *      2  Stats server port
          *      9  PIR calibration
          *     14  Door calibration
-         *      8  Sonar calibration
+         *      8  Range calibration
          *      4  Relay calibration
          * ---------------------------
          *     54  Total fixed (not incl. string sizes)
@@ -312,18 +312,18 @@ class Settings : public Loggable
         write_block(stats_server_addr);
         write_var(&stats_server_port, 2);
 
-        write_var(&sensor_min_pixels, 1);
-        write_var(&sensor_pixel_delta, 4);
-        write_var(&sensor_total_delta, 4);
+        write_var(&pir_min_pixels, 1);
+        write_var(&pir_pixel_delta, 4);
+        write_var(&pir_total_delta, 4);
 
         write_var(&door_open_distance, 2);
         write_var(&door_open_wait, 4);
         write_var(&door_cool_down, 4);
         write_var(&door_close_ticks, 4);
 
-        write_var(&sonar_trigger_threshold, 2);
-        write_var(&sonar_fixed_calibration, 2);
-        write_var(&sonar_trigger_coefficient, 4);
+        write_var(&range_trigger_threshold, 2);
+        write_var(&range_fixed_calibration, 2);
+        write_var(&range_trigger_coefficient, 4);
 
         write_var(&relay_activation_time, 4);
 
@@ -350,9 +350,9 @@ class Settings : public Loggable
         stats_server_port = zero_16;
 
         // IR grid specific
-        sensor_min_pixels = default_sensor_min_pixels;
-        sensor_pixel_delta = default_sensor_pixel_delta;
-        sensor_total_delta = default_sensor_total_delta;
+        pir_min_pixels = default_pir_min_pixels;
+        pir_pixel_delta = default_pir_pixel_delta;
+        pir_total_delta = default_pir_total_delta;
 
         // Door winch specific
         door_open_distance = default_door_open_distance;
@@ -360,10 +360,10 @@ class Settings : public Loggable
         door_cool_down = default_door_cool_down;
         door_close_ticks = default_door_close_ticks;
 
-        // Sonar specific
-        sonar_trigger_threshold = default_sonar_trigger_threshold;
-        sonar_fixed_calibration = default_sonar_fixed_calibration;
-        sonar_trigger_coefficient = default_sonar_trigger_coefficient;
+        // Range-trip specific
+        range_trigger_threshold = default_range_trigger_threshold;
+        range_fixed_calibration = default_range_fixed_calibration;
+        range_trigger_coefficient = default_range_trigger_coefficient;
 
         // Relay specific
         relay_activation_time = default_relay_activation_time;
@@ -467,34 +467,34 @@ class Settings : public Loggable
         stats_server_port = statsServerPort;
     }
 
-    [[nodiscard]] uint8_t getSensorMinPixels() const
+    [[nodiscard]] uint8_t getPirMinPixels() const
     {
-        return sensor_min_pixels;
+        return pir_min_pixels;
     }
 
-    void setSensorMinPixels(uint8_t sensorMinPixels)
+    void setPirMinPixels(uint8_t value)
     {
-        sensor_min_pixels = sensorMinPixels;
+        pir_min_pixels = value;
     }
 
-    [[nodiscard]] float getSensorPixelDelta() const
+    [[nodiscard]] float getPirPixelDelta() const
     {
-        return sensor_pixel_delta;
+        return pir_pixel_delta;
     }
 
-    void setSensorPixelDelta(float sensorPixelDelta)
+    void setPirPixelDelta(float value)
     {
-        sensor_pixel_delta = sensorPixelDelta;
+        pir_pixel_delta = value;
     }
 
-    [[nodiscard]] float getSensorTotalDelta() const
+    [[nodiscard]] float getPirTotalDelta() const
     {
-        return sensor_total_delta;
+        return pir_total_delta;
     }
 
-    void setSensorTotalDelta(float sensorTotalDelta)
+    void setPirTotalDelta(float value)
     {
-        sensor_total_delta = sensorTotalDelta;
+        pir_total_delta = value;
     }
 
     [[nodiscard]] uint32_t getDoorOpenWait() const
@@ -537,34 +537,34 @@ class Settings : public Loggable
         door_close_ticks = doorCloseTicks;
     }
 
-    [[nodiscard]] uint16_t getSonarTriggerThreshold() const
+    [[nodiscard]] uint16_t getRangeTriggerThreshold() const
     {
-        return sonar_trigger_threshold;
+        return range_trigger_threshold;
     }
 
-    void setSonarTriggerThreshold(uint16_t sonarTriggerThreshold)
+    void setRangeTriggerThreshold(uint16_t value)
     {
-        sonar_trigger_threshold = sonarTriggerThreshold;
+        range_trigger_threshold = value;
     }
 
-    [[nodiscard]] uint16_t getSonarFixedCalibration() const
+    [[nodiscard]] uint16_t getRangeFixedCalibration() const
     {
-        return sonar_fixed_calibration;
+        return range_fixed_calibration;
     }
 
-    void setSonarFixedCalibration(uint16_t sonarFixedCalibration)
+    void setRangeFixedCalibration(uint16_t value)
     {
-        sonar_fixed_calibration = sonarFixedCalibration;
+        range_fixed_calibration = value;
     }
 
-    [[nodiscard]] float getSonarTriggerCoefficient() const
+    [[nodiscard]] float getRangeTriggerCoefficient() const
     {
-        return sonar_trigger_coefficient;
+        return range_trigger_coefficient;
     }
 
-    void setSonarTriggerCoefficient(float sonarTriggerCoefficient)
+    void setRangeTriggerCoefficient(float value)
     {
-        sonar_trigger_coefficient = sonarTriggerCoefficient;
+        range_trigger_coefficient = value;
     }
 
     [[nodiscard]] LockState getLockState() const
@@ -640,17 +640,17 @@ class Settings : public Loggable
     String wifi_password;
     String stats_server_addr;
     uint16_t stats_server_port;
-    uint8_t sensor_min_pixels = 0;
-    float sensor_pixel_delta = 0;
-    float sensor_total_delta = 0;
+    uint8_t pir_min_pixels = 0;
+    float pir_pixel_delta = 0;
+    float pir_total_delta = 0;
     LockState locked = LockState::UNLOCKED;
     uint16_t door_open_distance = 0;
     uint32_t door_open_wait = 0;
     uint32_t door_cool_down = 0;
     uint32_t door_close_ticks = 0;
-    uint16_t sonar_trigger_threshold = 0;
-    uint16_t sonar_fixed_calibration = 0;
-    float sonar_trigger_coefficient = 0;
+    uint16_t range_trigger_threshold = 0;
+    uint16_t range_fixed_calibration = 0;
+    float range_trigger_coefficient = 0;
     uint32_t relay_activation_time = 0;
 
     [[nodiscard]] static uint8_t getSettingsVersion(String const& version)
