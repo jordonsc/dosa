@@ -104,11 +104,13 @@ class DoorApp final : public dosa::OtaApplication
                     break;
                 case LockState::ALERT:
                     getStats().count(stats::sec_alert);
-                    netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+                    netLog("Lock violation by " + sender_name, NetLogLevel::SECURITY);
+                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
                     break;
                 case LockState::BREACH:
                     getStats().count(stats::sec_breached);
-                    netLog("Lock breach by " + sender_str, NetLogLevel::SECURITY);
+                    netLog("Lock breach by " + sender_name, NetLogLevel::SECURITY);
+                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
                     break;
             }
             return;

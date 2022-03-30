@@ -258,16 +258,16 @@ class Config:
                         wait_for_ack=True)
         print(" done")
 
-    def exec_lock_state(self, device, values):
+    def exec_lock_state(self, device, lock_state):
         aux = bytearray()
         aux[0:1] = struct.pack("<B", 6)
 
-        if values is None:
+        if lock_state is None:
             print("Aborting")
             exit()
         else:
             try:
-                aux[1:2] = struct.pack("<B", int(values[0]))  # Lock state
+                aux[1:2] = struct.pack("<B", lock_state)  # Lock state
             except ValueError:
                 print("Malformed lock data, aborting")
                 exit()

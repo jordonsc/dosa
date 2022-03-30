@@ -39,7 +39,7 @@ class LogLevel:
         elif log_level == LogLevel.SECURITY:
             return "SECURITY"
         else:
-            return "UNKNOWN LOG-LEVEL"
+            return "UNKNOWN"
 
 
 class Messages:

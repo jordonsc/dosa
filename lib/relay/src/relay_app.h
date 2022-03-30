@@ -134,12 +134,14 @@ class RelayApp final : public dosa::OtaApplication
                     getStats().count(stats::sec_locked);
                     break;
                 case LockState::ALERT:
-                    netLog("Lock violation by " + sender_str, NetLogLevel::SECURITY);
+                    netLog("Lock violation by " + sender_name, NetLogLevel::SECURITY);
+                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
                     getStats().count(stats::sec_alert);
                     break;
                 case LockState::BREACH:
                     // This lock state makes little sense for a relay, but we'll alter the message a little
-                    netLog("Lock breach by " + sender_str, NetLogLevel::SECURITY);
+                    netLog("Lock breach by " + sender_name, NetLogLevel::SECURITY);
+                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
                     getStats().count(stats::sec_breached);
                     break;
             }
