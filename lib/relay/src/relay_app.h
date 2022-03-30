@@ -41,6 +41,7 @@ class RelayApp final : public dosa::OtaApplication
     uint16_t last_msg_id = 0;
     bool relay_state = false;
     uint32_t relay_last_moved = 0;
+    uint32_t relay_open_time = 0;
 
     void setRelay(bool state)
     {
@@ -58,11 +59,16 @@ class RelayApp final : public dosa::OtaApplication
             setDeviceState(messages::DeviceState::WORKING);
             dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
             getStats().count(stats::begin);
+            relay_open_time = millis();
         } else {
             digitalWrite(DOSA_RELAY_PIN, LOW);
             setDeviceState(messages::DeviceState::OK);
             dispatchGenericMessage(DOSA_COMMS_MSG_END);
             getStats().count(stats::end);
+            if (relay_open_time != 0) {
+                getStats().timing(stats::sequence, millis() - relay_open_time);
+            }
+            relay_open_time = 0;
         }
     }
 

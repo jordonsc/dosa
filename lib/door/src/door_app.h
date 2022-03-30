@@ -135,11 +135,17 @@ class DoorApp final : public dosa::OtaApplication
 
         setDeviceState(messages::DeviceState::WORKING);
         dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
+        getStats().count(stats::begin);
+        auto start = millis();
+
         container.getDoorLights().activity();
         container.getDoorWinch().trigger();
         container.getDoorLights().ready();
+
+        getStats().timing(stats::sequence, millis() - start);
         setDeviceState(messages::DeviceState::OK);
         dispatchGenericMessage(DOSA_COMMS_MSG_END);
+        getStats().count(stats::end);
     }
 
     Container& getContainer() override
