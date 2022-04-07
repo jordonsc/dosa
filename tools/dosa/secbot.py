@@ -31,10 +31,14 @@ class SecBot:
         self.last_heartbeat = 0
         self.devices = []
 
-    def run(self):
-        print("Stats server: " + self.statsd_server["server"] + ":" + str(self.statsd_server["port"]))
-        print("Log server:   " + self.log_server["server"] + ":" + str(self.log_server["port"]))
-        self.tts.play("DOSA Security Bot online")
+    def run(self, announce=True):
+        print("Security Bot online")
+        self.comms.send(self.comms.build_payload(dosa.Messages.ONLINE))
+
+        if announce:
+            print("Stats server: " + self.statsd_server["server"] + ":" + str(self.statsd_server["port"]))
+            print("Log server:   " + self.log_server["server"] + ":" + str(self.log_server["port"]))
+            self.tts.play("DOSA Security Bot online")
 
         while True:
             self.do_heartbeat()
