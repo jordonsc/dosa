@@ -25,7 +25,7 @@ to create an extension allowing multiple inbound wires to these pins.
 
 #### Arduino
 Install headers on pins:
-* VIN, GND
+* VIN, GND (12v devices only)
 * D13, 3.3v
 * D10, D11, D12
 
@@ -41,7 +41,7 @@ Connect the FRAM wires:
   
 ### IR Sensor
 #### Sparkfun IR Grid
-Use a right-angle 4x header or hard-wire 4 wires into the board:
+Install a 4x header on the _rear_ of the board and connect 4 wires, around 15cm long:
 * GND: black
 * 3.3v: red
 * SDA: green
@@ -79,6 +79,24 @@ Install headers on pins:
 Connect the sonar sensor to pins:
   * yellow -> TX1
   * white -> RX0
+
+### Laser Sensor
+#### Laser
+* Remove pin housing (4x single headers)
+
+#### Arduino
+Hubs:
+* 3.3v: 2x
+* GND: 2x
+
+Install headers on pins:
+* TX1, RX0
+
+Connect the laser sensor to pins:
+  * yellow -> RX0
+  * white -> TX1
+  * red -> 3.3v hub
+  * black -> GND hub
 
 ### Switch Devices
 #### Arduino
