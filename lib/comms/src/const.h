@@ -9,7 +9,7 @@
 /**
  * Time in milliseconds to wait for an ack.
  */
-#define DOSA_ACK_WAIT_TIME 750
+#define DOSA_ACK_WAIT_TIME 100
 
 /**
  * Array size of comms handlers

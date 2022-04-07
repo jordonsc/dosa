@@ -209,9 +209,9 @@ class App : public virtual Loggable, public StatefulApplication
     /**
      * Dispatch a generic message on the UDP multicast address.
      */
-    void dispatchGenericMessage(char const* cmd_code)
+    bool dispatchGenericMessage(char const* cmd_code)
     {
-        getContainer().getComms().dispatch(
+        return getContainer().getComms().dispatch(
             comms::multicastAddr,
             messages::GenericMessage(cmd_code, getDeviceNameBytes()),
             false);
@@ -220,9 +220,9 @@ class App : public virtual Loggable, public StatefulApplication
     /**
      * Dispatch a specific message on the UDP multicast address.
      */
-    void dispatchMessage(messages::Payload const& payload, bool wait_for_ack = false)
+    bool dispatchMessage(messages::Payload const& payload, bool wait_for_ack = false)
     {
-        getContainer().getComms().dispatch(comms::multicastAddr, payload, wait_for_ack);
+        return getContainer().getComms().dispatch(comms::multicastAddr, payload, wait_for_ack);
     }
 
     /**

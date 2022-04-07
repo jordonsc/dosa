@@ -128,6 +128,7 @@ class RangingApp : public dosa::OtaApplication
             // But we'll skip the threshold if we're setting a distance from an unknown/infinite value
             calibration_count = 0;
             calibrated_distance = distance;
+            logln("Distance calibration set to " + String(calibrated_distance), LogLevel::DEBUG);
             return;
         } else if (distance == 0 && calibrated_distance > 0) {
             // Suggesting a new distance of infinite
@@ -137,11 +138,11 @@ class RangingApp : public dosa::OtaApplication
             ++calibration_count;
         }
 
-        if (calibration_count >= getSettings().getRangeTriggerThreshold()) {
+        if (calibration_count > 0 && calibration_count >= getSettings().getRangeTriggerThreshold()) {
             // OK, really looks like the distance has increased, accept the new distance as our calibrated marker
             calibrated_distance = distance;
             calibration_count = 0;
-            logln("Distance calibration set to " + String(calibrated_distance), LogLevel::DEBUG);
+            logln("Distance calibration reset to " + String(calibrated_distance), LogLevel::DEBUG);
         }
     }
 
@@ -176,8 +177,8 @@ class RangingApp : public dosa::OtaApplication
         memcpy(map, &previous, 2);
         memcpy(map + 2, &current, 2);
 
-        getStats().count(stats::trigger);
         dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_RANGING, map, getDeviceNameBytes()), true);
+        getStats().count(stats::trigger);
     }
 };
 

@@ -62,9 +62,15 @@ class Config:
                     ["Min pixels/trigger (int)", "Single-pixel delta (float)", "Total delta (float)"]
                 ))
             elif device.device_type == DeviceType.SONAR:
-                # Sonar sensor calibration
+                # Sonar sensor calibration (ranging)
                 print("Sonar configuration")
-                self.exec_sonar_calibration(device, self.get_values(
+                self.exec_ranging_calibration(device, self.get_values(
+                    ["Trigger threshold", "Fixed calibration", "Trigger Coefficient"]
+                ))
+            elif device.device_type == DeviceType.IR_ACTIVE:
+                # Laser sensor calibration (ranging)
+                print("Laser configuration")
+                self.exec_ranging_calibration(device, self.get_values(
                     ["Trigger threshold", "Fixed calibration", "Trigger Coefficient"]
                 ))
             elif device.device_type == DeviceType.MOTOR:
@@ -218,7 +224,7 @@ class Config:
                         wait_for_ack=True)
         print(" done")
 
-    def exec_sonar_calibration(self, device, values):
+    def exec_ranging_calibration(self, device, values):
         aux = bytearray()
         aux[0:1] = struct.pack("<B", 5)
 

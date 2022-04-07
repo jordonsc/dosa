@@ -21,7 +21,7 @@ def device_type_str(x):
     elif x == 10:
         return "PIR Sensor"
     elif x == 11:
-        return "Infrared Sensor"
+        return "Laser Sensor"
     elif x == 12:
         return "Optical Sensor"
     elif x == 20:

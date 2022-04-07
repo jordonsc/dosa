@@ -18,7 +18,7 @@ void setup()
     cfg.app_name = "DOSA Laser Sensor";
     cfg.short_name = "DOSA-L";
     cfg.bluetooth_appearance = 0x0541;
-    cfg.device_type = dosa::messages::DeviceType::SENSOR_SONAR;
+    cfg.device_type = dosa::messages::DeviceType::SENSOR_ACTIVE_IR;
 
     builder.getApp().init();
 }
