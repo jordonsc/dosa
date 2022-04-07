@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import time
 import daemon.pidfile
 
 import dosa
@@ -11,9 +12,17 @@ DEVICE_NAME = b"DOSA Security Bot"
 
 
 def run_app(voice, engine):
-    comms = dosa.Comms(DEVICE_NAME)
-    secbot = SecBot(comms, voice=voice, engine=engine)
-    secbot.run()
+    first_run = True
+    while True:
+        try:
+            comms = dosa.Comms(DEVICE_NAME)
+            secbot = SecBot(comms, voice=voice, engine=engine)
+            secbot.run(announce=first_run)
+        except OSError as e:
+            # Network error, sleep and restart
+            print("Fault: " + str(e))
+            first_run = False
+            time.sleep(1)
 
 
 if __name__ == "__main__":
