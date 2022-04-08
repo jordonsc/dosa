@@ -231,13 +231,13 @@ class App : public virtual Loggable, public StatefulApplication
     void netLog(char const* msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl), lvl >= NetLogLevel::ERROR);
     }
 
     void netLog(String const& msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
+        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl), lvl >= NetLogLevel::ERROR);
     }
 
     /**
@@ -246,13 +246,19 @@ class App : public virtual Loggable, public StatefulApplication
     void netLog(char const* msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        getContainer().getComms().dispatch(target, messages::LogMessage(msg, getDeviceNameBytes(), lvl));
+        getContainer().getComms().dispatch(
+            target,
+            messages::LogMessage(msg, getDeviceNameBytes(), lvl),
+            lvl >= NetLogLevel::ERROR);
     }
 
     void netLog(String const& msg, comms::Node const& target, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        getContainer().getComms().dispatch(target, messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl));
+        getContainer().getComms().dispatch(
+            target,
+            messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl),
+            lvl >= NetLogLevel::ERROR);
     }
 
     /**

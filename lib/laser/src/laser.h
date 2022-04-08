@@ -117,13 +117,16 @@ class Laser
             ++pos;
 
             if (pos == 11) {
+                pos = 0;
+
                 if (data[10] != getChecksum(data, 10)) {
                     return false;
                 }
 
                 // Device prints ASCII 'ERR' when it can't make a measurement
                 if ((data[3] == 'E' && data[4] == 'R' && data[5] == 'R') || (data[6] != '.')) {
-                    return false;
+                    distance = 1;
+                    return true;
                 }
 
                 distance = 0;
@@ -133,7 +136,6 @@ class Laser
                 distance += (data[5] - 0x30) * 1000;
                 distance += (data[4] - 0x30) * 10000;
                 distance += (data[3] - 0x30) * 100000;
-                pos = 0;
                 return true;
             }
         }

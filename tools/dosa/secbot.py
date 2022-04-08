@@ -76,6 +76,7 @@ class SecBot:
             log_message = packet.payload[28:packet.payload_size].decode("utf-8")
             aux = " | " + dosa.LogLevel.as_string(log_level) + " | " + log_message
             self.log(packet, aux)
+            self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
 
             if log_level == dosa.LogLevel.SECURITY:
                 msg = "Security alert, " + packet.device_name + ". " + log_message + "."

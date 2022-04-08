@@ -55,7 +55,7 @@ class RangingApp : public dosa::OtaApplication
             return;
         }
 
-        logln("Distance: " + String(getSensorDistance()), LogLevel::DEBUG);
+        logln("Distance: " + String(getSensorDistance()), LogLevel::TRACE);
 
         auto const& settings = getContainer().getSettings();
 
