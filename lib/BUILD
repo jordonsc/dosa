@@ -141,6 +141,20 @@ cc_library(
     ],
 )
 
+# Security alarm
+cc_library(
+    name = "alarm",
+    srcs = glob(["alarm/src/**/*.cpp"]),
+    hdrs = glob(["alarm/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["alarm/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:ota",
+    ],
+)
+
 # Ranging trip sensor base application
 cc_library(
     name = "ranging",

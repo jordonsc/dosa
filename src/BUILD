@@ -61,6 +61,17 @@ cc_binary(
 )
 
 cc_binary(
+    name = "alarm",
+    srcs = glob(["alarm/alarm.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:alarm",
+    ],
+)
+
+cc_binary(
     name = "monitor",
     srcs = glob(["monitor/monitor.cc"]),
     copts = ["-std=c++11"],

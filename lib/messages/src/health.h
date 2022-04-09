@@ -10,6 +10,7 @@ enum class DeviceType : uint8_t
     UNSPECIFIED = 0,  //
     MONITOR = 1,      // Monitoring device
     UTILITY = 2,      // Utility application (such as config script)
+    ALARM = 3,        // Security alarm (responds to security events)
 
     // Photonic sensors
     SENSOR_PIR = 10,        // Passive infrared (incl. IR grid)

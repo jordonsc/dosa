@@ -53,6 +53,7 @@ ln -s ${app}/../lib/comms ~/Arduino/libraries/dosa_comms
 ln -s ${app}/../lib/messages ~/Arduino/libraries/dosa_messages
 ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
 ln -s ${app}/../lib/relay ~/Arduino/libraries/dosa_relay
+ln -s ${app}/../lib/alarm ~/Arduino/libraries/dosa_alarm
 ln -s ${app}/../lib/pir ~/Arduino/libraries/dosa_pir
 ln -s ${app}/../lib/ranging ~/Arduino/libraries/dosa_ranging
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar

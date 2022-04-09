@@ -2,6 +2,7 @@ class DeviceType:
     UNKNOWN = 0
     MONITOR = 1
     UTILITY = 2
+    ALARM = 3
     IR_PASSIVE = 10
     IR_ACTIVE = 11
     OPTICAL = 12
@@ -16,8 +17,10 @@ class DeviceType:
 def device_type_str(x):
     if x == 1:
         return "Monitor"
-    if x == 1:
+    if x == 2:
         return "Utility"
+    if x == 3:
+        return "Alarm"
     elif x == 10:
         return "PIR Sensor"
     elif x == 11:
