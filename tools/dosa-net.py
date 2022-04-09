@@ -52,7 +52,6 @@ try:
         cfg.run(target=args.cfg)
     elif args.cfg is not False:
         cfg = dosa.Config(comms=comms)
-        print("Scanning for devices..")
         cfg.run()
     elif args.ping:
         ping = dosa.Ping(comms=comms)

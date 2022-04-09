@@ -6,10 +6,11 @@ from dosa.device import DeviceType
 
 
 class Device:
-    def __init__(self, device_type, device_state, addr):
+    def __init__(self, device_type, device_state, addr, msg: None):
         self.device_type = device_type
         self.device_state = device_state
         self.address = addr
+        self.msg = msg
 
     def device_setting_option(self):
         pass
@@ -110,7 +111,7 @@ class Config:
         self.comms.send(self.comms.build_payload(dosa.Messages.DEBUG), tgt=device.address,
                         wait_for_ack=False)
 
-        timeout = 2.0
+        timeout = 1.0
         start_time = time.perf_counter()
         while time.perf_counter() - start_time < timeout:
             msg = self.comms.receive(timeout=timeout)
@@ -336,11 +337,11 @@ class Config:
     def run_scan(self):
         ping = self.comms.build_payload(dosa.Messages.PING)
 
-        retries = 2
-        timeout = 1.0
+        retries = 5
+        timeout = 0.1
         self.devices = []
 
-        print("[0]: <All Devices>")
+        print("Scanning..")
 
         for attempt in range(retries):
             self.comms.send(ping)
@@ -363,16 +364,20 @@ class Config:
                 d = Device(
                     msg.payload[self.comms.BASE_PAYLOAD_SIZE],
                     msg.payload[self.comms.BASE_PAYLOAD_SIZE + 1],
-                    msg.addr)
+                    msg.addr, msg)
                 self.devices.append(d)
-
-                print("[" + str(self.device_count + 1) + "]: " +
-                      msg.device_name.ljust(22) +
-                      msg.addr[0].ljust(18) +
-                      dosa.device.device_type_str(d.device_type).upper().ljust(20) +
-                      dosa.device.device_status_str(d.device_state))
-
                 self.device_count += 1
+
+        self.devices.sort(key=lambda x: x.msg.device_name)
+
+        print("\033[F\033[K")
+        print("[0]: <All Devices>")
+        for key, d in enumerate(self.devices, start=1):
+            print("[" + str(key) + "]: " +
+                  d.msg.device_name.ljust(22) +
+                  d.msg.addr[0].ljust(18) +
+                  dosa.device.device_type_str(d.device_type).upper().ljust(20) +
+                  dosa.device.device_status_str(d.device_state))
 
     def user_select_device(self):
         while True:
