@@ -15,6 +15,11 @@
  */
 #define DOSA_SEC_SENSOR_BREACH "Breach detected"
 
+/**
+ * Security alert message for sensors in lock state 'Breach'
+ */
+#define DOSA_SEC_USER_PANIC "User panic"
+
 namespace dosa {
 
 namespace stats {

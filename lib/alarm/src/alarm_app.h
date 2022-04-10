@@ -12,7 +12,8 @@ class AlarmApp final : public dosa::OtaApplication
     AlarmApp(Config cfg)
         : OtaApplication(std::move(cfg)),
           activity_led(DOSA_LED_ACTIVITY, DOSA_ACTIVITY_SEQ_ON, DOSA_ACTIVITY_SEQ_OFF),
-          alert_led(DOSA_LED_ALERT)
+          alert_led(DOSA_LED_ALERT),
+          button(DOSA_ALERT_BUTTON, true)
     {}
 
     void init() override
@@ -33,19 +34,25 @@ class AlarmApp final : public dosa::OtaApplication
             DOSA_COMMS_MSG_FLUSH,
             &flushMessageForwarder,
             this);
+
+        button.setCallback(&switchForwarder, this);
     }
 
     void loop() override
     {
+        static uint32_t t = millis();
+
         OtaApplication::loop();
         activity_led.process();
         alert_led.process();
+        button.process();
     }
 
    private:
     Container container;
     Light activity_led;
     Light alert_led;
+    Switch button;
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
@@ -163,6 +170,27 @@ class AlarmApp final : public dosa::OtaApplication
         activity_led.end();
     }
 
+    void onSwitchChange(bool state, uint32_t t)
+    {
+        if (state) {
+            return;
+        }
+
+        if (t > DOSA_BUTTON_LONG_PRESS) {
+            logln("Button press: stand down");
+
+            alert_led.end();
+            activity_led.end();
+        } else {
+            logln("Button press: alarm");
+
+            alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+            alert_led.begin(0);
+
+            netLog(DOSA_SEC_USER_PANIC, NetLogLevel::SECURITY);
+        }
+    }
+
     /**
      *
      * Context forwarder for trigger messages.
@@ -188,6 +216,14 @@ class AlarmApp final : public dosa::OtaApplication
     static void flushMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<AlarmApp*>(context)->onFlush(msg, sender);
+    }
+
+    /**
+     * Context forwarded for button presses.
+     */
+    static void switchForwarder(bool state, uint32_t t, void* context)
+    {
+        static_cast<AlarmApp*>(context)->onSwitchChange(state, t);
     }
 };
 

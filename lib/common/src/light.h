@@ -28,6 +28,10 @@ class Light
 
     void begin(uint32_t seq_time)
     {
+        if (seq_time == 0) {
+            seq_time = 4.2e9;
+        }
+
         sequence_end = millis() + seq_time;
         setState(true);
     }

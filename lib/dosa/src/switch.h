@@ -13,6 +13,7 @@
 namespace dosa {
 
 typedef void (*switchCallback)(bool, void*);
+typedef void (*switchTimedCallback)(bool, uint32_t, void*);
 
 /**
  * Any given open/close switch.
@@ -38,6 +39,8 @@ class Switch
         } else {
             pinMode(pin, INPUT);
         }
+
+        change_timer = millis();
     }
 
     /**
@@ -50,27 +53,43 @@ class Switch
     }
 
     /**
+     * Callback to be run when state has changed, includes timing data.
+     */
+    void setCallback(switchTimedCallback cb, void* context = nullptr)
+    {
+        timed_trigger_cb = cb;
+        timed_trigger_cb_ctx = context;
+    }
+
+    /**
      * Checks for state change.
      *
      * If `exec_cb` is true, the trigger callback will be executed. Returns true if the state has changed.
      */
     bool process(bool exec_cb = true)
     {
-        if (millis() - last_poll < SWITCH_DEFAULT_DEBOUNCE_THRESHOLD) {
+        if (millis() - last_poll < debounce_threshold) {
             return false;
         }
 
         last_poll = millis();
-        bool s = digitalRead(pin) == 1;
+        bool s = digitalRead(pin) == HIGH;
         if (pull_up) {
             s = !s;
         }
 
         if (s != state) {
             state = s;
+
             if (exec_cb && trigger_cb != nullptr) {
                 trigger_cb(state, trigger_cb_ctx);
             }
+
+            if (exec_cb && timed_trigger_cb != nullptr) {
+                timed_trigger_cb(state, millis() - change_timer, timed_trigger_cb_ctx);
+            }
+
+            change_timer = millis();
             return true;
         } else {
             return false;
@@ -102,11 +121,15 @@ class Switch
     uint8_t pin;
     bool pull_up;
     bool state = false;
-    unsigned long last_poll = 0;
-    unsigned long debounce_threshold;
+    uint32_t last_poll = 0;
+    uint32_t debounce_threshold;
+    uint32_t change_timer;
 
     switchCallback trigger_cb = nullptr;
     void* trigger_cb_ctx = nullptr;
+
+    switchTimedCallback timed_trigger_cb = nullptr;
+    void* timed_trigger_cb_ctx = nullptr;
 };
 
 }  // namespace dosa
