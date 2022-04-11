@@ -18,6 +18,9 @@ class AlarmApp final : public dosa::OtaApplication
 
     void init() override
     {
+        activity_led.on();
+        alert_led.on();
+
         OtaApplication::init();
 
         container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
@@ -28,6 +31,11 @@ class AlarmApp final : public dosa::OtaApplication
         container.getComms().newHandler<comms::StandardHandler<messages::LogMessage>>(
             DOSA_COMMS_MSG_LOG,
             &logMessageForwarder,
+            this);
+
+        container.getComms().newHandler<comms::StandardHandler<messages::Security>>(
+            DOSA_COMMS_MSG_SECURITY,
+            &secMessageForwarder,
             this);
 
         container.getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
@@ -48,6 +56,20 @@ class AlarmApp final : public dosa::OtaApplication
         button.process();
     }
 
+    void onWifiConnect() override
+    {
+        App::onWifiConnect();
+        activity_led.off();
+        alert_led.off();
+    }
+
+    void onWifiDisconnect() override
+    {
+        App::onWifiDisconnect();
+        activity_led.on();
+        alert_led.on();
+    }
+
    private:
     Container container;
     Light activity_led;
@@ -56,6 +78,10 @@ class AlarmApp final : public dosa::OtaApplication
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
         App::onDebugRequest(msg, sender);
         auto const& settings = getContainer().getSettings();
     }
@@ -75,24 +101,11 @@ class AlarmApp final : public dosa::OtaApplication
      */
     void onTrigger(messages::Trigger const& trigger, comms::Node const& sender)
     {
-        static uint16_t last_msg_id = 0;
-
-        // Don't activate if this message is duplicate
-        if (last_msg_id == trigger.getMessageId()) {
+        if (msg_cache.validate(sender, trigger.getMessageId())) {
             return;
-        } else {
-            last_msg_id = trigger.getMessageId();
         }
 
-        String sender_name = Comms::getDeviceName(trigger);
-        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
-        auto const& settings = getContainer().getSettings();
-
-        if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
-            return;
-        } else {
-            logln("Trigger from " + sender_str);
+        if (canTrigger(trigger, sender)) {
             activity_led.begin(DOSA_ACTIVITY_DURATION);
         }
     }
@@ -102,44 +115,45 @@ class AlarmApp final : public dosa::OtaApplication
      */
     void onLog(messages::LogMessage const& log, comms::Node const& sender)
     {
-        static uint16_t last_msg_id = 0;
+        if (msg_cache.validate(sender, log.getMessageId())) {
+            return;
+        }
 
-        // Ignore anything other than security or error messages
         if (log.getLogLevel() < messages::LogMessageLevel::ERROR) {
             return;
         }
 
-        // Don't activate if this message is duplicate
-        if (last_msg_id == log.getMessageId()) {
-            return;
-        } else {
-            last_msg_id = log.getMessageId();
-        }
-
         String sender_name = Comms::getDeviceName(log);
         String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
-        String msg = stringFromBytes(log.getMessage(), log.getMessageSize());
+        logln("Error alert from " + sender_str);
 
-        alert_led.end();
+        alert_led.setSequence(DOSA_ERROR_SEQ_ON, DOSA_ERROR_SEQ_OFF);
+        alert_led.begin(DOSA_ALERT_DURATION);
+    }
 
-        switch (log.getLogLevel()) {
-            case messages::LogMessageLevel::ERROR:
-            case messages::LogMessageLevel::CRITICAL:
-                logln("Error alert from " + sender_str);
-                alert_led.setSequence(DOSA_ERROR_SEQ_ON, DOSA_ERROR_SEQ_OFF);
-                break;
-            case messages::LogMessageLevel::SECURITY:
-                if (msg == DOSA_SEC_SENSOR_BREACH) {
-                    logln("Security breach from " + sender_str);
-                    alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
-                } else {
-                    logln("Security alert from " + sender_str);
-                    alert_led.setSequence(DOSA_ALERT_SEQ_ON, DOSA_ALERT_SEQ_OFF);
-                }
-                break;
+    /**
+     * Security message received
+     */
+    void onSecurity(messages::Security const& sec, comms::Node const& sender)
+    {
+        if (msg_cache.validate(sender, sec.getMessageId())) {
+            return;
+        }
+
+        String sender_name = Comms::getDeviceName(sec);
+        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
+        logln("Security alert from " + sender_str + " (" + String(sec.getMessageId()) + ")");
+
+        switch (sec.getSecurityLevel()) {
             default:
-                // Shouldn't get here
-                return;
+            case SecurityLevel::TAMPER:
+            case SecurityLevel::ALERT:
+                alert_led.setSequence(DOSA_ALERT_SEQ_ON, DOSA_ALERT_SEQ_OFF);
+                break;
+            case SecurityLevel::BREACH:
+            case SecurityLevel::PANIC:
+                alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+                break;
         }
 
         alert_led.begin(DOSA_ALERT_DURATION);
@@ -150,13 +164,8 @@ class AlarmApp final : public dosa::OtaApplication
      */
     void onFlush(messages::GenericMessage const& msg, comms::Node const& sender)
     {
-        static uint16_t last_msg_id = 0;
-
-        // Don't activate if this message is duplicate
-        if (last_msg_id == msg.getMessageId()) {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
             return;
-        } else {
-            last_msg_id = msg.getMessageId();
         }
 
         if (isLocked()) {
@@ -177,17 +186,25 @@ class AlarmApp final : public dosa::OtaApplication
         }
 
         if (t > DOSA_BUTTON_LONG_PRESS) {
-            logln("Button press: stand down");
+            if (isLocked()) {
+                logln("Ignoring user-triggered stand-down request while locked!");
+                return;
+            }
+
+            logln("Button press: stand down & flush network");
 
             alert_led.end();
             activity_led.end();
+
+            dispatchMessage(messages::GenericMessage(DOSA_COMMS_MSG_FLUSH, getDeviceNameBytes()), false);
         } else {
             logln("Button press: alarm");
 
             alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
             alert_led.begin(0);
 
-            netLog(DOSA_SEC_USER_PANIC, NetLogLevel::SECURITY);
+            getStats().count(stats::sec_panic);
+            secAlert(SecurityLevel::PANIC);
         }
     }
 
@@ -207,6 +224,15 @@ class AlarmApp final : public dosa::OtaApplication
     static void logMessageForwarder(messages::LogMessage const& log, comms::Node const& sender, void* context)
     {
         static_cast<AlarmApp*>(context)->onLog(log, sender);
+    }
+
+    /**
+     *
+     * Context forwarder for security messages.
+     */
+    static void secMessageForwarder(messages::Security const& sec, comms::Node const& sender, void* context)
+    {
+        static_cast<AlarmApp*>(context)->onSecurity(sec, sender);
     }
 
     /**

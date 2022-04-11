@@ -20,7 +20,6 @@ class LogLevel:
     WARNING = 40
     ERROR = 50
     CRITICAL = 60
-    SECURITY = 100
 
     @staticmethod
     def as_string(log_level):
@@ -36,8 +35,26 @@ class LogLevel:
             return "ERROR"
         elif log_level == LogLevel.CRITICAL:
             return "CRITICAL"
-        elif log_level == LogLevel.SECURITY:
-            return "SECURITY"
+        else:
+            return "UNKNOWN"
+
+
+class SecurityLevel:
+    ALERT = 0
+    BREACH = 1
+    TAMPER = 2
+    PANIC = 3
+
+    @staticmethod
+    def as_string(sec_level):
+        if sec_level == SecurityLevel.ALERT:
+            return "ALERT"
+        elif sec_level == SecurityLevel.BREACH:
+            return "BREACH"
+        elif sec_level == SecurityLevel.TAMPER:
+            return "TAMPER"
+        elif sec_level == SecurityLevel.PANIC:
+            return "PANIC"
         else:
             return "UNKNOWN"
 
@@ -48,6 +65,7 @@ class Messages:
     """
     ACK = b"ack"
     LOG = b"log"
+    SEC = b"sec"
     ONLINE = b"onl"
     TRIGGER = b"trg"
     OTA = b"ota"

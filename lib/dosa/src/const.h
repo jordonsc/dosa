@@ -33,6 +33,7 @@ constexpr char const* ota = "dosa.ota";
 constexpr char const* sec_locked = "dosa.security.locked";
 constexpr char const* sec_alert = "dosa.security.alert";
 constexpr char const* sec_breached = "dosa.security.breached";
+constexpr char const* sec_panic = "dosa.security.panic";
 
 }  // namespace stats
 

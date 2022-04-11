@@ -74,6 +74,10 @@ class RelayApp final : public dosa::OtaApplication
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
         App::onDebugRequest(msg, sender);
         auto const& settings = getContainer().getSettings();
         netLog("Relay activation time: " + String(settings.getRelayActivationTime()), sender);
@@ -108,53 +112,14 @@ class RelayApp final : public dosa::OtaApplication
      */
     void onTrigger(messages::Trigger const& trigger, comms::Node const& sender)
     {
-        // Don't activate if this message is duplicate
-        if (last_msg_id == trigger.getMessageId()) {
-            logln(
-                "Duplicate trigger detected from '" + Comms::getDeviceName(trigger) + "' (" +
-                    comms::nodeToString(sender) + "), msg ID: " + String(trigger.getMessageId()),
-                LogLevel::DEBUG);
+        if (msg_cache.validate(sender, trigger.getMessageId())) {
             return;
-        } else {
-            last_msg_id = trigger.getMessageId();
         }
-
-        String sender_name = Comms::getDeviceName(trigger);
-        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
-        auto const& settings = getContainer().getSettings();
-
-        if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
-            return;
-        } else if (isLocked()) {
-            switch (getLockState()) {
-                default:
-                case LockState::LOCKED:
-                    logln("Ignoring trigger while device is locked");
-                    getStats().count(stats::sec_locked);
-                    break;
-                case LockState::ALERT:
-                    netLog("Lock violation by " + sender_name, NetLogLevel::SECURITY);
-                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
-                    getStats().count(stats::sec_alert);
-                    break;
-                case LockState::BREACH:
-                    // This lock state makes little sense for a relay, but we'll alter the message a little
-                    netLog("Lock breach by " + sender_name, NetLogLevel::SECURITY);
-                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
-                    getStats().count(stats::sec_breached);
-                    break;
-            }
-            return;
-        } else {
-            logln("Executing trigger from " + sender_str);
-        }
-
-        // Send reply ack
-        container.getComms().dispatch(sender, messages::Ack(trigger, container.getSettings().getDeviceNameBytes()));
 
         // Physically toggle the relay
-        executePowerToggle();
+        if (canTrigger(trigger, sender)) {
+            executePowerToggle();
+        }
     }
     /**
      *

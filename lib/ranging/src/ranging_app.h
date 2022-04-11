@@ -35,6 +35,10 @@ class RangingApp : public dosa::OtaApplication
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
         App::onDebugRequest(msg, sender);
         auto const& settings = getSettings();
         netLog("Sensor calibration threshold: " + String(settings.getRangeTriggerThreshold()), sender);
@@ -162,11 +166,11 @@ class RangingApp : public dosa::OtaApplication
                 default:
                 case LockState::ALERT:
                     getStats().count(stats::sec_alert);
-                    netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
+                    secAlert(SecurityLevel::ALERT);
                     break;
                 case LockState::BREACH:
                     getStats().count(stats::sec_breached);
-                    netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
+                    secAlert(SecurityLevel::BREACH);
                     break;
             }
             return;

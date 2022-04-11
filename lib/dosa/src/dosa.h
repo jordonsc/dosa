@@ -10,5 +10,6 @@
 #include "fram.h"
 #include "grideye.h"
 #include "lights.h"
+#include "message_pool.h"
 #include "settings.h"
 #include "switch.h"

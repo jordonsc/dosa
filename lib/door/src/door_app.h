@@ -59,11 +59,14 @@ class DoorApp final : public dosa::OtaApplication
 
    private:
     DoorContainer container;
-    uint16_t last_msg_id = 0;
     bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
         App::onDebugRequest(msg, sender);
         netLog("Open-stop distance: " + String(getContainer().getSettings().getDoorOpenDistance()), sender);
         netLog("Open-wait: " + String(getContainer().getSettings().getDoorOpenWait()), sender);
@@ -77,52 +80,14 @@ class DoorApp final : public dosa::OtaApplication
      */
     void onTrigger(messages::Trigger const& trigger, comms::Node const& sender)
     {
-        // Don't open the door if this message is duplicate
-        if (last_msg_id == trigger.getMessageId()) {
-            logln(
-                "Duplicate trigger detected from '" + Comms::getDeviceName(trigger) + "' (" +
-                    comms::nodeToString(sender) + "), msg ID: " + String(trigger.getMessageId()),
-                LogLevel::DEBUG);
+        if (msg_cache.validate(sender, trigger.getMessageId())) {
             return;
-        } else {
-            last_msg_id = trigger.getMessageId();
         }
-
-        String sender_name = Comms::getDeviceName(trigger);
-        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
-        auto const& settings = getContainer().getSettings();
-
-        if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
-            return;
-        } else if (isLocked()) {
-            switch (getLockState()) {
-                case LockState::LOCKED:
-                default:
-                    getStats().count(stats::sec_locked);
-                    logln("Ignoring trigger while device is locked");
-                    break;
-                case LockState::ALERT:
-                    getStats().count(stats::sec_alert);
-                    netLog("Lock violation by " + sender_name, NetLogLevel::SECURITY);
-                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
-                    break;
-                case LockState::BREACH:
-                    getStats().count(stats::sec_breached);
-                    netLog("Lock breach by " + sender_name, NetLogLevel::SECURITY);
-                    netLog("Violation address: " + comms::nodeToString(sender) , NetLogLevel::WARNING);
-                    break;
-            }
-            return;
-        } else {
-            logln("Executing trigger from " + sender_str);
-        }
-
-        // Send reply ack
-        container.getComms().dispatch(sender, messages::Ack(trigger, container.getSettings().getDeviceNameBytes()));
 
         // Set a flag that informs the main loop to open the door, or the interrupt handler
-        door_fire_from_udp = true;
+        if (canTrigger(trigger, sender)) {
+            door_fire_from_udp = true;
+        }
     }
 
     /**
@@ -172,7 +137,16 @@ class DoorApp final : public dosa::OtaApplication
         container.getSerial().writeln("Door switch pressed");
 
         if (isLocked()) {
-            netLog("Lock violation by physical button press", NetLogLevel::SECURITY);
+            netLog("Lock violation by physical button press", NetLogLevel::WARNING);
+            switch (getLockState()) {
+                default:
+                case LockState::ALERT:
+                    secAlert(SecurityLevel::ALERT);
+                    break;
+                case LockState::BREACH:
+                    secAlert(SecurityLevel::BREACH);
+                    break;
+            }
             return;
         }
 

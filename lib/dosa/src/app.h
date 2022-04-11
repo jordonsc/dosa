@@ -8,6 +8,7 @@
 #include "config.h"
 #include "const.h"
 #include "container.h"
+#include "message_pool.h"
 #include "stats.h"
 
 namespace dosa {
@@ -172,6 +173,11 @@ class App : public virtual Loggable, public StatefulApplication
         }
     }
 
+    virtual void onWifiDisconnect()
+    {
+        logln("Wifi connection lost", LogLevel::WARNING);
+    }
+
     /**
      * Check if device is locked.
      */
@@ -186,6 +192,8 @@ class App : public virtual Loggable, public StatefulApplication
     }
 
    protected:
+    MessagePool msg_cache;
+
     Settings& getSettings()
     {
         return getContainer().getSettings();
@@ -231,13 +239,13 @@ class App : public virtual Loggable, public StatefulApplication
     void netLog(char const* msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl), lvl >= NetLogLevel::ERROR);
+        dispatchMessage(messages::LogMessage(msg, getDeviceNameBytes(), lvl), lvl >= NetLogLevel::WARNING);
     }
 
     void netLog(String const& msg, NetLogLevel lvl = NetLogLevel::INFO)
     {
         cascadeNetLogMsg(msg, lvl);
-        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl), lvl >= NetLogLevel::ERROR);
+        dispatchMessage(messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl), lvl >= NetLogLevel::WARNING);
     }
 
     /**
@@ -259,6 +267,49 @@ class App : public virtual Loggable, public StatefulApplication
             target,
             messages::LogMessage(msg.c_str(), getDeviceNameBytes(), lvl),
             lvl >= NetLogLevel::ERROR);
+    }
+
+    void secAlert(SecurityLevel level)
+    {
+        dispatchMessage(messages::Security(level, getDeviceNameBytes()), true);
+    }
+
+    bool canTrigger(messages::Trigger const& trigger, comms::Node const& sender)
+    {
+        String sender_name = Comms::getDeviceName(trigger);
+        String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
+        auto const& settings = getContainer().getSettings();
+
+        if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
+            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
+            return false;
+        } else if (isLocked()) {
+            switch (getLockState()) {
+                case LockState::LOCKED:
+                default:
+                    getStats().count(stats::sec_locked);
+                    logln("Ignoring trigger while device is locked");
+                    break;
+                case LockState::ALERT:
+                    getStats().count(stats::sec_alert);
+                    secAlert(SecurityLevel::ALERT);
+                    netLog("Lock violation by: " + sender_str, NetLogLevel::WARNING);
+                    break;
+                case LockState::BREACH:
+                    getStats().count(stats::sec_breached);
+                    secAlert(SecurityLevel::BREACH);
+                    netLog("Security breach by: " + sender_str, NetLogLevel::WARNING);
+                    break;
+            }
+            return false;
+        } else {
+            logln("Executing trigger from " + sender_str);
+        }
+
+        // Send reply ack
+        getContainer().getComms().dispatch(sender, messages::Ack(trigger, getDeviceNameBytes()));
+
+        return true;
     }
 
     /**
@@ -384,9 +435,9 @@ class App : public virtual Loggable, public StatefulApplication
                 // Wifi is offline
                 if (wifi_connected) {
                     // it was online, mark is as a disconnect
-                    logln("Wifi connection lost");
                     wifi.disconnect();
                     wifi_connected = false;
+                    onWifiDisconnect();
                 }
 
                 // Attempt to reconnect
@@ -496,6 +547,8 @@ class App : public virtual Loggable, public StatefulApplication
      */
     virtual void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender)
     {
+        // NB: overriding functions are responsible for msg_cache validation!
+
         getStats().count("dosa.request.debug");
 
         auto const& settings = getSettings();
@@ -543,9 +596,9 @@ class App : public virtual Loggable, public StatefulApplication
    private:
     bool central_connected = false;
     bool wifi_connected = false;
-    unsigned long config_last_checked = 0;
-    unsigned long wifi_last_checked = 0;
-    unsigned long wifi_last_reconnected = 0;
+    uint32_t config_last_checked = 0;
+    uint32_t wifi_last_checked = 0;
+    uint32_t wifi_last_reconnected = 0;
     messages::DeviceType device_type = messages::DeviceType::UNSPECIFIED;
 
     /**
@@ -719,11 +772,8 @@ class App : public virtual Loggable, public StatefulApplication
      */
     void onPing(messages::GenericMessage const& msg, comms::Node const& sender)
     {
-        static uint16_t last_ping = 0;
-
-        if (msg.getMessageId() != last_ping) {
-            // Reply to retries, but don't log them
-            last_ping = msg.getMessageId();
+        // Reply to retries, but don't log them
+        if (!msg_cache.validate(sender, msg.getMessageId())) {
             logln("Ping from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
         }
 
@@ -966,15 +1016,11 @@ class App : public virtual Loggable, public StatefulApplication
      */
     void onConfig(messages::Configuration const& msg, comms::Node const& sender)
     {
-        static uint16_t last_message_id = 0;
-
         // Send reply ack even for retries, but we won't double-set the config for duplicate message
         getContainer().getComms().dispatch(sender, messages::Ack(msg, getSettings().getDeviceNameBytes()));
 
-        if (msg.getMessageId() == last_message_id) {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
             return;
-        } else {
-            last_message_id = msg.getMessageId();
         }
 
         log("Config setting from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ") // ");

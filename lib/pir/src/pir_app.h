@@ -101,13 +101,13 @@ class PirApp final : public dosa::OtaApplication
                 break;
             case LockState::ALERT:
                 // Security mode: dispatch sec alert
-                netLog(DOSA_SEC_SENSOR_TRIP, NetLogLevel::SECURITY);
                 getStats().count(stats::sec_alert);
+                secAlert(SecurityLevel::ALERT);
                 break;
             case LockState::BREACH:
                 // Security mode: dispatch sec alert
-                netLog(DOSA_SEC_SENSOR_BREACH, NetLogLevel::SECURITY);
                 getStats().count(stats::sec_breached);
+                secAlert(SecurityLevel::BREACH);
                 break;
         }
         return true;
@@ -115,6 +115,10 @@ class PirApp final : public dosa::OtaApplication
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
         App::onDebugRequest(msg, sender);
         netLog("Min pixels: " + String(getContainer().getSettings().getPirMinPixels()), sender);
         netLog("Per-pixel delta: " + String(getContainer().getSettings().getPirPixelDelta()), sender);

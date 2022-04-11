@@ -10,13 +10,12 @@ namespace messages {
 
 enum class LogMessageLevel : uint8_t
 {
-    DEBUG = 10,      // debug information, normally ignored
-    INFO = 20,       // device is providing non-important information
-    STATUS = 30,     // device is reporting on its status
-    WARNING = 40,    // device has encountered a potential problem
-    ERROR = 50,      // device has encountered a problem
-    CRITICAL = 60,   // device is no longer able to function
-    SECURITY = 100,  // a security alert has been triggered (eg attempt to activate a locked device)
+    DEBUG = 10,     // debug information, normally ignored
+    INFO = 20,      // device is providing non-important information
+    STATUS = 30,    // device is reporting on its status
+    WARNING = 40,   // device has encountered a potential problem
+    ERROR = 50,     // device has encountered a problem
+    CRITICAL = 60,  // device is no longer able to function
 };
 
 /**

@@ -78,12 +78,25 @@ class SecBot:
             self.log(packet, aux)
             self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
 
-            if log_level == dosa.LogLevel.SECURITY:
-                msg = "Security alert, " + packet.device_name + ". " + log_message + "."
-            elif log_level == dosa.LogLevel.CRITICAL:
+            if log_level == dosa.LogLevel.CRITICAL:
                 msg = "Warning, " + packet.device_name + " critical. " + log_message + "."
             elif log_level == dosa.LogLevel.ERROR:
                 msg = "Warning, " + packet.device_name + " error. " + log_message + "."
+
+        elif packet.msg_code == dosa.Messages.SEC:
+            sec_level = struct.unpack("<B", packet.payload[27:28])[0]
+            aux = " | " + dosa.SecurityLevel.as_string(sec_level)
+            self.log(packet, aux)
+            self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
+
+            if sec_level == dosa.SecurityLevel.ALERT:
+                msg = "Security alert, activity, " + packet.device_name
+            elif sec_level == dosa.SecurityLevel.BREACH:
+                msg = "Security alert, breach, " + packet.device_name
+            elif sec_level == dosa.SecurityLevel.TAMPER:
+                msg = "Security alert, tamper warning, " + packet.device_name
+            elif sec_level == dosa.SecurityLevel.PANIC:
+                msg = "Security alert, alarm triggered, " + packet.device_name
 
         elif packet.msg_code == dosa.Messages.FLUSH:
             msg = "Network flush initiated by " + packet.device_name

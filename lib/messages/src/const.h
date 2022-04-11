@@ -19,10 +19,11 @@ typedef __uint64_t uint64_t;
 #define DOSA_COMMS_MSG_FLUSH "fls"    // instruct recipients to flush any cached DOSA data (network reset)
 
 // Command codes with additional information (and their own class)
-#define DOSA_COMMS_MSG_LOG "log"      // network-level log
-#define DOSA_COMMS_MSG_PONG "pon"     // pong reply from a ping
-#define DOSA_COMMS_MSG_TRIGGER "trg"  // sensor/switch has been tripped
-#define DOSA_COMMS_MSG_CONFIG "cfg"   // update device configuration
+#define DOSA_COMMS_MSG_LOG "log"       // network-level log
+#define DOSA_COMMS_MSG_PONG "pon"      // pong reply from a ping
+#define DOSA_COMMS_MSG_TRIGGER "trg"   // sensor/switch has been tripped
+#define DOSA_COMMS_MSG_CONFIG "cfg"    // update device configuration
+#define DOSA_COMMS_MSG_SECURITY "sec"  // security alert
 
 namespace dosa {
 
@@ -32,6 +33,14 @@ enum class LockState : uint8_t
     LOCKED = 1,    // Device is locked, will not respond to triggers
     ALERT = 2,     // Device is locked, will send security alerts if triggered
     BREACH = 3,    // Device is locked, will send security breach alerts if triggered
+};
+
+enum class SecurityLevel : uint8_t
+{
+    ALERT = 0,   // Security alert (lock state ALERT tripped)
+    BREACH = 1,  // Security breach (lock state BREACH tripped)
+    TAMPER = 2,  // Possible device tamper
+    PANIC = 3,   // User manually triggered alarm (panic button pressed, etc)
 };
 
 namespace messages {
