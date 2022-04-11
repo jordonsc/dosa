@@ -6,7 +6,7 @@
  * DOSA Application Version.
  */
 #ifndef DOSA_VERSION
-#define DOSA_VERSION 45
+#define DOSA_VERSION 46
 #endif
 
 namespace dosa {
