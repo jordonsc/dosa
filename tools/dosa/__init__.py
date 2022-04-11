@@ -2,6 +2,8 @@ import socket
 import struct
 import secrets
 import time
+import pathlib
+import json
 
 from dosa.exc import *
 from dosa.cfg import Config
@@ -57,6 +59,11 @@ class SecurityLevel:
             return "PANIC"
         else:
             return "UNKNOWN"
+
+
+class AlertCategory:
+    SECURITY = "Security"
+    NETWORK = "Network"
 
 
 class Messages:
@@ -207,3 +214,25 @@ class Comms:
                 pass
 
         return None
+
+
+def get_config_file():
+    home_file = pathlib.Path(pathlib.Path.home(), ".dosa", "config")
+    system_file = pathlib.Path("/", "etc", "dosa", "config")
+
+    if home_file.exists() and home_file.is_file():
+        return home_file
+    elif system_file.exists() and system_file.is_file():
+        return system_file
+    else:
+        return None
+
+
+def get_config():
+    cfg_file = get_config_file()
+
+    if cfg_file is None:
+        return {}
+    else:
+        print("Load config from " + str(cfg_file))
+        return json.load(cfg_file.open('r'))

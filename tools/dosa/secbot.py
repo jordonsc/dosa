@@ -2,6 +2,7 @@ import dosa
 import struct
 import time
 import os
+import requests
 from dosa.tts import Tts
 
 
@@ -30,6 +31,7 @@ class SecBot:
         self.last_ping = 0
         self.last_heartbeat = 0
         self.devices = []
+        self.cfg = dosa.get_config()
 
     def run(self, announce=True):
         print("Security Bot online")
@@ -83,6 +85,9 @@ class SecBot:
             elif log_level == dosa.LogLevel.ERROR:
                 msg = "Warning, " + packet.device_name + " error. " + log_message + "."
 
+            self.alert(packet.device_name, msg, description=log_message, category=dosa.AlertCategory.NETWORK,
+                       level=dosa.LogLevel.as_string(log_level))
+
         elif packet.msg_code == dosa.Messages.SEC:
             sec_level = struct.unpack("<B", packet.payload[27:28])[0]
             aux = " | " + dosa.SecurityLevel.as_string(sec_level)
@@ -97,6 +102,9 @@ class SecBot:
                 msg = "Security alert, tamper warning, " + packet.device_name
             elif sec_level == dosa.SecurityLevel.PANIC:
                 msg = "Security alert, panic alarm triggered, " + packet.device_name
+
+            self.alert(packet.device_name, msg, category=dosa.AlertCategory.SECURITY,
+                       level=dosa.SecurityLevel.as_string(sec_level))
 
         elif packet.msg_code == dosa.Messages.FLUSH:
             msg = "Network flush initiated by " + packet.device_name
@@ -137,6 +145,54 @@ class SecBot:
         payload = t + " [" + str(msg.msg_id).rjust(5, ' ') + "] " + msg.addr[0] + ":" + str(
             msg.addr[1]) + " (" + msg.device_name + "): " + msg.msg_code.decode("utf-8").upper() + aux
         self.comms.send(payload.encode(), (self.log_server["server"], self.log_server["port"]))
+
+    def alert(self, device, msg, category, level, description=None, tags=None):
+        if "alerts" not in self.cfg:
+            return
+
+        if tags is None:
+            tags = {"device": device, "category": category, "level": level}
+        else:
+            tags["device"] = device
+            tags["category"] = category
+            tags["level"] = level
+
+        cat = tags["category"]  # keep a copy of the pure category before we colourise it
+        if cat not in self.cfg["alerts"]:
+            return
+
+        tags = self.colourise_tags(tags)
+        payload = {"message": msg, "description": description, "tags": tags, "status": "trigger"}
+
+        for endpoint in self.cfg["alerts"][cat]:
+            r = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"})
+
+            if r.status_code == 200:
+                print(category + " alert dispatched to " + endpoint)
+            else:
+                self.comms.send(
+                    self.comms.build_payload(
+                        dosa.Messages.LOG,
+                        "SecBot failed to send alert to " + endpoint + ", response code: " + str(r.status_code)
+                    )
+                )
+
+    @staticmethod
+    def colourise_tags(tags):
+        if tags["category"] == dosa.AlertCategory.SECURITY:
+            tags["category"] = {"color": "#FCB900", "value": dosa.AlertCategory.SECURITY}
+
+        if tags["level"] == dosa.LogLevel.as_string(dosa.LogLevel.ERROR) or \
+                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.TAMPER) or \
+                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.ALERT):
+            tags["level"] = {"color": "#FCB900", "value": tags["level"]}
+
+        elif tags["level"] == dosa.LogLevel.as_string(dosa.LogLevel.CRITICAL) or \
+                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.BREACH) or \
+                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.PANIC):
+            tags["level"] = {"color": "#EB144C", "value": tags["level"]}
+
+        return tags
 
     @staticmethod
     def get_current_time():
