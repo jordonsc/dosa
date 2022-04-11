@@ -96,7 +96,7 @@ class SecBot:
             elif sec_level == dosa.SecurityLevel.TAMPER:
                 msg = "Security alert, tamper warning, " + packet.device_name
             elif sec_level == dosa.SecurityLevel.PANIC:
-                msg = "Security alert, alarm triggered, " + packet.device_name
+                msg = "Security alert, panic alarm triggered, " + packet.device_name
 
         elif packet.msg_code == dosa.Messages.FLUSH:
             msg = "Network flush initiated by " + packet.device_name
