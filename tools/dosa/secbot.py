@@ -73,6 +73,7 @@ class SecBot:
 
         self.last_msg_id = packet.msg_id
         msg = ""
+        print(str(packet.msg_id) + "/" + packet.msg_code.decode("utf-8") + "/" + packet.addr[0])
 
         if packet.msg_code == dosa.Messages.LOG:
             log_level = struct.unpack("<B", packet.payload[27:28])[0]
@@ -206,6 +207,8 @@ class SecBot:
                 self.settings["plays"][play]:
             return False
 
+        print("run play: " + play)
+
         for action in self.settings["plays"][play]["actions"]:
             self.run_action(action)
 
@@ -214,6 +217,7 @@ class SecBot:
             return False
 
         act = action["action"]
+        print("run action: " + act)
 
         if act == "announce" and "value" in action:
             self.run_action_announce(action["value"])
