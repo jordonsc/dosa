@@ -167,6 +167,14 @@ class Comms:
 
         return payload
 
+    def net_log(self, level, msg):
+        self.send(
+            self.build_payload(
+                Messages.LOG,
+                struct.pack("<B", level) + msg.encode()
+            )
+        )
+
     def send(self, payload, tgt=None, wait_for_ack=False):
         """
         Send a byte-array message to tgt.

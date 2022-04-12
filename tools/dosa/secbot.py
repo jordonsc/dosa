@@ -85,8 +85,9 @@ class SecBot:
             elif log_level == dosa.LogLevel.ERROR:
                 msg = "Warning, " + packet.device_name + " error. " + log_message + "."
 
-            self.alert(packet.device_name, msg, description=log_message, category=dosa.AlertCategory.NETWORK,
-                       level=dosa.LogLevel.as_string(log_level))
+            if msg:
+                self.alert(packet.device_name, msg, description=log_message, category=dosa.AlertCategory.NETWORK,
+                           level=dosa.LogLevel.as_string(log_level))
 
         elif packet.msg_code == dosa.Messages.SEC:
             sec_level = struct.unpack("<B", packet.payload[27:28])[0]
@@ -169,12 +170,15 @@ class SecBot:
 
             if r.status_code == 200:
                 print(category + " alert dispatched to " + endpoint)
+                self.comms.net_log(
+                    dosa.LogLevel.WARNING,
+                    category + " alert dispatched to " + endpoint
+                )
             else:
-                self.comms.send(
-                    self.comms.build_payload(
-                        dosa.Messages.LOG,
-                        "SecBot failed to send alert to " + endpoint + ", response code: " + str(r.status_code)
-                    )
+                # This is a warning to prevent infinite recursion - do NOT increase this to ERROR or above
+                self.comms.net_log(
+                    dosa.LogLevel.WARNING,
+                    "SecBot failed to page alert for device " + device + ", response code: " + str(r.status_code)
                 )
 
     @staticmethod
