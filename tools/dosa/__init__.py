@@ -6,12 +6,13 @@ import pathlib
 import json
 
 from dosa.exc import *
-from dosa.cfg import Config
+from dosa.cfg import Config, Device
 from dosa.snoop import Snoop
 from dosa.ping import Ping
 from dosa.trigger import Trigger
 from dosa.ota import Ota
 from dosa.flush import Flush
+from dosa.play import Play
 from dosa import device
 
 
@@ -61,6 +62,26 @@ class SecurityLevel:
             return "UNKNOWN"
 
 
+class LockLevel:
+    UNLOCKED = 0
+    LOCKED = 1
+    ALERT = 2
+    BREACH = 3
+
+    @staticmethod
+    def as_string(lock_level):
+        if lock_level == LockLevel.UNLOCKED:
+            return "UNLOCKED"
+        elif lock_level == LockLevel.LOCKED:
+            return "LOCKED"
+        elif lock_level == LockLevel.ALERT:
+            return "ALERT"
+        elif lock_level == LockLevel.BREACH:
+            return "BREACH"
+        else:
+            return "UNKNOWN"
+
+
 class AlertCategory:
     SECURITY = "Security"
     NETWORK = "Network"
@@ -84,6 +105,7 @@ class Messages:
     PING = b"pin"
     PONG = b"pon"
     CONFIG_SETTING = b"cfg"
+    PLAY = b"pla"
 
 
 class Message:
@@ -175,11 +197,13 @@ class Comms:
             )
         )
 
-    def send(self, payload, tgt=None, wait_for_ack=False):
+    def send(self, payload, tgt=None, wait_for_ack=False, timeout=1.0):
         """
         Send a byte-array message to tgt.
 
         If tgt is None, the multicast group will be used (message broadcasted to all DOSA devices).
+
+        Returns True if ack'd, False if not ack'd or None if no ack was requested.
         """
         if tgt is None:
             tgt = (self.MULTICAST_GROUP, self.MULTICAST_PORT)
@@ -191,13 +215,17 @@ class Comms:
         if wait_for_ack:
             msg_id = struct.unpack("<H", payload[0:2])[0]
             start_time = time.perf_counter()
-            while time.perf_counter() - start_time < 1.5:
+            while time.perf_counter() - start_time < timeout:
                 msg = self.receive(timeout=0.1)
                 if msg is not None and msg.msg_code == Messages.ACK:
                     ack_id = struct.unpack("<H", msg.payload[27:29])[0]
                     if ack_id == msg_id:
-                        return
-            print(" -- no acknowledgement -- ", end="")
+                        return True
+                # retry message
+                self.sock.sendto(payload, tgt)
+            return False
+        else:
+            return None
 
     def send_ack(self, msg_id, tgt):
         """

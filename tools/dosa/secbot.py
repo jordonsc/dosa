@@ -31,7 +31,8 @@ class SecBot:
         self.last_ping = 0
         self.last_heartbeat = 0
         self.devices = []
-        self.cfg = dosa.get_config()
+        self.settings = dosa.get_config()
+        self.config = dosa.Config(self.comms)
 
     def run(self, announce=True):
         print("Security Bot online")
@@ -130,8 +131,27 @@ class SecBot:
             elif trigger_type == 100:
                 self.log(packet, " | AUTO")
 
-        elif packet.msg_code == dosa.Messages.PING or packet.msg_code == dosa.Messages.PONG:
-            # Ignore ping/pong messages in logs
+        elif packet.msg_code == dosa.Messages.PLAY:
+            play = packet.payload[27:packet.payload_size].decode("utf-8")
+            self.log(packet, " | PLAY | " + play)
+            self.run_play(play)
+
+        elif packet.msg_code == dosa.Messages.PONG:
+            # Ignore in logs, but register device
+            match = False
+            for d in self.devices:
+                if d.address[0] == packet.addr[0]:
+                    match = True
+                    break
+
+            if not match:
+                d = dosa.Device(msg=packet, device_type=packet.payload[self.comms.BASE_PAYLOAD_SIZE],
+                                device_state=packet.payload[self.comms.BASE_PAYLOAD_SIZE + 1])
+                self.devices.append(d)
+                print("Found device: " + d.device_name)
+
+        elif packet.msg_code == dosa.Messages.PING:
+            # Ignore ping messages in logs
             pass
 
         else:
@@ -148,7 +168,7 @@ class SecBot:
         self.comms.send(payload.encode(), (self.log_server["server"], self.log_server["port"]))
 
     def alert(self, device, msg, category, level, description=None, tags=None):
-        if "alerts" not in self.cfg:
+        if "alerts" not in self.settings:
             return
 
         if tags is None:
@@ -159,13 +179,13 @@ class SecBot:
             tags["level"] = level
 
         cat = tags["category"]  # keep a copy of the pure category before we colourise it
-        if cat not in self.cfg["alerts"]:
+        if cat not in self.settings["alerts"]:
             return
 
         tags = self.colourise_tags(tags)
         payload = {"message": msg, "description": description, "tags": tags, "status": "trigger"}
 
-        for endpoint in self.cfg["alerts"][cat]:
+        for endpoint in self.settings["alerts"][cat]:
             r = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"})
 
             if r.status_code == 200:
@@ -180,6 +200,52 @@ class SecBot:
                     dosa.LogLevel.WARNING,
                     "SecBot failed to page alert for device " + device + ", response code: " + str(r.status_code)
                 )
+
+    def run_play(self, play):
+        if "plays" not in self.settings or play not in self.settings["plays"] or "actions" not in \
+                self.settings["plays"][play]:
+            return False
+
+        for action in self.settings["plays"][play]["actions"]:
+            self.run_action(action)
+
+    def run_action(self, action):
+        if "action" not in action:
+            return False
+
+        act = action["action"]
+
+        if act == "announce" and "value" in action:
+            self.run_action_announce(action["value"])
+        elif act == "set-lock" and "devices" in action and "value" in action:
+            self.run_action_set_lock(action["devices"], action["value"])
+
+    def run_action_announce(self, msg):
+        self.tts.play(msg)
+
+    def run_action_set_lock(self, devices, value):
+        if value < 0 or value > 3:
+            self.comms.net_log(dosa.LogLevel.WARNING, "Bad lock state in play: " + str(value))
+            return
+
+        for device in devices:
+            found = False
+            for reg_device in self.devices:
+                if reg_device.device_name == device:
+                    found = True
+                    if self.config.exec_lock_state(reg_device, value):
+                        self.comms.net_log(
+                            dosa.LogLevel.INFO,
+                            "Set " + device + " to lock state " + dosa.LockLevel.as_string(value)
+                        )
+                    else:
+                        self.comms.net_log(
+                            dosa.LogLevel.ERROR,
+                            "Failed to set " + device + " to lock state " + dosa.LockLevel.as_string(value)
+                        )
+
+            if not found:
+                self.comms.net_log(dosa.LogLevel.WARNING, "Unknown device in play: " + device)
 
     @staticmethod
     def colourise_tags(tags):

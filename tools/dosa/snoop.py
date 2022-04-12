@@ -57,6 +57,9 @@ class Snoop:
             elif msg.msg_code == dosa.Messages.SEC:
                 sec_level = struct.unpack("<B", msg.payload[27:28])[0]
                 aux = " // SECURITY ALERT: " + dosa.SecurityLevel.as_string(sec_level)
+            elif msg.msg_code == dosa.Messages.PLAY:
+                play = msg.payload[27:msg.payload_size].decode("utf-8")
+                aux = " // RUN PLAY: " + play
             elif msg.msg_code == dosa.Messages.ONLINE:
                 aux = " // ONLINE"
             elif msg.msg_code == dosa.Messages.BEGIN:

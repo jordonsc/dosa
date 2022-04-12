@@ -15,8 +15,12 @@ parser.add_argument('-c', '--cfg', dest='cfg', default=False, nargs='?', action=
                     help='scan for devices and configure them; optionally private an IP address to configure')
 
 # Ping
-parser.add_argument('-p', '--ping', dest='ping', action='store',
+parser.add_argument('--ping', dest='ping', action='store',
                     help='send a ping to a given target, wait for the reply')
+
+# Run play
+parser.add_argument('-p', '--play', dest='play', action='store',
+                    help='broadcast play request to any listening SecBots')
 
 # Fire trigger
 parser.add_argument('-t', '--trigger', dest='trigger', default=False, nargs='?', action='store',
@@ -56,6 +60,9 @@ try:
     elif args.ping:
         ping = dosa.Ping(comms=comms)
         ping.run(target=args.ping)
+    elif args.play:
+        play = dosa.Play(comms=comms)
+        play.run(args.play)
     elif args.trigger is not False:
         trigger = dosa.Trigger(comms=comms)
         if args.trigger:
