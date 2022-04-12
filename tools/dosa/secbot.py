@@ -151,8 +151,8 @@ class SecBot:
                 self.devices.append(d)
                 print("Found device: " + d.device_name)
 
-        elif packet.msg_code == dosa.Messages.PING:
-            # Ignore ping messages in logs
+        elif packet.msg_code == dosa.Messages.PING or packet.msg_code == dosa.Messages.ACK:
+            # Don't log pings or acks
             pass
 
         else:
