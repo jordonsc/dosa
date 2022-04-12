@@ -73,7 +73,6 @@ class SecBot:
 
         self.last_msg_id = packet.msg_id
         msg = ""
-        print(str(packet.msg_id) + "/" + packet.msg_code.decode("utf-8") + "/" + packet.addr[0])
 
         if packet.msg_code == dosa.Messages.LOG:
             log_level = struct.unpack("<B", packet.payload[27:28])[0]
@@ -133,6 +132,7 @@ class SecBot:
                 self.log(packet, " | AUTO")
 
         elif packet.msg_code == dosa.Messages.PLAY:
+            self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
             play = packet.payload[27:packet.payload_size].decode("utf-8")
             self.log(packet, " | PLAY | " + play)
             self.run_play(play)
