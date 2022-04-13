@@ -2,21 +2,7 @@ import time
 import dosa
 import struct
 
-from dosa.device import DeviceType
-
-
-class Device:
-    def __init__(self, msg=None, device_type=None, device_state=None):
-        if msg:
-            self.device_name = msg.device_name
-            self.address = msg.addr
-            self.msg = msg
-        else:
-            self.device_name = None
-
-        self.device_type = device_type
-        self.device_state = device_state
-        self.last_seen = time.perf_counter()
+from dosa.device import DeviceType, Device
 
 
 class Config:
