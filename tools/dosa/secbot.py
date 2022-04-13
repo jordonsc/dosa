@@ -157,13 +157,13 @@ class SecBot:
             self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
 
             if sec_level == dosa.SecurityLevel.ALERT:
-                msg = "Security alert, activity, " + packet.device_name
+                msg = "Security alert, " + packet.device_name + ", activity"
             elif sec_level == dosa.SecurityLevel.BREACH:
-                msg = "Security alert, breach, " + packet.device_name
+                msg = "Security alert, " + packet.device_name + ", breach"
             elif sec_level == dosa.SecurityLevel.TAMPER:
-                msg = "Security alert, tamper warning, " + packet.device_name
+                msg = "Security alert, " + packet.device_name + ", tamper warning"
             elif sec_level == dosa.SecurityLevel.PANIC:
-                msg = "Security alert, panic alarm triggered, " + packet.device_name
+                msg = "Security alert, " + packet.device_name + ", panic alarm triggered"
 
             self.alert(packet.device_name, msg, category=dosa.AlertCategory.SECURITY,
                        level=dosa.SecurityLevel.as_string(sec_level))
@@ -211,7 +211,7 @@ class SecBot:
                         d.reported_unresponsive = False
                         self.comms.net_log(dosa.LogLevel.WARNING, "Device recovery: " + d.device_name)
                         if self.report_recovery:
-                            msg = "Notice, " + d.device_name + " is now responding"
+                            msg = "Notice, " + d.device_name + " is back online"
                     break
 
             if not match:
