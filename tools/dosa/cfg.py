@@ -370,8 +370,8 @@ class Config:
             print("[" + str(key) + "]: " + spacer +
                   d.msg.device_name.ljust(22) +
                   d.msg.addr[0].ljust(18) +
-                  dosa.device.device_type_str(d.device_type).upper().ljust(20) +
-                  dosa.device.device_status_str(d.device_state))
+                  dosa.DeviceType.as_string(d.device_type).upper().ljust(20) +
+                  dosa.DeviceStatus.as_string(d.device_state))
 
     def user_select_device(self):
         while True:
