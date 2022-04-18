@@ -1,7 +1,9 @@
 import dosa
 import struct
 import time
-import requests
+import json
+from boto3 import Session
+from botocore.exceptions import ClientError
 from dosa.tts import Tts
 
 
@@ -22,6 +24,11 @@ class SecBot:
         self.settings = dosa.get_config()
         self.config = dosa.Config(self.comms)
         self.history = dosa.MessageLog()
+
+        # Create a client using the credentials and region defined in the [dosa] section of the AWS credentials
+        # file (~/.aws/credentials)
+        self.session = Session(profile_name="dosa")
+        self.sns = self.session.client("sns")
 
         # -- Settings from config file --
         # Time in seconds between heartbeats
@@ -145,7 +152,6 @@ class SecBot:
                 self.alert(
                     packet.device_name,
                     packet.device_name + " critical",
-                    description=log_message,
                     category=dosa.AlertCategory.NETWORK,
                     level=dosa.LogLevel.as_string(log_level)
                 )
@@ -240,7 +246,7 @@ class SecBot:
             msg.addr[1]) + " (" + msg.device_name + "): " + msg.msg_code.decode("utf-8").upper() + aux
         self.comms.send(payload.encode(), (self.log_server["server"], self.log_server["port"]))
 
-    def alert(self, device, msg, category, level, description=None, tags=None):
+    def alert(self, device, msg, category, level, tags=None):
         """
         Raise an incident/notify alert end-points.
         """
@@ -254,27 +260,31 @@ class SecBot:
             tags["category"] = category
             tags["level"] = level
 
-        cat = tags["category"]  # keep a copy of the pure category before we colourise it
-        if cat not in self.settings["alerts"]:
+        if category not in self.settings["alerts"]:
             return
 
-        tags = self.colourise_tags(tags)
-        payload = {"message": msg, "description": description, "tags": tags, "status": "trigger"}
+        sns_tags = {}
+        for key, value in tags.items():
+            sns_tags[key] = {"DataType": "String", "StringValue": value}
 
-        for endpoint in self.settings["alerts"][cat]:
-            r = requests.post(endpoint, json=payload, headers={"Content-Type": "application/json"})
+        for arn in self.settings["alerts"][category]:
+            try:
+                self.sns.publish(
+                    TargetArn=arn,
+                    Message=json.dumps({'default': msg}),
+                    MessageStructure='json',
+                    MessageAttributes=sns_tags,
+                )
 
-            if r.status_code == 200:
-                print(category + " alert dispatched to " + endpoint)
+                print(category + " alert dispatched to " + arn)
                 self.comms.net_log(
                     dosa.LogLevel.WARNING,
-                    category + " alert dispatched to " + endpoint
+                    category + " alert dispatched to " + arn
                 )
-            else:
-                # Don't set to ERROR or above, else you'll get infinite recursion
+            except ClientError:
                 self.comms.net_log(
                     dosa.LogLevel.ERROR,
-                    "SecBot failed to page alert for device " + device + ", response code: " + str(r.status_code)
+                    "SecBot failed to sent alert for device " + device
                 )
 
     def run_play(self, play):
@@ -331,23 +341,6 @@ class SecBot:
             if not found:
                 self.comms.net_log(dosa.LogLevel.WARNING, "Unknown device in play: " + device)
                 self.tts.play("Unknown device in play: " + device)
-
-    @staticmethod
-    def colourise_tags(tags):
-        if tags["category"] == dosa.AlertCategory.SECURITY:
-            tags["category"] = {"color": "#FCB900", "value": dosa.AlertCategory.SECURITY}
-
-        if tags["level"] == dosa.LogLevel.as_string(dosa.LogLevel.ERROR) or \
-                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.TAMPER) or \
-                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.ALERT):
-            tags["level"] = {"color": "#FCB900", "value": tags["level"]}
-
-        elif tags["level"] == dosa.LogLevel.as_string(dosa.LogLevel.CRITICAL) or \
-                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.BREACH) or \
-                tags["level"] == dosa.SecurityLevel.as_string(dosa.SecurityLevel.PANIC):
-            tags["level"] = {"color": "#EB144C", "value": tags["level"]}
-
-        return tags
 
     @staticmethod
     def get_current_time():
