@@ -285,15 +285,12 @@ class Config:
         aux[0:1] = struct.pack("<B", 7)
         if len(values) > 0:
             aux[1:] = ("\n".join(values) + "\n").encode()
-            print("Sending new device list..", end="")
+            print("Sending new device list..")
         else:
-            print("Set listen mode to all devices..", end="")
+            print("Set listen mode to all devices..")
 
-        if self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
-                           wait_for_ack=True):
-            print(" done")
-        else:
-            print(" not acknowledged by device!")
+        return self.comms.send(self.comms.build_payload(dosa.Messages.CONFIG_SETTING, aux), tgt=device.address,
+                               wait_for_ack=True)
 
     def exec_stats_server(self, device, values):
         aux = bytearray()

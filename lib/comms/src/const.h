@@ -14,7 +14,7 @@
 /**
  * Array size of comms handlers
  */
-#define DOSA_COMMS_MAX_HANDLERS 10
+#define DOSA_COMMS_MAX_HANDLERS 15
 
 namespace dosa {
 

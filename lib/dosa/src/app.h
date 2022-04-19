@@ -217,12 +217,12 @@ class App : public virtual Loggable, public StatefulApplication
     /**
      * Dispatch a generic message on the UDP multicast address.
      */
-    bool dispatchGenericMessage(char const* cmd_code)
+    bool dispatchGenericMessage(char const* cmd_code, bool wait_for_ack = false)
     {
         return getContainer().getComms().dispatch(
             comms::multicastAddr,
             messages::GenericMessage(cmd_code, getDeviceNameBytes()),
-            false);
+            wait_for_ack);
     }
 
     /**
@@ -274,9 +274,9 @@ class App : public virtual Loggable, public StatefulApplication
         dispatchMessage(messages::Security(level, getDeviceNameBytes()), true);
     }
 
-    bool canTrigger(messages::Trigger const& trigger, comms::Node const& sender)
+    bool canTrigger(messages::Payload const& msg, comms::Node const& sender)
     {
-        String sender_name = Comms::getDeviceName(trigger);
+        String sender_name = Comms::getDeviceName(msg);
         String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
         auto const& settings = getContainer().getSettings();
 
@@ -303,11 +303,11 @@ class App : public virtual Loggable, public StatefulApplication
             }
             return false;
         } else {
-            logln("Executing trigger from " + sender_str);
+            logln("Accepting trigger from " + sender_str);
         }
 
         // Send reply ack
-        getContainer().getComms().dispatch(sender, messages::Ack(trigger, getDeviceNameBytes()));
+        getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
 
         return true;
     }

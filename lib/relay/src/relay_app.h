@@ -38,7 +38,6 @@ class RelayApp final : public dosa::OtaApplication
 
    private:
     Container container;
-    uint16_t last_msg_id = 0;
     bool relay_state = false;
     uint32_t relay_last_moved = 0;
     uint32_t relay_open_time = 0;
@@ -57,17 +56,17 @@ class RelayApp final : public dosa::OtaApplication
         if (relay_state) {
             digitalWrite(DOSA_RELAY_PIN, HIGH);
             setDeviceState(messages::DeviceState::WORKING);
-            dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN);
             getStats().count(stats::begin);
             relay_open_time = millis();
+            dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN, true);
         } else {
             digitalWrite(DOSA_RELAY_PIN, LOW);
             setDeviceState(messages::DeviceState::OK);
-            dispatchGenericMessage(DOSA_COMMS_MSG_END);
             getStats().count(stats::end);
             if (relay_open_time != 0) {
                 getStats().timing(stats::sequence, millis() - relay_open_time);
             }
+            dispatchGenericMessage(DOSA_COMMS_MSG_END, true);
             relay_open_time = 0;
         }
     }

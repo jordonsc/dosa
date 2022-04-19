@@ -4,7 +4,18 @@
 
 #include "const.h"
 
+// If defined, the holding the button will send a flush along with clearing device state
+#define DOSA_ALARM_BTN_FLUSH
+
 namespace dosa {
+
+enum class AlertLevel : uint8_t
+{
+    NONE,
+    ERROR,
+    ALERT,
+    BREACH
+};
 
 class AlarmApp final : public dosa::OtaApplication
 {
@@ -26,6 +37,16 @@ class AlarmApp final : public dosa::OtaApplication
         container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
             DOSA_COMMS_MSG_TRIGGER,
             &triggerMessageForwarder,
+            this);
+
+        container.getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_BEGIN,
+            &beginEndMessageForwarder,
+            this);
+
+        container.getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_END,
+            &beginEndMessageForwarder,
             this);
 
         container.getComms().newHandler<comms::StandardHandler<messages::LogMessage>>(
@@ -75,6 +96,7 @@ class AlarmApp final : public dosa::OtaApplication
     Light activity_led;
     Light alert_led;
     Switch button;
+    AlertLevel alert_level = AlertLevel::NONE;
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
@@ -111,6 +133,28 @@ class AlarmApp final : public dosa::OtaApplication
     }
 
     /**
+     * Sensor has broadcasted a begin or end event.
+     */
+    void onBeginEnd(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        if (msg_cache.validate(sender, msg.getMessageId())) {
+            return;
+        }
+
+        if (canTrigger(msg, sender)) {
+            String cmd = stringFromBytes(msg.getCommandCode(), 3);
+            if (cmd == DOSA_COMMS_MSG_BEGIN) {
+                activity_led.begin(0);
+            } else if (cmd == DOSA_COMMS_MSG_END) {
+                activity_led.end();
+            } else {
+                // Should never get here
+                logln("Unknown command code '" + cmd + "' from " + Comms::getDeviceName(msg), LogLevel::WARNING);
+            }
+        }
+    }
+
+    /**
      * Log message received
      */
     void onLog(messages::LogMessage const& log, comms::Node const& sender)
@@ -127,8 +171,7 @@ class AlarmApp final : public dosa::OtaApplication
         String sender_str = "'" + sender_name + "' (" + comms::nodeToString(sender) + ")";
         logln("Error alert from " + sender_str);
 
-        alert_led.setSequence(DOSA_ERROR_SEQ_ON, DOSA_ERROR_SEQ_OFF);
-        alert_led.begin(DOSA_ALERT_DURATION);
+        setAlertLevel(AlertLevel::ERROR);
     }
 
     /**
@@ -148,15 +191,13 @@ class AlarmApp final : public dosa::OtaApplication
             default:
             case SecurityLevel::TAMPER:
             case SecurityLevel::ALERT:
-                alert_led.setSequence(DOSA_ALERT_SEQ_ON, DOSA_ALERT_SEQ_OFF);
+                setAlertLevel(AlertLevel::ALERT);
                 break;
             case SecurityLevel::BREACH:
             case SecurityLevel::PANIC:
-                alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+                setAlertLevel(AlertLevel::BREACH);
                 break;
         }
-
-        alert_led.begin(DOSA_ALERT_DURATION);
     }
 
     /**
@@ -177,6 +218,7 @@ class AlarmApp final : public dosa::OtaApplication
 
         alert_led.end();
         activity_led.end();
+        alert_level = AlertLevel::NONE;
     }
 
     void onSwitchChange(bool state, uint32_t t)
@@ -195,17 +237,41 @@ class AlarmApp final : public dosa::OtaApplication
 
             alert_led.end();
             activity_led.end();
+            alert_level = AlertLevel::NONE;
 
+#ifdef DOSA_ALARM_BTN_FLUSH
             dispatchMessage(messages::GenericMessage(DOSA_COMMS_MSG_FLUSH, getDeviceNameBytes()), false);
+#endif
         } else {
             logln("Button press: alarm");
 
-            alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
-            alert_led.begin(0);
-
             getStats().count(stats::sec_panic);
             secAlert(SecurityLevel::PANIC);
+            setAlertLevel(AlertLevel::BREACH);
         }
+    }
+
+    void setAlertLevel(AlertLevel level)
+    {
+        if (level <= alert_level) {
+            return;
+        }
+
+        switch (level) {
+            default:
+            case AlertLevel::ERROR:
+                alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+                break;
+            case AlertLevel::ALERT:
+                alert_led.setSequence(DOSA_ALERT_SEQ_ON, DOSA_ALERT_SEQ_OFF);
+                break;
+            case AlertLevel::BREACH:
+                alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+                break;
+        }
+
+        alert_led.begin(0);
+        alert_level = level;
     }
 
     /**
@@ -215,6 +281,15 @@ class AlarmApp final : public dosa::OtaApplication
     static void triggerMessageForwarder(messages::Trigger const& trigger, comms::Node const& sender, void* context)
     {
         static_cast<AlarmApp*>(context)->onTrigger(trigger, sender);
+    }
+
+    /**
+     *
+     * Context forwarder for begin/end messages.
+     */
+    static void beginEndMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<AlarmApp*>(context)->onBeginEnd(msg, sender);
     }
 
     /**

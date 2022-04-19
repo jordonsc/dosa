@@ -5,21 +5,6 @@
  */
 #define FRAM_CS_PIN 10
 
-/**
- * Security alert message for sensors in lock state 'Alert'
- */
-#define DOSA_SEC_SENSOR_TRIP "Activity detected"
-
-/**
- * Security alert message for sensors in lock state 'Breach'
- */
-#define DOSA_SEC_SENSOR_BREACH "Breach detected"
-
-/**
- * Security alert message for sensors in lock state 'Breach'
- */
-#define DOSA_SEC_USER_PANIC "User panic"
-
 namespace dosa {
 
 namespace stats {
