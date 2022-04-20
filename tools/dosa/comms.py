@@ -115,7 +115,7 @@ class Comms:
             )
         )
 
-    def send(self, payload, tgt=None, wait_for_ack=False, timeout=1.0):
+    def send(self, payload, tgt=None, wait_for_ack=False, timeout=3.0):
         """
         Send a byte-array message to tgt.
 
@@ -133,7 +133,7 @@ class Comms:
         if wait_for_ack:
             msg_id = struct.unpack("<H", payload[0:2])[0]
             start_time = time.perf_counter()
-            while time.perf_counter() - start_time < timeout:
+            while (time.perf_counter() - start_time) < timeout:
                 msg = self.receive(timeout=0.1)
                 if msg is not None and msg.msg_code == Messages.ACK:
                     ack_id = struct.unpack("<H", msg.payload[27:29])[0]
