@@ -129,7 +129,13 @@ class SecBot:
 
         msg = ""
 
-        if packet.msg_code == dosa.Messages.LOG:
+        if packet.msg_code == dosa.Messages.BEGIN or packet.msg_code == dosa.Messages.BEGIN:
+            # These commands we'll ack but otherwise won't do anything special with them
+            self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
+            self.log(packet)
+
+        elif packet.msg_code == dosa.Messages.LOG:
+            # For log messages, we'll hunt down any error or critical messages and raise alerts
             log_level = struct.unpack("<B", packet.payload[27:28])[0]
             log_message = packet.payload[28:packet.payload_size].decode("utf-8")
             aux = " | " + dosa.LogLevel.as_string(log_level) + " | " + log_message
@@ -157,6 +163,7 @@ class SecBot:
                 )
 
         elif packet.msg_code == dosa.Messages.SEC:
+            # Security messages require an alert raised
             sec_level = struct.unpack("<B", packet.payload[27:28])[0]
             aux = " | " + dosa.SecurityLevel.as_string(sec_level)
             self.log(packet, aux)
@@ -175,12 +182,14 @@ class SecBot:
                        level=dosa.SecurityLevel.as_string(sec_level))
 
         elif packet.msg_code == dosa.Messages.FLUSH:
+            # Net flush - we'll dump our device registry in-line with flush protocol
             msg = "Network flush initiated by " + packet.device_name
             self.log(packet)
             self.devices.clear()
             self.last_ping = 0
 
         elif packet.msg_code == dosa.Messages.TRIGGER:
+            # Trigger messages may contain information about the trigger parameters, decode them and add to log msg
             trigger_type = struct.unpack("<B", packet.payload[27:28])[0]
             if trigger_type == 0:
                 self.log(packet, " | UNKNOWN")
@@ -200,13 +209,14 @@ class SecBot:
                 self.log(packet, " | AUTO")
 
         elif packet.msg_code == dosa.Messages.PLAY:
+            # A device has requested a play be run, we're responsible for that
             self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
             play = packet.payload[27:packet.payload_size].decode("utf-8")
-            self.log(packet, " | PLAY | " + play)
+            self.log(packet, " | " + play)
             self.run_play(play)
 
         elif packet.msg_code == dosa.Messages.PONG:
-            # Ignore in logs, but register/update device
+            # Ignore ping/pong messages in logs, but register/update device details when we see a pong
             match = False
             for d in self.devices:
                 if d.address == device.address:

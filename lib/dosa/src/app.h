@@ -41,6 +41,7 @@ using NetLogLevel = messages::LogMessageLevel;
 #define WIFI_INITIAL_ATTEMPTS 5    // Default number of attempts to connect wifi (first-run uses default)
 #define WIFI_RETRY_ATTEMPTS 5      // Number of attempts to connect wifi after init
 
+
 /**
  * Abstract App class that all devices should inherit.
  *
@@ -159,6 +160,7 @@ class App : public virtual Loggable, public StatefulApplication
         // Check for inbound UDP messages
         if (wifi_connected) {
             getContainer().getComms().processInbound();
+            recordCommsStats();
         }
     };
 
@@ -635,6 +637,28 @@ class App : public virtual Loggable, public StatefulApplication
         } else {
             return true;
         }
+    }
+
+    /**
+     * Checks the comms service for any stats it has ready and dispatches them (via stats via comms again) to the
+     * statsd server.
+     */
+    void recordCommsStats() {
+        auto& comms = getContainer().getComms();
+
+        if (comms.getAckRetries() != -1) {
+            getStats().gauge(stats::net_ack_retries, comms.getAckRetries());
+        }
+
+        if (comms.getAckTime() > 0) {
+            getStats().timing(stats::net_ack_time, comms.getAckTime());
+        }
+
+        if (comms.getUnackedTriggers() > 0) {
+            getStats().count(stats::net_unacked_triggers, comms.getUnackedTriggers());
+        }
+
+        comms.resetStats();
     }
 
     /**

@@ -196,10 +196,38 @@ class Comms : public Loggable
         return String(buffer);
     }
 
+    void resetStats()
+    {
+        unacked_triggers = 0;
+        ack_time = 0;
+        ack_retries = -1;
+    }
+
+    [[nodiscard]] uint16_t getUnackedTriggers() const
+    {
+        return unacked_triggers;
+    }
+
+    [[nodiscard]] int16_t getAckRetries() const
+    {
+        return ack_retries;
+    }
+
+    [[nodiscard]] uint32_t getAckTime() const
+    {
+        return ack_time;
+    }
+
    protected:
     Wifi& wifi;
     comms::Handler* handlers[DOSA_COMMS_MAX_HANDLERS] = {nullptr};
     uint16_t ack_msg_id = 0;
+
+    // Stats
+    uint16_t unacked_triggers = 0;
+    int16_t ack_retries = -1;
+    uint32_t ack_time = 0;
+    uint32_t ack_timer = 0;
 
     /**
      * Search registered message handlers and tell them to handle any matches.
@@ -228,6 +256,7 @@ class Comms : public Loggable
             return false;
         }
 
+        auto cmd = getCommandCode(payload);
         auto& udp = wifi.getUdp();
         ack_msg_id = 0;
 
@@ -248,18 +277,23 @@ class Comms : public Loggable
             return false;
         }
 
-        logln(
-            "SEND: " + getCommandCode(payload) + " to " + comms::ipToString(ip) + ":" + String(port),
-            LogLevel::TRACE);
+        logln("SEND: " + cmd + " to " + comms::ipToString(ip) + ":" + String(port), LogLevel::TRACE);
 
         // (semi) block until we receive an ack (non-ack inbound messages will interrupt)
         if (wait_for_ack) {
             auto start_time = millis();
+            if (retries == 0) {
+                // Time how long it takes to get an ack
+                ack_timer = start_time;
+            }
+
             do {
                 // Process inbound messages, an internal ack handler will set `ack_msg_id` as they come in
                 processInbound();
 
                 if (ack_msg_id == payload.getMessageId()) {
+                    ack_time = millis() - ack_timer;
+                    ack_retries = retries;
                     return true;
                 }
 
@@ -268,6 +302,9 @@ class Comms : public Loggable
             // Check if we're giving up
             if (retries == DOSA_ACK_MAX_RETRIES) {
                 logln("Failed to receive ack message for " + getCommandCode(payload), LogLevel::WARNING);
+                if (cmd == DOSA_COMMS_MSG_TRIGGER) {
+                    ++unacked_triggers;
+                }
                 return false;
             }
 

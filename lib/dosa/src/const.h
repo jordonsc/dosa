@@ -19,6 +19,9 @@ constexpr char const* sec_locked = "dosa.security.locked";
 constexpr char const* sec_alert = "dosa.security.alert";
 constexpr char const* sec_breached = "dosa.security.breached";
 constexpr char const* sec_panic = "dosa.security.panic";
+constexpr char const* net_ack_retries = "dosa.net.ack.retries";
+constexpr char const* net_ack_time = "dosa.net.ack.time";
+constexpr char const* net_unacked_triggers = "dosa.net.trigger.unacked";
 
 }  // namespace stats
 

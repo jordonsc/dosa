@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
-cd ${app}/..
+cd "${app}"/.. || exit
 
 ota_bucket="dosa-ota"
 dosa_version=${DOSA_VERSION}
 if [[ -z "${dosa_version}" ]]; then
-  dosa_version=$(cat lib/common/src/const.h | grep "#define DOSA_VERSION" | awk '{print $3}')
+  dosa_version=$(grep "#define DOSA_VERSION" <lib/common/src/const.h | awk '{print $3}')
 fi
 
+declare -a ota_apps=("door" "relay" "alarm" "pir" "sonar" "laser")
 source tools/app_specs.sh
 
 function syntax() {
@@ -62,6 +63,43 @@ if [[ "$1" != "setup" ]]; then
   fi
 fi
 
+function ota() {
+  app_key="$(getAppKey "$1")"
+  if [[ -z "${app_key}" ]]; then
+    echo
+    echo "Missing app key for $1! (not an OTA application?)"
+    exit 1
+  fi
+
+  fqbn=$(getFqbn "$1")
+  validateApp "$fqbn"
+
+  echo "Deploy OTA for ${app_key} version ${dosa_version}.."
+  echo
+  echo "Compile '$1' against ${fqbn}.."
+  arduino-cli compile -eb "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$1"
+
+  if [[ $? -eq 0 ]]; then
+    echo "Uploading to GCP.."
+
+    echo "${dosa_version}" >/tmp/dosa.version
+    gsutil cp /tmp/dosa.version "gs://${ota_bucket}/${app_key}/version"
+    gsutil setmeta -h Cache-Control:no-cache "gs://${ota_bucket}/${app_key}/version"
+    rm /tmp/dosa.version
+
+    gsutil cp "src/$1/build/${fqbn//:/.}/$1.ino.bin" "gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin"
+    gsutil setmeta -h Cache-Control:no-cache "gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin"
+    rm -rf "src/$1/build"
+
+    echo
+    echo "Deployment complete."
+  else
+    echo
+    echo "Compile error, aborting"
+    exit 1
+  fi
+}
+
 function validateApp() {
   if [ -z "$1" ]; then
     echo "Invalid application, aborting"
@@ -87,32 +125,32 @@ case $1 in
   exit $?
   ;;
 "compile")
-  validateApp $fqbn
+  validateApp "$fqbn"
   echo "Compile '$2' against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
+  arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
   exit $?
   ;;
 "compile-debug")
-  validateApp $fqbn
+  validateApp "$fqbn"
   echo "[DEBUG] Compile '$2' against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
+  arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   exit $?
   ;;
 "upload")
-  validateApp $fqbn
-  validatePort $3
+  validateApp "$fqbn"
+  validatePort "$3"
   echo "Uploading $2 to board on port $3.."
-  arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+  arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
   exit $?
   ;;
 "install")
-  validateApp $fqbn
-  validatePort $3
+  validateApp "$fqbn"
+  validatePort "$3"
   echo "Compile $1 against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
+  arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "Uploading $1 to board on port $3.."
-    arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+    arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
   else
     echo
     echo "Compile error, not uploading"
@@ -120,13 +158,13 @@ case $1 in
   fi
   ;;
 "install-debug")
-  validateApp $fqbn
-  validatePort $3
+  validateApp "$fqbn"
+  validatePort "$3"
   echo "[DEBUG] Compile $1 against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
+  arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "[DEBUG] Uploading $1 to board on port $3.."
-    arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+    arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
   else
     echo
     echo "Compile error, not uploading"
@@ -134,16 +172,16 @@ case $1 in
   fi
   ;;
 "debug")
-  validateApp $fqbn
-  validatePort $3
+  validateApp "$fqbn"
+  validatePort "$3"
   echo "[DEBUG] Compile $1 against ${fqbn}.."
-  arduino-cli compile -b ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
+  arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   if [[ $? -eq 0 ]]; then
     echo "[DEBUG] Uploading $1 to board on port $3.."
-    arduino-cli upload -b ${fqbn} -p $3 "src/$2"
+    arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
     sleep 2
     echo
-    tools/read_serial.py $3
+    tools/read_serial.py "$3"
   else
     echo
     echo "Compile error, not uploading"
@@ -151,17 +189,6 @@ case $1 in
   fi
   ;;
 "ota")
-  app_key="$(getAppKey $2)"
-  if [[ -z "${app_key}" ]]; then
-    echo
-    echo "Missing app key for $2! (not an OTA application?)"
-    exit 1
-  fi
-
-  validateApp $fqbn
-
-  echo "Deploy OTA for ${app_key} version ${dosa_version}.."
-
   echo -n "Validating bucket access.. "
   gsutil ls 2>/dev/null | grep "gs://${ota_bucket}/" &>/dev/null
   if [[ $? -eq 0 ]]; then
@@ -175,33 +202,21 @@ case $1 in
     exit 1
   fi
 
-  echo
-  echo "Compile '$2' against ${fqbn}.."
-  arduino-cli compile -eb ${fqbn} --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
-
-  if [[ $? -eq 0 ]]; then
-    echo "Uploading to GCP.."
-
-    echo ${dosa_version} >/tmp/dosa.version
-    gsutil cp /tmp/dosa.version gs://${ota_bucket}/${app_key}/version
-    gsutil setmeta -h Cache-Control:no-cache gs://${ota_bucket}/${app_key}/version
-    rm /tmp/dosa.version
-
-    gsutil cp "src/$2/build/${fqbn//:/.}/$2.ino.bin" gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin
-    gsutil setmeta -h Cache-Control:no-cache gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin
-    rm -rf "src/$2/build"
-
+  if [[ "$2" == "all" ]]; then
+    echo "Deploying OTA update for all apps.."
     echo
-    echo "Deployment complete."
+    for app in "${ota_apps[@]}"; do
+      ota "$app"
+    done
+    echo
+    echo "All OTA apps deployed"
   else
-    echo
-    echo "Compile error, aborting"
-    exit 1
+    ota "$2"
   fi
   ;;
 "monitor")
-  validatePort $2
-  tools/read_serial.py $2
+  validatePort "$2"
+  tools/read_serial.py "$2"
   ;;
 *)
   syntax
