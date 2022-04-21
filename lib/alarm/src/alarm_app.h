@@ -260,7 +260,7 @@ class AlarmApp final : public dosa::OtaApplication
         switch (level) {
             default:
             case AlertLevel::ERROR:
-                alert_led.setSequence(DOSA_BREACH_SEQ_ON, DOSA_BREACH_SEQ_OFF);
+                alert_led.setSequence(DOSA_ERROR_SEQ_ON, DOSA_ERROR_SEQ_OFF);
                 break;
             case AlertLevel::ALERT:
                 alert_led.setSequence(DOSA_ALERT_SEQ_ON, DOSA_ALERT_SEQ_OFF);
