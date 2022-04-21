@@ -3,11 +3,15 @@
 /**
  * Network settings - the number of times we'll send a UDP multicast message without receiving an ack in return before
  * giving up and assuming nobody is listening. Increase this number to deal with poor network transmission.
+ *
+ * NB: the total number of acks a device will send before giving up is this value + 1 (original request).
  */
-#define DOSA_ACK_MAX_RETRIES 3
+#define DOSA_ACK_MAX_RETRIES 4
 
 /**
  * Time in milliseconds to wait for an ack.
+ *
+ * Max time waiting for an ack is DOSA_ACK_WAIT_TIME * (DOSA_ACK_MAX_RETRIES + 1).
  */
 #define DOSA_ACK_WAIT_TIME 100
 
