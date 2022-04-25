@@ -26,6 +26,7 @@ class DoorApp final : public dosa::OtaApplication
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
+        container.getDoorWinch().setTickCallback(&doorTickForwarder, this);
 
         container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
             DOSA_COMMS_MSG_TRIGGER,
@@ -84,7 +85,7 @@ class DoorApp final : public dosa::OtaApplication
             return;
         }
 
-        // Set a flag that informs the main loop to open the door, or the interrupt handler
+        // Set a flag that informs the main loop to open the door
         if (canTrigger(trigger, sender)) {
             door_fire_from_udp = true;
         }
@@ -162,7 +163,7 @@ class DoorApp final : public dosa::OtaApplication
     }
 
     /**
-     * Creates a holding pattern when the door winch fails.
+     * Door winch has failed, report and set device to an error mode.
      */
     void setDoorErrorCondition(DoorErrorCode error)
     {
@@ -173,7 +174,6 @@ class DoorApp final : public dosa::OtaApplication
 
         switch (error) {
             default:
-                // Unknown error sequence: all lights blink together
                 bt_error_msg.setValue(DOSA_DOOR_ERR_UNKNOWN);
                 netLog(DOSA_DOOR_ERR_UNKNOWN, NetLogLevel::CRITICAL);
                 break;
@@ -200,7 +200,8 @@ class DoorApp final : public dosa::OtaApplication
      */
     bool doorInterruptCheck()
     {
-        // Check for UDP 'trg' packets - we'll disable the open flag and instead return an interrupt
+        // Check for UDP 'trg' packets - we'll disable the open-door-request flag and instead return an interrupt
+        // to the active winch loop.
         if (isWifiConnected()) {
             getContainer().getComms().processInbound();
 
@@ -212,6 +213,29 @@ class DoorApp final : public dosa::OtaApplication
 
         // else check the door switch
         return container.getDoorSwitch().getStatePassiveProcess();
+    }
+
+    /**
+     * Run continuously while the door is operating. This allows us to process inbound traffic, return acks, etc.
+     */
+    void doorTick()
+    {
+        if (isWifiConnected()) {
+            getContainer().getComms().processInbound();
+
+            // Door is already active, don't attempt to start the open sequence.
+            if (door_fire_from_udp) {
+                door_fire_from_udp = false;
+            }
+        }
+    }
+
+    /**
+     * Context forwarder for winch tick callback.
+     */
+    static void doorTickForwarder(void* context)
+    {
+        static_cast<DoorApp*>(context)->doorTick();
     }
 
     /**

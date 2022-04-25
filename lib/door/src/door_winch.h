@@ -46,6 +46,7 @@ enum class DoorErrorCode : byte
     SONAR_ERROR = 4,
 };
 
+typedef void (*tickCallback)(void*);
 typedef void (*winchErrorCallback)(DoorErrorCode, void*);
 typedef bool (*doorInterruptCallback)(void*);
 
@@ -62,6 +63,17 @@ class DoorWinch : public Loggable
         pinMode(PIN_MOTOR_CPR, INPUT);
 
         attachInterrupt(digitalPinToInterrupt(PIN_MOTOR_CPR), intCprTick, RISING);
+    }
+
+    /**
+     * Called every cycle to allow the main application to do some processing.
+     *
+     * SHOULD NOT BLOCK. QUICK OPERATIONS ONLY.
+     */
+    void setTickCallback(tickCallback cb, void* context = nullptr)
+    {
+        tick_cb = cb;
+        tick_cb_ctx = context;
     }
 
     /**
@@ -91,16 +103,15 @@ class DoorWinch : public Loggable
     void trigger()
     {
         auto open_ticks = open();
+        // If the sensor believes the door is already fully open, it will return 0 ticks (and have done nothing).
         if (open_ticks > 0) {
-            // If the sensor believes the door is already fully open, it will return 0 ticks (and have done nothing).
-
-        } else {
             logln("Opened in " + String(open_ticks) + " ticks");
         }
 
         // Open-wait
         auto openWaitTimer = millis();
         while (millis() - openWaitTimer < settings.getDoorOpenWait()) {
+            runTickCallback();
             if (interrupt_cb != nullptr && interrupt_cb(interrupt_cb_ctx)) {
                 // Callback has asked us to reset open-wait timer (activity near door)
                 openWaitTimer = millis();
@@ -116,12 +127,13 @@ class DoorWinch : public Loggable
         uint32_t max_delay = settings.getDoorCoolDown() * 2;
         auto seq_complete_time = millis();
         while (millis() - seq_complete_time < max_delay) {
+            runTickCallback();
             if ((interrupt_cb == nullptr || !interrupt_cb(interrupt_cb_ctx)) &&
                 (millis() - seq_complete_time > settings.getDoorCoolDown())) {
                 // Sensors clear & min delay exceeded - allow exit
                 break;
             }
-            delay(100);
+            delay(10);
         }
     }
 
@@ -145,6 +157,7 @@ class DoorWinch : public Loggable
 
         setMotor(true, 255);
         while (true) {
+            runTickCallback();
             sonar.process();
             if (checkForOpenKill() || (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
                 logln("Open halted at " + String(sonar.getDistance()) + "mm", LogLevel::DEBUG);
@@ -172,6 +185,7 @@ class DoorWinch : public Loggable
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
+            runTickCallback();
         }
 
         stopMotor();
@@ -219,6 +233,9 @@ class DoorWinch : public Loggable
 
     doorInterruptCallback interrupt_cb = nullptr;
     void* interrupt_cb_ctx = nullptr;
+
+    tickCallback tick_cb = nullptr;
+    void* tick_cb_ctx = nullptr;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.
@@ -335,6 +352,13 @@ class DoorWinch : public Loggable
         if (error_cb != nullptr) {
             stopMotor();
             error_cb(DoorErrorCode::SONAR_ERROR, error_cb_ctx);
+        }
+    }
+
+    void runTickCallback()
+    {
+        if (tick_cb != nullptr) {
+            tick_cb(tick_cb_ctx);
         }
     }
 };

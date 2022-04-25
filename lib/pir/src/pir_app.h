@@ -76,40 +76,41 @@ class PirApp final : public dosa::OtaApplication
     {
         auto& settings = container.getSettings();
 
-        if (grid[0] == 0 || ttl_delta < settings.getPirTotalDelta() ||
-            pixels_changed < settings.getPirMinPixels() || millis() - last_fired < REFIRE_DELAY) {
+        if (grid[0] == 0 || ttl_delta < settings.getPirTotalDelta() || pixels_changed < settings.getPirMinPixels() ||
+            millis() - last_fired < REFIRE_DELAY) {
             return false;
         }
 
         logln("IR grid motion detected");
         last_fired = millis();
 
-        switch (getLockState()) {
-            case LockState::UNLOCKED:
-                // Normal mode: dispatch trigger
-                logln("IR grid motion detected");
-                dispatchMessage(
-                    messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()),
-                    true);
-                getStats().count(stats::trigger);
-                break;
-            default:
-            case LockState::LOCKED:
-                // Standard lock, ignore
-                logln("Ignoring trip: locked");
-                getStats().count(stats::sec_locked);
-                break;
-            case LockState::ALERT:
-                // Security mode: dispatch sec alert
-                getStats().count(stats::sec_alert);
-                secAlert(SecurityLevel::ALERT);
-                break;
-            case LockState::BREACH:
-                // Security mode: dispatch sec alert
-                getStats().count(stats::sec_breached);
-                secAlert(SecurityLevel::BREACH);
-                break;
+        if (isLocked()) {
+            netLog("Trigger in locked state");
+            switch (getLockState()) {
+                default:
+                case LockState::LOCKED:
+                    // Standard lock, ignore
+                    logln("Ignoring trip: locked");
+                    getStats().count(stats::sec_locked);
+                    break;
+                case LockState::ALERT:
+                    // Security mode: dispatch sec alert
+                    getStats().count(stats::sec_alert);
+                    secAlert(SecurityLevel::ALERT);
+                    break;
+                case LockState::BREACH:
+                    // Security mode: dispatch sec alert
+                    getStats().count(stats::sec_breached);
+                    secAlert(SecurityLevel::BREACH);
+                    break;
+            }
+        } else {
+            // Normal mode: dispatch trigger
+            logln("IR grid motion detected");
+            dispatchMessage(messages::Trigger(messages::TriggerDevice::SENSOR_GRID, map, getDeviceNameBytes()), true);
+            getStats().count(stats::trigger);
         }
+
         return true;
     }
 

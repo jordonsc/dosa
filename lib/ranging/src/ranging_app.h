@@ -155,9 +155,11 @@ class RangingApp : public dosa::OtaApplication
      */
     void sendTrigger(uint16_t previous, uint16_t current)
     {
-        logln("Sensor TRIGGER: " + String(previous) + "mm -> " + String(current) + "mm");
+        String distance = String(previous) + "mm -> " + String(current) + "mm";
+        logln("Sensor TRIGGER: " + distance);
 
         if (isLocked()) {
+            netLog("Trigger in lock state: " + distance);
             switch (getLockState()) {
                 case LockState::LOCKED:
                     logln("Ignoring trip: locked");

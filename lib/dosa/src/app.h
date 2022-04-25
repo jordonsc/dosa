@@ -41,7 +41,6 @@ using NetLogLevel = messages::LogMessageLevel;
 #define WIFI_INITIAL_ATTEMPTS 5    // Default number of attempts to connect wifi (first-run uses default)
 #define WIFI_RETRY_ATTEMPTS 5      // Number of attempts to connect wifi after init
 
-
 /**
  * Abstract App class that all devices should inherit.
  *
@@ -285,31 +284,34 @@ class App : public virtual Loggable, public StatefulApplication
         if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
             logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
             return false;
-        } else if (isLocked()) {
-            switch (getLockState()) {
-                case LockState::LOCKED:
-                default:
-                    getStats().count(stats::sec_locked);
-                    logln("Ignoring trigger while device is locked");
-                    break;
-                case LockState::ALERT:
-                    getStats().count(stats::sec_alert);
-                    secAlert(SecurityLevel::ALERT);
-                    netLog("Lock violation by: " + sender_str, NetLogLevel::WARNING);
-                    break;
-                case LockState::BREACH:
-                    getStats().count(stats::sec_breached);
-                    secAlert(SecurityLevel::BREACH);
-                    netLog("Security breach by: " + sender_str, NetLogLevel::WARNING);
-                    break;
-            }
-            return false;
         } else {
-            logln("Accepting trigger from " + sender_str);
-        }
+            // Send reply ack, even if locked
+            getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
 
-        // Send reply ack
-        getContainer().getComms().dispatch(sender, messages::Ack(msg, getDeviceNameBytes()));
+            if (isLocked()) {
+                switch (getLockState()) {
+                    case LockState::LOCKED:
+                    default:
+                        getStats().count(stats::sec_locked);
+                        logln("Ignoring trigger while device is locked");
+                        break;
+                    case LockState::ALERT:
+                        getStats().count(stats::sec_alert);
+                        secAlert(SecurityLevel::ALERT);
+                        netLog("Lock violation by: " + sender_str, NetLogLevel::WARNING);
+                        break;
+                    case LockState::BREACH:
+                        getStats().count(stats::sec_breached);
+                        secAlert(SecurityLevel::BREACH);
+                        netLog("Security breach by: " + sender_str, NetLogLevel::WARNING);
+                        break;
+                }
+                return false;
+
+            } else {
+                logln("Accepting trigger from " + sender_str);
+            }
+        }
 
         return true;
     }
@@ -643,7 +645,8 @@ class App : public virtual Loggable, public StatefulApplication
      * Checks the comms service for any stats it has ready and dispatches them (via stats via comms again) to the
      * statsd server.
      */
-    void recordCommsStats() {
+    void recordCommsStats()
+    {
         auto& comms = getContainer().getComms();
 
         if (comms.getAckRetries() != -1) {
