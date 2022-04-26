@@ -5,7 +5,7 @@
  *
  * Red LED, blinks slowly when hearing a security alert, blinks rapidly when hearing a breach.
  */
-#define DOSA_LED_ALERT 5
+#define DOSA_LED_ALERT 8
 
 /**
  * Activity LED
