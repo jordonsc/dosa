@@ -14,21 +14,25 @@ class Snoop:
         self.auto_ack = ack
         self.print_map = map
         self.ignore_pings = ignore_pings
+        self.history = dosa.MessageLog()
 
     def run_snoop(self):
         while True:
             msg = self.comms.receive(timeout=None)
             aux = ""
 
-            if self.ignore_retries and (msg.msg_id == self.last_msg_id):
+            device = dosa.Device(msg=msg)
+            is_retry = self.history.validate(device, msg.msg_id)
+
+            if self.ignore_retries and is_retry:
                 continue
 
             if self.ignore_pings and (msg.msg_code == dosa.Messages.PING):
                 continue
 
             if msg.msg_code == dosa.Messages.ACK:
-                aux = " // ACK ID: " + str(struct.unpack("<H", msg.payload[27:29])[0])
-            elif msg.msg_code == dosa.Messages.TRIGGER and (msg.msg_id != self.last_msg_id):
+                continue
+            elif msg.msg_code == dosa.Messages.TRIGGER and not is_retry:
                 if self.auto_ack:
                     self.comms.send_ack(msg.msg_id_bytes(), msg.addr)
                     aux += " (replied)"

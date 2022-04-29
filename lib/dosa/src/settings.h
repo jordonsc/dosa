@@ -85,6 +85,23 @@ constexpr static uint16_t zero_16 = 0;
 namespace dosa {
 
 /**
+ * Indices 0-99 are reserved for global settings.
+ * Indices 100-199 are available for application-specific settings.
+ * Indices 200-255 are reserved for future use.
+ */
+enum class CfgItem : uint8_t
+{
+    DEVICE_NAME = 0,
+    PASSWORD = 1,
+    LOCK_STATE = 2,
+    WIFI_SSID = 3,
+    WIFI_PASSWORD = 4,
+    STATS_SVR_ADDR = 5,
+    STATS_SVR_PORT = 6,
+};
+
+
+/**
  * Structure of settings:
  *   Size   Type      Detail
  *   ----------------------------------

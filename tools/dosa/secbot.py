@@ -148,7 +148,10 @@ class SecBot:
             if device.device_name == self.comms.device_name.decode("utf-8"):
                 return
 
-            if log_level == dosa.LogLevel.CRITICAL:
+            if log_level == dosa.LogLevel.DEBUG:
+                # don't save debug logs on the server
+                return
+            elif log_level == dosa.LogLevel.CRITICAL:
                 msg = "Warning, " + packet.device_name + " critical. " + log_message + "."
             elif log_level == dosa.LogLevel.ERROR:
                 msg = "Warning, " + packet.device_name + " error. " + log_message + "."
