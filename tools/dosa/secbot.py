@@ -140,18 +140,21 @@ class SecBot:
             log_message = packet.payload[28:packet.payload_size].decode("utf-8")
             aux = " | " + dosa.LogLevel.as_string(log_level) + " | " + log_message
 
-            # For ALL log messages, we will ack and forward to the log server
-            self.log(packet, aux)
+            # Send an ack for all log messages
             self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
 
-            # But we raise incidents for, or vocalise own error messages
+            # Debug messages go no further, we won't log or action them
+            if log_level == dosa.LogLevel.DEBUG:
+                return
+
+            # Forward to log server
+            self.log(packet, aux)
+
+            # Do not raise incidents for, or vocalise own error messages
             if device.device_name == self.comms.device_name.decode("utf-8"):
                 return
 
-            if log_level == dosa.LogLevel.DEBUG:
-                # don't save debug logs on the server
-                return
-            elif log_level == dosa.LogLevel.CRITICAL:
+            if log_level == dosa.LogLevel.CRITICAL:
                 msg = "Warning, " + packet.device_name + " critical. " + log_message + "."
             elif log_level == dosa.LogLevel.ERROR:
                 msg = "Warning, " + packet.device_name + " error. " + log_message + "."
