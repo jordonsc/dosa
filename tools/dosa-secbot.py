@@ -18,8 +18,8 @@ def run_app(voice, engine):
             comms = dosa.Comms(DEVICE_NAME)
             secbot = SecBot(comms, voice=voice, engine=engine)
             secbot.run(announce=first_run)
-        except OSError as e:
-            # Network error, sleep and restart
+        except Exception as e:
+            # Most commonly this will be a network error (OSError or boto error)
             print("Fault: " + str(e))
             first_run = False
             time.sleep(1)
