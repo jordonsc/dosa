@@ -109,10 +109,10 @@ class RangingApp : public dosa::OtaApplication
             trigger_count = 0;
         } else {
             // Trigger-warn state: count up reads to de-noise until we're sure this is a real trigger
-            netLog(
+            logln(
                 "Sensor warning (" + String(trigger_count) + "): " + String(calibrated_distance) + "mm -> " +
                     String(distance) + "mm",
-                NetLogLevel::DEBUG);
+                LogLevel::DEBUG);
         }
     }
 

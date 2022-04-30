@@ -65,72 +65,6 @@ class AlarmApp final : public dosa::OtaApplication
             this);
 
         button.setCallback(&switchForwarder, this);
-
-        logln("Begin LinkedList test");
-        ll_settings.set(CfgItem::DEVICE_NAME, "Foo");
-        ll_settings.set(CfgItem::PASSWORD, String("Bar"));
-        ll_settings.set(CfgItem::STATS_SVR_PORT, uint16_t(1234));
-
-        if (ll_settings[CfgItem::DEVICE_NAME].getDataType() == LinkedListItemType::STRING) {
-            logln("Device Name: " + ll_settings[CfgItem::DEVICE_NAME].getString());
-        } else {
-            logln("Incorrect data type for Device Name");
-        }
-
-        if (ll_settings[CfgItem::PASSWORD].getDataType() == LinkedListItemType::STRING) {
-            logln("Password: " + ll_settings[CfgItem::PASSWORD].getString());
-        } else {
-            logln("Incorrect data type for Password");
-        }
-
-        if (ll_settings[CfgItem::STATS_SVR_PORT].getDataType() == LinkedListItemType::UINT16) {
-            logln("Stats Port: " + String(ll_settings[CfgItem::STATS_SVR_PORT].getUInt16()));
-        } else {
-            logln("Incorrect data type for Stats Port");
-        }
-
-        for (auto const& item : ll_settings) {
-            switch (item.getDataType()) {
-                case LinkedListItemType::NONE:
-                    logln("> None");
-                    break;
-                case LinkedListItemType::PTR:
-                    logln("> Pointer");
-                    break;
-                case LinkedListItemType::BOOL:
-                    logln("> " + String(item.getBool() ? "True" : "False"));
-                    break;
-                case LinkedListItemType::STRING:
-                    logln("> " + item.getString());
-                    break;
-                case LinkedListItemType::UINT8:
-                    logln("> " + String(item.getUInt8()));
-                    break;
-                case LinkedListItemType::UINT16:
-                    logln("> " + String(item.getUInt16()));
-                    break;
-                case LinkedListItemType::UINT32:
-                    logln("> " + String(item.getUInt32()));
-                    break;
-                case LinkedListItemType::INT8:
-                    logln("> " + String(item.getInt8()));
-                    break;
-                case LinkedListItemType::INT16:
-                    logln("> " + String(item.getInt16()));
-                    break;
-                case LinkedListItemType::INT32:
-                    logln("> " + String(item.getInt32()));
-                    break;
-                case LinkedListItemType::FLOAT32:
-                    logln("> " + String(item.getFloat32()));
-                    break;
-                case LinkedListItemType::FLOAT64:
-                    logln("> " + String(item.getFloat64()));
-                    break;
-            }
-        }
-
-        logln("end test");
     }
 
     void loop() override
@@ -163,7 +97,6 @@ class AlarmApp final : public dosa::OtaApplication
     Light alert_led;
     Switch button;
     AlertLevel alert_level = AlertLevel::NONE;
-    LinkedList<CfgItem> ll_settings;
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {

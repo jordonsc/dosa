@@ -16,7 +16,7 @@ function syntax() {
   echo "DOSA v${dosa_version}"
   echo
   echo "Usage: "
-  echo "  dosa (COMMAND) [APPLICATION] [PORT]"
+  echo "  dbuild (COMMAND) [APPLICATION] [PORT]"
   echo
   echo "Commands:"
   echo "  setup          :  Setup or update your local environment dependencies"

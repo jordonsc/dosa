@@ -25,6 +25,7 @@ enum class LinkedListItemType : uint8_t
     FLOAT64
 };
 
+template <class KeyClass>
 class LinkedListItem final
 {
    public:
@@ -36,6 +37,7 @@ class LinkedListItem final
 
     LinkedListItem(LinkedListItem const& item)
     {
+        key = item.key;
         data_type = item.data_type;
 
         switch (item.data_type) {
@@ -261,9 +263,19 @@ class LinkedListItem final
         return *(double*)value;
     }
 
+    void setKey(KeyClass v)
+    {
+        key = v;
+    }
+
+    [[nodiscard]] KeyClass getKey() const
+    {
+        return key;
+    }
+
     bool operator==(const LinkedListItem& rhs) const
     {
-        if (data_type != rhs.data_type) {
+        if (data_type != rhs.data_type || key != rhs.key) {
             return false;
         }
 
@@ -297,7 +309,7 @@ class LinkedListItem final
 
     bool operator!=(LinkedListItem const& rhs) const
     {
-        return !(rhs == *this);
+        return !operator==(rhs);
     }
 
     LinkedListItemType getDataType() const
@@ -306,6 +318,7 @@ class LinkedListItem final
     }
 
    private:
+    KeyClass key;
     void* value;
     LinkedListItemType data_type;
 };
@@ -316,39 +329,48 @@ template <class KeyClass>
 class LinkedList
 {
    public:
+    using ItemClass = LinkedListItem<KeyClass>;
+
     struct Iterator
     {
-        using iterator_category = std::random_access_iterator_tag;
+        using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
-        using value_type = LinkedListItem;
-        using pointer = LinkedListItem*;
-        using reference = LinkedListItem&;
+        using value_type = ItemClass;
+        using pointer = ItemClass*;
+        using reference = ItemClass&;
 
-        Iterator(pointer ptr) : item_ptr(ptr) {}
+        Iterator(pointer ptr, pointer last) : item_ptr(ptr), end(last) {}
 
-        LinkedListItem const& operator*() const
+        ItemClass const& operator*() const
         {
             return *item_ptr;
         }
 
-        LinkedListItem& operator*()
+        ItemClass& operator*()
         {
             return *item_ptr;
         }
 
-        LinkedListItem* operator->()
+        ItemClass* operator->()
         {
             return item_ptr;
         }
 
-        LinkedListItem const* operator->() const
+        ItemClass const* operator->() const
         {
             return item_ptr;
         }
 
         Iterator& operator++()
         {
-            ++item_ptr;
+            do {
+                ++item_ptr;
+
+                if (item_ptr == end) {
+                    break;
+                }
+            } while (item_ptr->getDataType() == LinkedListItemType::NONE);
+
             return *this;
         }
 
@@ -356,19 +378,6 @@ class LinkedList
         {
             Iterator tmp = *this;
             ++item_ptr;
-            return tmp;
-        }
-
-        Iterator& operator--()
-        {
-            --item_ptr;
-            return *this;
-        }
-
-        Iterator operator--(int)
-        {
-            Iterator tmp = *this;
-            --item_ptr;
             return tmp;
         }
 
@@ -382,73 +391,42 @@ class LinkedList
             return item_ptr != rhs.item_ptr;
         };
 
-        Iterator& operator+=(difference_type const& movement)
-        {
-            item_ptr += movement;
-            return (*this);
-        }
-
-        Iterator& operator-=(difference_type const& movement)
-        {
-            item_ptr -= movement;
-            return (*this);
-        }
-
-        Iterator operator+(difference_type const& movement)
-        {
-            auto original = item_ptr;
-            item_ptr += movement;
-            auto temp(*this);
-            item_ptr = original;
-            return temp;
-        }
-
-        Iterator operator-(difference_type const& movement)
-        {
-            auto original = item_ptr;
-            item_ptr -= movement;
-            auto temp(*this);
-            item_ptr = original;
-            return temp;
-        }
-
-        difference_type operator-(Iterator const& raw_iterator)
-        {
-            return std::distance(raw_iterator.getPtr(), this->getPtr());
-        }
-
        private:
         pointer item_ptr;
+        pointer end;
     };
 
     Iterator begin()
     {
-        return Iterator(&items[0]);
+        auto size = getSize();
+        return Iterator(&items[0], &items[size - 1]);
     }
 
     Iterator end()
     {
-        return Iterator(&items[(sizeof(KeyClass) * 8) - 1]);
+        auto size = getSize();
+        return Iterator(&items[size - 1], &items[size - 1]);
     }
 
-    void set(KeyClass key, LinkedListItem item)
+    void set(KeyClass key, ItemClass item)
     {
         items[LL_UTYPE(key)] = std::move(item);
+        items[LL_UTYPE(key)].setKey(key);
     }
 
-    [[nodiscard]] LinkedListItem& operator[](KeyClass key)
+    [[nodiscard]] ItemClass& operator[](KeyClass key)
     {
         return items[LL_UTYPE(key)];
     }
 
-    [[nodiscard]] LinkedListItem const& operator[](KeyClass key) const
+    [[nodiscard]] ItemClass const& operator[](KeyClass key) const
     {
         return items[LL_UTYPE(key)];
     }
 
     void clear(KeyClass key)
     {
-        items[LL_UTYPE(key)] = LinkedListItem();
+        items[LL_UTYPE(key)] = ItemClass();
     }
 
     [[nodiscard]] bool has(KeyClass key) const
@@ -457,7 +435,12 @@ class LinkedList
     }
 
    protected:
-    LinkedListItem items[sizeof(KeyClass) * 8];
+    size_t getSize() const
+    {
+        return 2 ^ (sizeof(KeyClass) * 8);
+    }
+
+    ItemClass items[2 ^ (sizeof(KeyClass) * 8)];
 };
 
 }  // namespace dosa

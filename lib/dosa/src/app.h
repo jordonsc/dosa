@@ -275,6 +275,12 @@ class App : public virtual Loggable, public StatefulApplication
         dispatchMessage(messages::Security(level, getDeviceNameBytes()), true);
     }
 
+    /**
+     * Validate if we can act on a trigger (or begin, or any other activation message) based on if the sender is a
+     * valid device in our device list and that we're not locked.
+     *
+     * Will ack the message, and raise alarms if we're in an alert state.
+     */
     bool canTrigger(messages::Payload const& msg, comms::Node const& sender)
     {
         String sender_name = Comms::getDeviceName(msg);
@@ -282,7 +288,7 @@ class App : public virtual Loggable, public StatefulApplication
         auto const& settings = getContainer().getSettings();
 
         if (!settings.isListenForAllDevices() && !settings.hasListenDevice(sender_name)) {
-            logln("Ignoring trigger from " + sender_str, LogLevel::DEBUG);
+            logln("Ignoring activation from " + sender_str, LogLevel::DEBUG);
             return false;
         } else {
             // Send reply ack, even if locked
@@ -293,7 +299,7 @@ class App : public virtual Loggable, public StatefulApplication
                     case LockState::LOCKED:
                     default:
                         getStats().count(stats::sec_locked);
-                        logln("Ignoring trigger while device is locked");
+                        logln("Ignoring activation while device is locked");
                         break;
                     case LockState::ALERT:
                         getStats().count(stats::sec_alert);
@@ -309,7 +315,7 @@ class App : public virtual Loggable, public StatefulApplication
                 return false;
 
             } else {
-                logln("Accepting trigger from " + sender_str);
+                logln("Accepting activation from " + sender_str);
             }
         }
 
