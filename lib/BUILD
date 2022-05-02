@@ -58,6 +58,7 @@ cc_library(
     ],
 )
 
+
 # DOSA communications
 cc_library(
     name = "comms",
@@ -75,6 +76,21 @@ cc_library(
         "//arduino:variant_nano_33_iot",
         # Requirements below are all genuine
         "//lib:messages",
+        "//lib:proto",
+    ],
+)
+
+# Protobuf messages
+cc_library(
+    name = "proto",
+    srcs = glob(["proto/src/**/*.cpp"]),
+    hdrs = glob(["proto/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["proto/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "@nanopb//:nanopb",
     ],
 )
 

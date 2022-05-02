@@ -27,6 +27,11 @@ namespace dosa {
  */
 namespace comms {
 
+/**
+ * Header bytes on a protobuf message.
+ */
+constexpr char const* DOSA_COMMS_PROTO_HEADER = "DP";
+
 struct Node
 {
     // NB: cannot use std::move, no r-value constructor on IPAddress

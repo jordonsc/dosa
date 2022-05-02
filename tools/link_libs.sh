@@ -27,7 +27,7 @@ ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_ver
 ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries" arduino/boards/inkplate/libraries
 ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/variants/Inkplate" arduino/variants/inkplate
 
-# Link custom Arduino libs -
+# Link Arduino-CLI installed libs to local repo -
 ln -s ~/Arduino/libraries/Adafruit_BusIO arduino/libraries/Adafruit_BusIO
 ln -s ~/Arduino/libraries/Adafruit_FRAM_SPI arduino/libraries/Adafruit_FRAM_SPI
 ln -s ~/Arduino/libraries/ArduinoBLE arduino/libraries/ArduinoBLE
@@ -60,3 +60,7 @@ ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
 ln -s ${app}/../lib/laser ~/Arduino/libraries/dosa_laser
 ln -s ${app}/../lib/monitor ~/Arduino/libraries/dosa_monitor
 ln -s ${app}/../lib/ota ~/Arduino/libraries/dosa_ota
+
+# Bazel-controlled dependencies need to be back-linked to Arduino library directory -
+ln -s ${app}/../bazel-dosa/external/nanopb ~/Arduino/libraries/nanopb
+

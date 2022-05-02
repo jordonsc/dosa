@@ -1,1 +1,3 @@
 pySerial
+protobuf
+grpcio-tools

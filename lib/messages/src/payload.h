@@ -10,6 +10,7 @@
 
 #define DOSA_COMMS_PAYLOAD_BASE_SIZE 27
 #define DOSA_COMMS_MAX_PAYLOAD_SIZE 10240  // 10kib
+#define DOSA_COMMS_PB_MIN_SIZE 9
 
 namespace dosa {
 namespace messages {

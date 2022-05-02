@@ -94,12 +94,17 @@ class Comms : public Loggable
      * every DOSA_ACK_WAIT_TIME ms until DOSA_ACK_MAX_RETRIES is exhausted.
      *
      * Returns true if successfully sent [and ack'd], false if not ack'd or not sent successfully.
+     *
+     * @deprecated - migrate to the protobuf format.
      */
     bool dispatch(comms::Node const& recipient, messages::Payload const& payload, bool wait_for_ack = false)
     {
-        return dispatch(recipient.ip, recipient.port, payload, wait_for_ack);
+        return dispatchMsg(recipient.ip, recipient.port, payload, wait_for_ack);
     }
 
+    /**
+     * @deprecated
+     */
     bool dispatch(IPAddress const& ip, unsigned long port, messages::Payload const& payload, bool wait_for_ack = false)
     {
         return dispatchMsg(ip, port, payload, wait_for_ack);
@@ -154,12 +159,15 @@ class Comms : public Loggable
         }
 
         auto data_size = uint32_t(udp.available());
-        if (data_size < DOSA_COMMS_PAYLOAD_BASE_SIZE) {
-            logln("Inbound packet under min size, flushing", dosa::LogLevel::WARNING);
+
+        // Protobuf message format -
+        // Protobuf messages contain a header 'DPXXX' where XXX is the command code.
+        if (data_size < DOSA_COMMS_PB_MIN_SIZE) {
+            logln("Inbound packet under min protobuf size, flushing", LogLevel::WARNING);
             udp.flush();
             return false;
         } else if (data_size > DOSA_COMMS_MAX_PAYLOAD_SIZE) {
-            logln("Inbound packet exceeds max capacity, flushing", dosa::LogLevel::WARNING);
+            logln("Inbound packet exceeds max capacity, flushing", LogLevel::WARNING);
             udp.flush();
             return false;
         }
@@ -167,12 +175,28 @@ class Comms : public Loggable
         char buffer[data_size];
         udp.read(buffer, data_size);
 
-        // Convert command code bytes into Arduino string format
+        // Both legacy and protobuf messages have the command code 2 bytes in
         char cmd_raw[4] = {0};
         memcpy(cmd_raw, buffer + 2, 3);
         String cmd_code(cmd_raw);
 
-        handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()));
+        bool legacy;
+        if (strncmp(buffer, comms::DOSA_COMMS_PROTO_HEADER, 2) == 0) {
+            // Protobuf message
+            // FIXME: it's technically possible for the message ID bytes to match "DP", confusing a legacy message with
+            //        a protobuf message (consider: prevent random ID gen from creating "DP" as a msg ID)
+            legacy = false;
+        } else {
+            // Legacy message
+            if (data_size < DOSA_COMMS_PAYLOAD_BASE_SIZE) {
+                logln("Inbound packet under min legacy size, flushing", LogLevel::WARNING);
+                udp.flush();
+                return false;
+            }
+            legacy = true;
+        }
+
+        handlePacket(cmd_code, buffer, data_size, comms::Node(udp.remoteIP(), udp.remotePort()), legacy);
         return true;
     }
 
@@ -232,10 +256,10 @@ class Comms : public Loggable
     /**
      * Search registered message handlers and tell them to handle any matches.
      */
-    void handlePacket(String const& cmd, char const* packet, uint32_t size, comms::Node const& sender)
+    void handlePacket(String const& cmd, char const* packet, uint32_t size, comms::Node const& sender, bool legacy)
     {
         for (auto& handler : handlers) {
-            if (handler != nullptr && handler->getCommandCode() == cmd) {
+            if (handler != nullptr && handler->getCommandCode() == cmd && handler->isLegacy() == legacy) {
                 handler->handlePacket(packet, size, sender);
             }
         }
@@ -243,6 +267,8 @@ class Comms : public Loggable
 
     /**
      * Recursive dispatch, retrying until an ack is received or attempts expire.
+     *
+     * @deprecated - migrate to the protobuf format.
      */
     bool dispatchMsg(
         IPAddress const& ip,

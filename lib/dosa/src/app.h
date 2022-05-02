@@ -2,6 +2,7 @@
 
 #include <ArduinoBLE.h>
 #include <dosa_common.h>
+#include <dosa_proto.h>
 
 #include <utility>
 

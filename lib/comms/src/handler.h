@@ -14,6 +14,14 @@ class Handler
     virtual ~Handler() = default;
 
     /**
+     * Return true if this handler is for legacy messages only. Returning false implies this is a protobuf handler.
+     */
+    [[nodiscard]] virtual bool isLegacy()
+    {
+        return true;
+    }
+
+    /**
      * The command code this handler responds to.
      */
     [[nodiscard]] virtual String const& getCommandCode() const = 0;

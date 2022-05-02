@@ -15,4 +15,4 @@ The DOSA build tool is your primary means of compiling & uploading to boards. It
 * Deploy OTA assets
 * Open a serial monitor on a USB port to listen to device logs
 
-> Run `./build` for a command-line reference
+> Run `./dbuild` for a command-line reference

@@ -42,8 +42,11 @@ else
   git clone https://github.com/e-radionicacom/Inkplate-Arduino-library.git "${inkplate_dir}"
 fi
 
+# Make sure Bazel has downloaded deps
+bazel build @nanopb//:nanopb
+
 # For Python applications
-pip3 install -r ${app}/pip-reqs.txt
+pip3 install --upgrade -r ${app}/pip-reqs.txt
 
 echo
 echo "Done"
