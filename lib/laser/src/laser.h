@@ -125,8 +125,7 @@ class Laser
 
                 // Device prints ASCII 'ERR' when it can't make a measurement
                 if ((data[3] == 'E' && data[4] == 'R' && data[5] == 'R') || (data[6] != '.')) {
-                    distance = 1;
-                    return true;
+                    return false;
                 }
 
                 distance = 0;
