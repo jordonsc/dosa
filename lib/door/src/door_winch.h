@@ -151,7 +151,7 @@ class DoorWinch : public Loggable
 
         waitForSonarReady();
         if (sonar.getDistance() > 0 && sonar.getDistance() < open_distance) {
-            logln("Door open-jam detecting, skipping open sequence", LogLevel::WARNING);
+            logln("Door open-jam detected, skipping open sequence", LogLevel::WARNING);
             return 0;
         }
 
@@ -313,8 +313,8 @@ class DoorWinch : public Loggable
         // Motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
             logln("Winch jammed (close sequence!)", dosa::LogLevel::WARNING);
+            stopMotor();
             if (error_cb != nullptr) {
-                stopMotor();
                 error_cb(DoorErrorCode::JAMMED, error_cb_ctx);
             }
             return true;
@@ -323,8 +323,8 @@ class DoorWinch : public Loggable
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
             logln("Door close sequence max time exceeded", dosa::LogLevel::WARNING);
+            stopMotor();
             if (error_cb != nullptr) {
-                stopMotor();
                 error_cb(DoorErrorCode::CLOSE_TIMEOUT, error_cb_ctx);
             }
             return true;

@@ -110,8 +110,10 @@ class DoorApp final : public dosa::OtaApplication
         container.getDoorWinch().trigger();
         container.getDoorLights().ready();
 
+        if (!isErrorState()) {
+            setDeviceState(messages::DeviceState::OK);
+        }
         getStats().timing(stats::sequence, millis() - start);
-        setDeviceState(messages::DeviceState::OK);
         getStats().count(stats::end);
         dispatchGenericMessage(DOSA_COMMS_MSG_END, true);
     }

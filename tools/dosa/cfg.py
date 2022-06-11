@@ -25,7 +25,8 @@ class Config:
             if device is None:
                 return
         else:
-            device = Device(0, 0, (target, 6901))
+            device = Device(device_type=DeviceType.UNKNOWN)
+            device.address = (target, 6901)
 
         opt = self.user_select_opt(device.device_type == DeviceType.UNKNOWN)
         if opt == 1:
@@ -329,8 +330,8 @@ class Config:
     def run_scan(self):
         ping = self.comms.build_payload(dosa.Messages.PING)
 
-        retries = 5
-        timeout = 0.1
+        retries = 8
+        timeout = 0.2
         self.devices = []
 
         print("Scanning..")
