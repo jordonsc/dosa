@@ -38,7 +38,7 @@ class SecBot:
         self.ping_interval = self.get_setting(["monitor", "ping"], 10)
 
         # Time in seconds before declaring a device offline
-        self.device_timeout = self.get_setting(["monitor", "device-timeout"], 300)
+        self.device_timeout = self.get_setting(["monitor", "device-timeout"], 600)
 
         # Vocalise unresponsive device recovery
         self.report_recovery = self.get_setting(["monitor", "report-recovery"], True)
