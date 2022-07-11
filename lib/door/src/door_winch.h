@@ -17,6 +17,7 @@
 // All times in milliseconds, see also dosa::settings.h for configurable values
 #define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
+#define STALL_PERIOD 500         // Time a motor cannot move before considering stalled
 
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
@@ -280,6 +281,7 @@ class DoorWinch : public Loggable
     bool checkForOpenKill()
     {
         auto run_time = millis() - seq_start_time;
+        static uint32_t stall_time = 0;
 
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
@@ -293,9 +295,17 @@ class DoorWinch : public Loggable
 
         // Check for motor stall
         if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
-            logln("Door blocked while opening");
-            stopMotor();
-            return true;
+            if (stall_time > 0) {
+                if (millis() - stall_time > STALL_PERIOD) {
+                    logln("Door blocked while opening");
+                    stopMotor();
+                    return true;
+                }
+            } else {
+                stall_time = millis();
+            }
+        } else {
+            stall_time = 0;
         }
 
         return false;
