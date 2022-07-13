@@ -32,7 +32,7 @@ class Wifi : public Loggable
         }
 
         reset();
-        ctrl.setHostname(hostname.c_str());
+        //ctrl.setHostname(hostname.c_str());
 
         return connectSequence(ssid, password, attempts);
     }
