@@ -18,7 +18,7 @@
 #define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
 #define STALL_PERIOD 500         // Time a motor cannot move before considering stalled
-#define SONAR_MAX_WAIT 3000      // Max time we wait for the sonar to report before declaring an error
+#define SONAR_MAX_WAIT 1000      // Max time we wait for the sonar to report before declaring an error
 
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
@@ -122,7 +122,7 @@ class DoorWinch : public Loggable
         }
 
         // Request the door close to the same degree as it was last opened + a coefficient to ensure the pulley is slack
-        auto close_ticks = close(settings.getDoorCloseTicks());
+        auto close_ticks = close(sonar_fault ? open_ticks : settings.getDoorCloseTicks());
         logln("Closed in " + String(close_ticks) + " ticks");
 
         // Close-wait (cool-down)
@@ -151,8 +151,11 @@ class DoorWinch : public Loggable
         resetCprTimer();
         uint32_t open_distance = settings.getDoorOpenDistance();
 
-        waitForSonarReady();
-        if (sonar.getDistance() > 0 && sonar.getDistance() < open_distance) {
+        // if the sonar fails, we'll use the door close ticks as a time-based open sequence
+        sonar_fault = !waitForSonarReady();
+        auto open_ticks = settings.getDoorCloseTicks() * 0.75;
+
+        if (!sonar_fault && (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
             logln("Door open-jam detected, skipping open sequence", LogLevel::WARNING);
             return 0;
         }
@@ -160,10 +163,19 @@ class DoorWinch : public Loggable
         setMotor(true, 255);
         while (true) {
             runTickCallback();
-            sonar.process();
-            if (checkForOpenKill() || (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
-                logln("Open halted at " + String(sonar.getDistance()) + "mm", LogLevel::DEBUG);
-                break;
+            if (sonar_fault) {
+                // Legacy/fallback mode
+                if (checkForOpenKill() || (int_cpr_ticks > open_ticks)) {
+                    logln("Open halted at " + String(int_cpr_ticks) + " ticks", LogLevel::DEBUG);
+                    break;
+                }
+            } else {
+                // Sonar apex detection
+                sonar.process();
+                if (checkForOpenKill() || (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
+                    logln("Open halted at " + String(sonar.getDistance()) + "mm", LogLevel::DEBUG);
+                    break;
+                }
             }
         }
 
@@ -238,6 +250,8 @@ class DoorWinch : public Loggable
 
     tickCallback tick_cb = nullptr;
     void* tick_cb_ctx = nullptr;
+
+    bool sonar_fault = false;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.
@@ -349,21 +363,22 @@ class DoorWinch : public Loggable
      *
      * This should be called before trying to read the sonar distance for the first time to ensure the value is valid.
      */
-    void waitForSonarReady()
+    bool waitForSonarReady()
     {
         auto start_time = millis();
         while (millis() - start_time < SONAR_MAX_WAIT) {
             if (sonar.process()) {
-                return;
+                return true;
             }
         }
 
         logln("Sonar not reporting data!", LogLevel::ERROR);
 
         if (error_cb != nullptr) {
-            stopMotor();
             error_cb(DoorErrorCode::SONAR_ERROR, error_cb_ctx);
         }
+
+        return false;
     }
 
     void runTickCallback()

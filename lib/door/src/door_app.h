@@ -8,7 +8,7 @@
 #define DOSA_DOOR_ERR_OPEN "Door OPEN timeout"
 #define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
 #define DOSA_DOOR_ERR_JAM "Door JAMMED"
-#define DOSA_DOOR_ERR_SONAR "Sonar fault"
+#define DOSA_DOOR_ERR_SONAR "Sonar fault, falling back to legacy mode"
 
 namespace dosa {
 
@@ -170,33 +170,34 @@ class DoorApp final : public dosa::OtaApplication
      */
     void setDoorErrorCondition(DoorErrorCode error)
     {
-        if (error == DoorErrorCode::SONAR_ERROR) {
-            netLog(DOSA_DOOR_ERR_SONAR, NetLogLevel::WARNING);
-            return;
-        }
-
-        container.getDoorLights().error();
-        setDeviceState(messages::DeviceState::CRITICAL);
-
         switch (error) {
             default:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_UNKNOWN);
                 netLog(DOSA_DOOR_ERR_UNKNOWN, NetLogLevel::CRITICAL);
+                setDeviceState(messages::DeviceState::UNKNOWN);
                 break;
 
             case DoorErrorCode::OPEN_TIMEOUT:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_OPEN);
                 netLog(DOSA_DOOR_ERR_OPEN, NetLogLevel::ERROR);
+                setDeviceState(messages::DeviceState::MINOR_FAULT);
                 break;
 
             case DoorErrorCode::CLOSE_TIMEOUT:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_CLOSE);
-                netLog(DOSA_DOOR_ERR_CLOSE, NetLogLevel::ERROR);
+                netLog(DOSA_DOOR_ERR_CLOSE, NetLogLevel::CRITICAL);
+                setDeviceState(messages::DeviceState::MAJOR_FAULT);
                 break;
 
             case DoorErrorCode::JAMMED:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_JAM);
                 netLog(DOSA_DOOR_ERR_JAM, NetLogLevel::CRITICAL);
+                setDeviceState(messages::DeviceState::CRITICAL);
+                break;
+
+            case DoorErrorCode::SONAR_ERROR:
+                netLog(DOSA_DOOR_ERR_SONAR, NetLogLevel::ERROR);
+                setDeviceState(messages::DeviceState::MINOR_FAULT);
                 break;
         }
     }

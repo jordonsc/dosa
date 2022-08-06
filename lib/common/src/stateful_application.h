@@ -20,7 +20,7 @@ class StatefulApplication
 
     [[nodiscard]] bool isErrorState() const
     {
-        return device_state >= messages::DeviceState::MINOR_FAULT;
+        return device_state > messages::DeviceState::MINOR_FAULT;
     }
 
    private:
