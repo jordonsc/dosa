@@ -18,6 +18,7 @@
 #define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
 #define STALL_PERIOD 500         // Time a motor cannot move before considering stalled
+#define SONAR_MAX_WAIT 3000      // Max time we wait for the sonar to report before declaring an error
 
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
@@ -351,7 +352,7 @@ class DoorWinch : public Loggable
     void waitForSonarReady()
     {
         auto start_time = millis();
-        while (millis() - start_time < 1000) {
+        while (millis() - start_time < SONAR_MAX_WAIT) {
             if (sonar.process()) {
                 return;
             }

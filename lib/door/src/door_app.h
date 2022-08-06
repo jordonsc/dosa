@@ -8,6 +8,7 @@
 #define DOSA_DOOR_ERR_OPEN "Door OPEN timeout"
 #define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
 #define DOSA_DOOR_ERR_JAM "Door JAMMED"
+#define DOSA_DOOR_ERR_SONAR "Sonar fault"
 
 namespace dosa {
 
@@ -169,9 +170,12 @@ class DoorApp final : public dosa::OtaApplication
      */
     void setDoorErrorCondition(DoorErrorCode error)
     {
-        auto& lights = container.getDoorLights();
+        if (error == DoorErrorCode::SONAR_ERROR) {
+            netLog(DOSA_DOOR_ERR_SONAR, NetLogLevel::WARNING);
+            return;
+        }
 
-        lights.error();
+        container.getDoorLights().error();
         setDeviceState(messages::DeviceState::CRITICAL);
 
         switch (error) {

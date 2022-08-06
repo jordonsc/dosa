@@ -130,6 +130,12 @@ class App : public virtual Loggable, public StatefulApplication
             &configMessageForwarder,
             this);
 
+        // Default flush handler
+        getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_FLUSH,
+            &flushMessageForwarder,
+            this);
+
         wifi_last_checked = millis();
         wifi_last_reconnected = millis();
 
@@ -595,6 +601,18 @@ class App : public virtual Loggable, public StatefulApplication
             }
             netLog(listen_msg, sender);
         }
+    }
+
+    /**
+     * FLS message received, reset device state.
+     *
+     * May be overridden.
+     */
+    virtual void onFlush(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        getStats().count("dosa.request.flush");
+        netLog("Flush request received from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+        setDeviceState(messages::DeviceState::OK);
     }
 
    private:
@@ -1133,6 +1151,14 @@ class App : public virtual Loggable, public StatefulApplication
     static void configMessageForwarder(messages::Configuration const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onConfig(msg, sender);
+    }
+
+    /**
+     * Context forwarder for flush messages.
+     */
+    static void flushMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onFlush(msg, sender);
     }
 };
 
