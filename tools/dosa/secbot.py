@@ -150,14 +150,12 @@ class SecBot:
 
             if log_level == dosa.LogLevel.CRITICAL:
                 msg = "Warning, " + packet.device_name + " critical. " + log_message + "."
-            elif log_level == dosa.LogLevel.ERROR:
-                msg = "Warning, " + packet.device_name + " error. " + log_message + "."
 
             if msg:
                 # Raise an incident for this log message
                 self.alert(
                     packet.device_name,
-                    packet.device_name + " critical",
+                    msg,
                     category=dosa.AlertCategory.NETWORK,
                     level=dosa.LogLevel.as_string(log_level)
                 )
