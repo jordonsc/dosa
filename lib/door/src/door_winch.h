@@ -23,6 +23,16 @@
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
 
+// Calibration thresholds
+#define WINCH_FALLBACK_OPEN_COEFFICIENT 0.7
+#define WINCH_FALLBACK_CLOSE_COEFFICIENT 1.0
+#define WINCH_CALIBRATE_TIMEOUT 3500
+#define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.7
+#define WINCH_CALIBRATE_ROLLBACK_TICKS 300
+
+// Forced fallback mode (use if sonar absent)
+#define DOOR_SONAR_FALLBACK 1
+
 namespace dosa {
 
 namespace {
@@ -46,6 +56,7 @@ enum class DoorErrorCode : byte
     CLOSE_TIMEOUT = 2,
     JAMMED = 3,
     SONAR_ERROR = 4,
+    CALIBRATE_TIMEOUT = 5
 };
 
 typedef void (*tickCallback)(void*);
@@ -122,8 +133,14 @@ class DoorWinch : public Loggable
         }
 
         // Request the door close to the same degree as it was last opened + a coefficient to ensure the pulley is slack
-        auto close_ticks = close(sonar_fault ? open_ticks : settings.getDoorCloseTicks());
+        auto close_ticks = close(
+            sonar_fault ? settings.getDoorCloseTicks() * WINCH_FALLBACK_CLOSE_COEFFICIENT
+                        : settings.getDoorCloseTicks());
         logln("Closed in " + String(close_ticks) + " ticks");
+
+        // Remove slack on the line
+        delay(1000);
+        calibrate();
 
         // Close-wait (cool-down)
         uint32_t max_delay = settings.getDoorCoolDown() * 2;
@@ -152,8 +169,12 @@ class DoorWinch : public Loggable
         uint32_t open_distance = settings.getDoorOpenDistance();
 
         // if the sonar fails, we'll use the door close ticks as a time-based open sequence
+#ifndef DOOR_SONAR_FALLBACK
         sonar_fault = !waitForSonarReady();
-        auto open_ticks = settings.getDoorCloseTicks() * 0.75;
+#else
+        sonar_fault = true;
+#endif
+        auto open_ticks = settings.getDoorCloseTicks() * WINCH_FALLBACK_OPEN_COEFFICIENT;
 
         if (!sonar_fault && (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
             logln("Door open-jam detected, skipping open sequence", LogLevel::WARNING);
@@ -204,6 +225,62 @@ class DoorWinch : public Loggable
 
         stopMotor();
         return int_cpr_ticks;
+    }
+
+    /**
+     * Opens the door until tension is detected, then rollback slightly.
+     *
+     * The purpose of this is to remove slack on the line, which allows the next open sequence to be consistent.
+     */
+    void calibrate()
+    {
+        logln("Door: CALIBRATE");
+        auto start_time = millis();
+        resetCprTimer();
+
+        setMotor(true, 255);
+
+        double max_tps = 0;
+        while (true) {
+            delay(10);
+            auto tps = getTicksPerSecond();
+            if (tps > max_tps) {
+                // Speed is increasing
+                max_tps = tps;
+            } else if (max_tps > 0 && (tps < (max_tps * WINCH_CALIBRATE_TENSION_COEFFICIENT))) {
+                // Tension detected, drop out
+                break;
+            } else if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
+                // Tension never detected, alert and drop out
+                logln("Calibrate timeout");
+                if (error_cb != nullptr) {
+                    error_cb(DoorErrorCode::CALIBRATE_TIMEOUT, error_cb_ctx);
+                }
+                break;
+            }
+        }
+
+        stopMotor();
+        delay(100);
+        resetCprTimer();
+        setMotor(false, 255);
+        start_time = millis();
+
+        // Rollback a little to undo the door breach during tension testing
+        while (int_cpr_ticks < WINCH_CALIBRATE_ROLLBACK_TICKS) {
+            delay(10);
+
+            // This is unlikely, but always have a timeout just in case
+            if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
+                logln("Calibrate timeout");
+                if (error_cb != nullptr) {
+                    error_cb(DoorErrorCode::CALIBRATE_TIMEOUT, error_cb_ctx);
+                }
+                break;
+            }
+        }
+
+        stopMotor();
     }
 
     void stopMotor()

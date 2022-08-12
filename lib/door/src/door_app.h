@@ -9,6 +9,7 @@
 #define DOSA_DOOR_ERR_CLOSE "Door CLOSE timeout"
 #define DOSA_DOOR_ERR_JAM "Door JAMMED"
 #define DOSA_DOOR_ERR_SONAR "Sonar fault, falling back to legacy mode"
+#define DOSA_DOOR_ERR_CALIBRATE_TO "Calibration timeout"
 
 namespace dosa {
 
@@ -197,6 +198,11 @@ class DoorApp final : public dosa::OtaApplication
 
             case DoorErrorCode::SONAR_ERROR:
                 netLog(DOSA_DOOR_ERR_SONAR, NetLogLevel::ERROR);
+                setDeviceState(messages::DeviceState::MINOR_FAULT);
+                break;
+
+            case DoorErrorCode::CALIBRATE_TIMEOUT:
+                netLog(DOSA_DOOR_ERR_CALIBRATE_TO, NetLogLevel::ERROR);
                 setDeviceState(messages::DeviceState::MINOR_FAULT);
                 break;
         }
