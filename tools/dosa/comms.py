@@ -74,7 +74,7 @@ class Comms:
         """
         # to receive multicast messages -
         self.mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.mc_sock.bind((self.MULTICAST_GROUP, self.MULTICAST_PORT))
+        self.mc_sock.bind(('', self.MULTICAST_PORT))
         self.mc_sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP,
                                 struct.pack("4sl", socket.inet_aton(self.MULTICAST_GROUP), socket.INADDR_ANY))
 
