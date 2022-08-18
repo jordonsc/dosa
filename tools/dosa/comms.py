@@ -10,6 +10,7 @@ class Messages:
     3-byte message codes used by UDP comms.
     """
     ACK = b"ack"
+    ALT = b"alt"
     LOG = b"log"
     SEC = b"sec"
     ONLINE = b"onl"

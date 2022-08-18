@@ -1,9 +1,4 @@
-COPTS = [
-    "-std=c++11",
-]
-
-LINKOPTS = [
-]
+load("//bazel:build.bzl", "COPTS", "LINKOPTS")
 
 cc_binary(
     name = "door",

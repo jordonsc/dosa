@@ -14,6 +14,7 @@ constexpr char const* trigger = "dosa.trigger";
 constexpr char const* begin = "dosa.begin";
 constexpr char const* end = "dosa.end";
 constexpr char const* sequence = "dosa.sequence";
+constexpr char const* alt = "dosa.alt";
 constexpr char const* ota = "dosa.ota";
 constexpr char const* sec_locked = "dosa.security.locked";
 constexpr char const* sec_alert = "dosa.security.alert";

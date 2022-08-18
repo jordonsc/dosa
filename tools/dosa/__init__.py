@@ -7,6 +7,7 @@ from dosa.comms import Messages, Message, Comms
 from dosa.cfg import Config
 from dosa.snoop import Snoop
 from dosa.ping import Ping
+from dosa.alt import Alt
 from dosa.trigger import Trigger
 from dosa.ota import Ota
 from dosa.flush import Flush

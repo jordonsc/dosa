@@ -17,8 +17,8 @@
 // All times in milliseconds, see also dosa::settings.h for configurable values
 #define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
-#define STALL_PERIOD 500         // Time a motor cannot move before considering stalled
-#define SONAR_MAX_WAIT 1000      // Max time we wait for the sonar to report before declaring an error
+#define STALL_PERIOD 150         // Time a motor cannot move before considering stalled
+#define SONAR_MAX_WAIT 100       // Max time we wait for the sonar to report before declaring an error
 
 // If defined, we allow the door to be interrupted during the close sequence
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
@@ -29,6 +29,7 @@
 #define WINCH_CALIBRATE_TIMEOUT 3500
 #define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.7
 #define WINCH_CALIBRATE_ROLLBACK_TICKS 300
+#define WINCH_CALIBRATE_PRE_DELAY 500
 
 // Forced fallback mode (use if sonar absent)
 #define DOOR_SONAR_FALLBACK 1
@@ -134,15 +135,37 @@ class DoorWinch : public Loggable
 
         // Request the door close to the same degree as it was last opened + a coefficient to ensure the pulley is slack
         auto close_ticks = close(
-            sonar_fault ? settings.getDoorCloseTicks() * WINCH_FALLBACK_CLOSE_COEFFICIENT
-                        : settings.getDoorCloseTicks());
+            fallback_mode ? settings.getDoorCloseTicks() * WINCH_FALLBACK_CLOSE_COEFFICIENT
+                          : settings.getDoorCloseTicks());
         logln("Closed in " + String(close_ticks) + " ticks");
 
-        // Remove slack on the line
-        delay(1000);
+        // Remove slack on the line, cooldown
+        delay(WINCH_CALIBRATE_PRE_DELAY);
         calibrate();
+        cooldown();
+    }
 
-        // Close-wait (cool-down)
+    /**
+     * Manual request to close the door by a fractional amount.
+     */
+    void rewind(unsigned long rewind_ticks)
+    {
+        // Request the door close to specified ticks
+        auto close_ticks = close(rewind_ticks);
+        logln("Rewound by " + String(close_ticks) + " ticks");
+
+        // Remove slack on the line, cooldown
+        delay(WINCH_CALIBRATE_PRE_DELAY);
+        calibrate();
+        cooldown();
+    }
+
+    /**
+     * Wait time after a sequence, to prevent an immediate secondary sequence while subjects clear the sensor zones.
+     */
+    void cooldown()
+    {
+        // Close-wait after a sequence has been executed
         uint32_t max_delay = settings.getDoorCoolDown() * 2;
         auto seq_complete_time = millis();
         while (millis() - seq_complete_time < max_delay) {
@@ -168,15 +191,16 @@ class DoorWinch : public Loggable
         resetCprTimer();
         uint32_t open_distance = settings.getDoorOpenDistance();
 
-        // if the sonar fails, we'll use the door close ticks as a time-based open sequence
 #ifndef DOOR_SONAR_FALLBACK
-        sonar_fault = !waitForSonarReady();
+        // if the sonar fails, we'll use the door close ticks as a time-based open sequence
+        fallback_mode = !waitForSonarReady();
 #else
-        sonar_fault = true;
+        // sonar disabled, use fallback mode
+        fallback_mode = true;
 #endif
         auto open_ticks = settings.getDoorCloseTicks() * WINCH_FALLBACK_OPEN_COEFFICIENT;
 
-        if (!sonar_fault && (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
+        if (!fallback_mode && (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
             logln("Door open-jam detected, skipping open sequence", LogLevel::WARNING);
             return 0;
         }
@@ -184,7 +208,7 @@ class DoorWinch : public Loggable
         setMotor(true, 255);
         while (true) {
             runTickCallback();
-            if (sonar_fault) {
+            if (fallback_mode) {
                 // Legacy/fallback mode
                 if (checkForOpenKill() || (int_cpr_ticks > open_ticks)) {
                     logln("Open halted at " + String(int_cpr_ticks) + " ticks", LogLevel::DEBUG);
@@ -328,7 +352,7 @@ class DoorWinch : public Loggable
     tickCallback tick_cb = nullptr;
     void* tick_cb_ctx = nullptr;
 
-    bool sonar_fault = false;
+    bool fallback_mode = false;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.

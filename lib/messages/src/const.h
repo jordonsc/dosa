@@ -22,6 +22,7 @@ typedef __uint64_t uint64_t;
 #define DOSA_COMMS_MSG_LOG "log"       // network-level log
 #define DOSA_COMMS_MSG_PONG "pon"      // pong reply from a ping
 #define DOSA_COMMS_MSG_TRIGGER "trg"   // sensor/switch has been tripped
+#define DOSA_COMMS_MSG_ALT "alt"       // alternative trigger
 #define DOSA_COMMS_MSG_CONFIG "cfg"    // update device configuration
 #define DOSA_COMMS_MSG_SECURITY "sec"  // security alert
 #define DOSA_COMMS_MSG_PLAY "pla"      // request sec-bot run a play

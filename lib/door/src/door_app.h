@@ -34,6 +34,11 @@ class DoorApp final : public dosa::OtaApplication
             DOSA_COMMS_MSG_TRIGGER,
             &triggerMessageForwarder,
             this);
+
+        container.getComms().newHandler<comms::StandardHandler<messages::Alt>>(
+            DOSA_COMMS_MSG_ALT,
+            &altMessageForwarder,
+            this);
     }
 
     void loop() override
@@ -44,13 +49,23 @@ class DoorApp final : public dosa::OtaApplication
         container.getDoorSwitch().process();
 
         // Check if the wifi handler has picked up a trigger request
-        if (door_fire_from_udp && !isErrorState()) {
-            doorSequence();
+        if (!isErrorState()) {
+            if (door_fire_from_udp) {
+                // Check for primary trigger
+                doorSequence();
 
-            // Clear out any pending trigger messages
-            while (getContainer().getComms().processInbound()) {
+                // Clear out any pending trigger messages
+                while (getContainer().getComms().processInbound()) {
+                }
+                door_fire_from_udp = false;
+            } else if (rewind_request > 0) {
+                // Check for rewind request (close by fractional amount + recalibrate)
+                rewindSequence();
+
+                while (getContainer().getComms().processInbound()) {
+                }
+                rewind_request = 0;
             }
-            door_fire_from_udp = false;
         }
 
         /**
@@ -62,7 +77,8 @@ class DoorApp final : public dosa::OtaApplication
 
    private:
     DoorContainer container;
-    bool door_fire_from_udp = false;  // Wifi request to open the door, sets a flag for the next loop
+    bool door_fire_from_udp = false;   // Wifi request to open the door, sets a flag for the next loop
+    unsigned long rewind_request = 0;  // Alt-trigger to close door and recalibrate
 
     void onDebugRequest(messages::GenericMessage const& msg, comms::Node const& sender) override
     {
@@ -89,7 +105,31 @@ class DoorApp final : public dosa::OtaApplication
 
         // Set a flag that informs the main loop to open the door
         if (canTrigger(trigger, sender)) {
+            netLog("Trigger by network", NetLogLevel::INFO);
             door_fire_from_udp = true;
+        }
+    }
+
+    /**
+     * Sensor has broadcasted an alt event.
+     */
+    void onAlt(messages::Alt const& alt, comms::Node const& sender)
+    {
+        if (msg_cache.validate(sender, alt.getMessageId())) {
+            return;
+        }
+
+        // Set a flag that informs the main loop to open the door
+        if (canTrigger(alt, sender)) {
+            if (alt.getCode() > 0 && alt.getCode() < 11) {
+                // Rewind request - "close" the door to the scale of alt.getCode()
+                rewind_request = getSettings().getDoorCloseTicks() * alt.getCode() / 10;
+                netLog(
+                    "Rewind requested, code: " + String(alt.getCode()) + "; ticks: " + String(rewind_request),
+                    NetLogLevel::INFO);
+            } else {
+                netLog("Ignoring unknown alt-trigger: " + String(alt.getCode()), NetLogLevel ::WARNING);
+            }
         }
     }
 
@@ -116,6 +156,29 @@ class DoorApp final : public dosa::OtaApplication
             setDeviceState(messages::DeviceState::OK);
         }
         getStats().timing(stats::sequence, millis() - start);
+        getStats().count(stats::end);
+        dispatchGenericMessage(DOSA_COMMS_MSG_END, true);
+    }
+
+    /**
+     * Fractional door close and recalibrate
+     */
+    void rewindSequence()
+    {
+        setDeviceState(messages::DeviceState::WORKING);
+        getStats().count(stats::begin);
+        auto start = millis();
+        dispatchGenericMessage(DOSA_COMMS_MSG_BEGIN, true);
+
+        container.getDoorLights().activity();
+        container.getDoorWinch().rewind(rewind_request);
+        container.getDoorLights().ready();
+
+        if (!isErrorState()) {
+            setDeviceState(messages::DeviceState::OK);
+        }
+
+        getStats().timing(stats::alt, millis() - start);
         getStats().count(stats::end);
         dispatchGenericMessage(DOSA_COMMS_MSG_END, true);
     }
@@ -155,6 +218,7 @@ class DoorApp final : public dosa::OtaApplication
             return;
         }
 
+        netLog("Trigger by physical button", NetLogLevel::INFO);
         doorSequence();
     }
 
@@ -273,6 +337,14 @@ class DoorApp final : public dosa::OtaApplication
     static void triggerMessageForwarder(messages::Trigger const& trigger, comms::Node const& sender, void* context)
     {
         static_cast<DoorApp*>(context)->onTrigger(trigger, sender);
+    }
+
+    /**
+     * Context forwarder for alt messages.
+     */
+    static void altMessageForwarder(messages::Alt const& trigger, comms::Node const& sender, void* context)
+    {
+        static_cast<DoorApp*>(context)->onAlt(trigger, sender);
     }
 };
 

@@ -26,6 +26,10 @@ parser.add_argument('-p', '--play', dest='play', action='store',
 parser.add_argument('-t', '--trigger', dest='trigger', default=False, nargs='?', action='store',
                     help='fire a trigger signal; target optional, else will broadcast')
 
+# Fire trigger
+parser.add_argument('--alt', dest='alt', action='store',
+                    help='convert a trigger message into an alt message with provided code')
+
 # Request OTA update
 parser.add_argument('-o', '--ota', dest='ota', default=False, nargs='?', action='store',
                     help='send an OTA update request; target optional, else will broadcast')
@@ -64,11 +68,18 @@ try:
         play = dosa.Play(comms=comms)
         play.run(args.play)
     elif args.trigger is not False:
-        trigger = dosa.Trigger(comms=comms)
-        if args.trigger:
-            trigger.fire(target=(args.trigger, 6901))
+        if args.alt is not None:
+            alt = dosa.Alt(comms=comms)
+            if args.trigger:
+                alt.fire(args.alt, target=(args.trigger, 6901))
+            else:
+                alt.fire(args.alt)
         else:
-            trigger.fire()
+            trigger = dosa.Trigger(comms=comms)
+            if args.trigger:
+                trigger.fire(target=(args.trigger, 6901))
+            else:
+                trigger.fire()
     elif args.ota is not False:
         ota = dosa.Ota(comms=comms)
         if args.ota:
