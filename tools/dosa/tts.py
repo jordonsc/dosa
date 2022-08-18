@@ -21,6 +21,9 @@ class Tts:
         self.polly = self.session.client("polly")
 
     def play(self, msg, wait=False, no_cache=False):
+        if self.voice is None or self.engine is None:
+            return
+
         msg_hash = self.get_msg_hash(msg)
         if no_cache or not self.has_cache(msg_hash):
             self.synthesise(msg)

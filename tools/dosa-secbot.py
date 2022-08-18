@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--daemon', dest='daemon', action='store_const', const=True, default=False,
                         help='run in background')
     parser.add_argument('-p', '--pid-file', dest='pid', action='store', help='daemon PID file')
-    parser.add_argument('-v', '--voice', dest='voice', action='store', default="Emma",
+    parser.add_argument('-v', '--voice', dest='voice', action='store', default=None,
                         help='bot voice (Emma, Amy, Brian)')
     parser.add_argument('-e', '--engine', dest='engine', action='store', default="neural",
                         help='TTS engine (neural, standard)')

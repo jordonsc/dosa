@@ -64,7 +64,12 @@ class SecBot:
         if announce:
             print("Stats server: " + self.statsd_server["server"] + ":" + str(self.statsd_server["port"]))
             print("Log server:   " + self.log_server["server"] + ":" + str(self.log_server["port"]))
-            self.tts.play("DOSA Security Bot online")
+
+            if self.tts.voice is not None:
+                print("TTS voice:    " + self.tts.voice)
+                self.tts.play("DOSA Security Bot online")
+            else:
+                print("TTS voice:    Not enabled")
 
         while True:
             self.do_heartbeat()
@@ -106,7 +111,8 @@ class SecBot:
                 )
 
                 # Vocalise an alert -
-                self.tts.play("Alert, " + d.device_name + " is not responding")
+                if self.tts is not None:
+                    self.tts.play("Alert, " + d.device_name + " is not responding")
 
                 # Raise an incident -
                 self.alert(
