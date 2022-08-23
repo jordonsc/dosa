@@ -15,9 +15,9 @@
 #define PIN_MOTOR_CS 21  // Motor analogue current input
 
 // All times in milliseconds, see also dosa::settings.h for configurable values
-#define MAX_DOOR_SEQ_TIME 20000  // Max time to open or close the door before declaring a system error
-#define MOTOR_CPR_WARMUP 1000    // Grace we give the motor to report CPR pulses before declaring a stall
-#define STALL_PERIOD 150         // Time a motor cannot move before considering stalled
+#define MAX_DOOR_SEQ_TIME 15000  // Max time to open or close the door before declaring a system error
+#define MOTOR_CPR_WARMUP 100     // Grace we give the motor to report CPR pulses before declaring a stall
+#define STALL_PERIOD 50          // Time a motor cannot move before considering stalled
 #define SONAR_MAX_WAIT 100       // Max time we wait for the sonar to report before declaring an error
 
 // If defined, we allow the door to be interrupted during the close sequence
