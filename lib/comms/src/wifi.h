@@ -24,7 +24,7 @@ class Wifi : public Loggable
    public:
     explicit Wifi(SerialComms* s = nullptr) : Loggable(s), ctrl(WiFi) {}
 
-    bool connect(String const& ssid, String const& password, uint8_t attempts = 10)
+    bool connect(String const& ssid, String const& password, uint8_t attempts = 3)
     {
         if (isConnected()) {
             logln("Wifi online, disconnecting..");

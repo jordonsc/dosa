@@ -38,7 +38,48 @@ Connect the FRAM wires:
 * white -> D10, green -> D11, blue -> D12
 * black -> ground-hub
   
-  
+
+### Motorised Winch
+#### Arduino
+Hubs:
+* 3.3v: 2x
+* GND: 2x
+
+Install headers on pins:
+  * A4, A5
+
+Connect the IR grid to pins:
+* green -> A4
+* yellow -> A5
+
+#### Blue LED
+Wire a header on the LED, pins from + to -:
+1. blue
+2. skip
+3. short with pin 5
+4. white
+5. black (scratch a "-" mark on the pin header)
+
+Connect to:
+* blue -> A1
+* white -> D9
+* black -> ground hub
+
+#### Red LED
+Wire a header on the LED, pins from + to -:
+1. green
+2. skip
+3. short with pin 5
+4. yellow
+5. black (scratch a "-" mark on the pin header)
+
+Connect to:
+* green -> A2
+* yellow -> D8
+* black -> ground hub
+
+
+
 ### IR Sensor
 #### Sparkfun IR Grid
 Install a 4x header on the _rear_ of the board and connect 4 wires, around 15cm long:

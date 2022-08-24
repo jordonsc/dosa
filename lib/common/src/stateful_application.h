@@ -18,9 +18,14 @@ class StatefulApplication
         device_state = deviceState;
     }
 
+    [[nodiscard]] bool isWarnState() const
+    {
+        return device_state >= messages::DeviceState::MINOR_FAULT;
+    }
+
     [[nodiscard]] bool isErrorState() const
     {
-        return device_state > messages::DeviceState::MINOR_FAULT;
+        return device_state > messages::DeviceState::MAJOR_FAULT;
     }
 
    private:

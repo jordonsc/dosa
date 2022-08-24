@@ -7,6 +7,7 @@
 #include "door_winch.h"
 
 #define PIN_SWITCH_DOOR 9
+#define PIN_SWITCH_ALT 8
 
 namespace dosa {
 

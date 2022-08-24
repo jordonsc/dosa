@@ -38,8 +38,8 @@ using NetLogLevel = messages::LogMessageLevel;
  */
 #define WIFI_CON_CHECK 500         // Time between checking health of wifi connection (ms)
 #define WIFI_RECONNECT_WAIT 15000  // Time before reattempting to connect wifi (ms)
-#define WIFI_INITIAL_ATTEMPTS 5    // Default number of attempts to connect wifi (first-run uses default)
-#define WIFI_RETRY_ATTEMPTS 5      // Number of attempts to connect wifi after init
+#define WIFI_INITIAL_ATTEMPTS 3    // Default number of attempts to connect wifi (first-run uses default)
+#define WIFI_RETRY_ATTEMPTS 1      // Number of attempts to connect wifi after init
 
 /**
  * Abstract App class that all devices should inherit.

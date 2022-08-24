@@ -276,11 +276,14 @@ class DoorWinch : public Loggable
                 break;
             } else if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
                 // Tension never detected, alert and drop out
-                logln("Calibrate timeout");
+                logln("Calibrate timeout detected, aborting calibration");
+                stopMotor();
+
                 if (error_cb != nullptr) {
                     error_cb(DoorErrorCode::CALIBRATE_TIMEOUT, error_cb_ctx);
                 }
-                break;
+
+                return;
             }
         }
 
@@ -296,11 +299,14 @@ class DoorWinch : public Loggable
 
             // This is unlikely, but always have a timeout just in case
             if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
-                logln("Calibrate timeout");
+                logln("Calibrate rollback timeout detected");
+                stopMotor();
+
                 if (error_cb != nullptr) {
                     error_cb(DoorErrorCode::CALIBRATE_TIMEOUT, error_cb_ctx);
                 }
-                break;
+
+                return;
             }
         }
 

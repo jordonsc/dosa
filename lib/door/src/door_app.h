@@ -1,5 +1,6 @@
 #pragma once
 
+#include <WiFiNINA.h>
 #include <dosa_ota.h>
 
 #include "door_container.h"
@@ -49,23 +50,26 @@ class DoorApp final : public dosa::OtaApplication
         container.getDoorSwitch().process();
 
         // Check if the wifi handler has picked up a trigger request
-        if (!isErrorState()) {
-            if (door_fire_from_udp) {
-                // Check for primary trigger
+
+        if (door_fire_from_udp) {
+            // Check for primary trigger
+            if (!isErrorState()) {
+                // Don't do this in an error state
                 doorSequence();
 
                 // Clear out any pending trigger messages
                 while (getContainer().getComms().processInbound()) {
                 }
-                door_fire_from_udp = false;
-            } else if (rewind_request > 0) {
-                // Check for rewind request (close by fractional amount + recalibrate)
-                rewindSequence();
-
-                while (getContainer().getComms().processInbound()) {
-                }
-                rewind_request = 0;
             }
+            door_fire_from_udp = false;
+        } else if (rewind_request > 0) {
+            // Check for rewind request (close by fractional amount + recalibrate)
+            // Rewind requests are allowed to be used to recover from an error state
+            rewindSequence();
+
+            while (getContainer().getComms().processInbound()) {
+            }
+            rewind_request = 0;
         }
 
         /**
@@ -150,11 +154,12 @@ class DoorApp final : public dosa::OtaApplication
 
         container.getDoorLights().activity();
         container.getDoorWinch().trigger();
-        container.getDoorLights().ready();
 
-        if (!isErrorState()) {
+        if (!isWarnState()) {
+            container.getDoorLights().ready();
             setDeviceState(messages::DeviceState::OK);
         }
+
         getStats().timing(stats::sequence, millis() - start);
         getStats().count(stats::end);
         dispatchGenericMessage(DOSA_COMMS_MSG_END, true);
@@ -235,29 +240,38 @@ class DoorApp final : public dosa::OtaApplication
      */
     void setDoorErrorCondition(DoorErrorCode error)
     {
+        auto& lights = container.getDoorLights();
         switch (error) {
             default:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_UNKNOWN);
                 netLog(DOSA_DOOR_ERR_UNKNOWN, NetLogLevel::CRITICAL);
                 setDeviceState(messages::DeviceState::UNKNOWN);
+                lights.sequenceError();
+                lights.error();
                 break;
 
             case DoorErrorCode::OPEN_TIMEOUT:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_OPEN);
                 netLog(DOSA_DOOR_ERR_OPEN, NetLogLevel::ERROR);
                 setDeviceState(messages::DeviceState::MINOR_FAULT);
+                container.getDoorLights().sequenceWarning();
+                lights.error();
                 break;
 
             case DoorErrorCode::CLOSE_TIMEOUT:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_CLOSE);
                 netLog(DOSA_DOOR_ERR_CLOSE, NetLogLevel::CRITICAL);
                 setDeviceState(messages::DeviceState::MAJOR_FAULT);
+                container.getDoorLights().sequenceError();
+                lights.error();
                 break;
 
             case DoorErrorCode::JAMMED:
                 bt_error_msg.setValue(DOSA_DOOR_ERR_JAM);
                 netLog(DOSA_DOOR_ERR_JAM, NetLogLevel::CRITICAL);
                 setDeviceState(messages::DeviceState::CRITICAL);
+                container.getDoorLights().sequenceError();
+                lights.error();
                 break;
 
             case DoorErrorCode::SONAR_ERROR:
@@ -268,6 +282,8 @@ class DoorApp final : public dosa::OtaApplication
             case DoorErrorCode::CALIBRATE_TIMEOUT:
                 netLog(DOSA_DOOR_ERR_CALIBRATE_TO, NetLogLevel::ERROR);
                 setDeviceState(messages::DeviceState::MINOR_FAULT);
+                container.getDoorLights().sequenceWarning();
+                lights.error();
                 break;
         }
     }

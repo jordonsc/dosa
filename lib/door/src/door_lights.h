@@ -6,10 +6,9 @@
 
 #include <ArduinoBLE.h>
 
-#define PIN_LED_SWITCH 8
-#define PIN_LED_READY 15
-#define PIN_LED_ACTIVITY 16
-#define PIN_LED_ERROR 17
+#define PIN_LED_A 15
+#define PIN_LED_B 16
+
 
 namespace dosa {
 
@@ -18,10 +17,8 @@ class DoorLights
    public:
     DoorLights()
     {
-        pinMode(PIN_LED_SWITCH, OUTPUT);
-        pinMode(PIN_LED_READY, OUTPUT);
-        pinMode(PIN_LED_ACTIVITY, OUTPUT);
-        pinMode(PIN_LED_ERROR, OUTPUT);
+        pinMode(PIN_LED_A, OUTPUT);
+        pinMode(PIN_LED_B, OUTPUT);
 
         off();
     }
@@ -31,7 +28,7 @@ class DoorLights
      */
     void off()
     {
-        set(false, false, false, false);
+        set(false, false);
     }
 
     /**
@@ -39,7 +36,7 @@ class DoorLights
      */
     void ready()
     {
-        set(true, true, false, false);
+        set(true, false);
     }
 
     /**
@@ -47,7 +44,7 @@ class DoorLights
      */
     void activity()
     {
-        set(false, false, true, false);
+        set(true, true);
     }
 
     /**
@@ -55,7 +52,7 @@ class DoorLights
      */
     void connecting()
     {
-        set(false, true, true, false);
+        set(false, false);
     }
 
     /**
@@ -63,50 +60,55 @@ class DoorLights
      */
     void error()
     {
-        set(false, false, false, true);
+        set(false, true);
     }
 
     /**
      * Enable/disable the door switch ring LED.
      */
-    void setSwitch(bool value)
+    void setLedA(bool value)
     {
-        digitalWrite(PIN_LED_SWITCH, value ? HIGH : LOW);
+        digitalWrite(PIN_LED_A, value ? HIGH : LOW);
     }
 
     /**
      * Enable/disable the green 'ready' LED.
      */
-    void setReady(bool value)
+    void setLedB(bool value)
     {
-        digitalWrite(PIN_LED_READY, value ? HIGH : LOW);
+        digitalWrite(PIN_LED_B, value ? HIGH : LOW);
     }
 
-    /**
-     * Enable/disable the blue 'activity' LED.
-     */
-    void setActivity(bool value)
-    {
-        digitalWrite(PIN_LED_ACTIVITY, value ? HIGH : LOW);
-    }
-
-    /**
-     * Enable/disable the red 'error' LED.
-     */
-    void setError(bool value)
-    {
-        digitalWrite(PIN_LED_ERROR, value ? HIGH : LOW);
-    }
 
     /**
      * Sets the state of all door controller lights.
      */
-    void set(bool door_switch, bool ready, bool activity, bool error)
+    void set(bool led_a, bool led_b)
     {
-        setSwitch(door_switch);
-        setReady(ready);
-        setActivity(activity);
-        setError(error);
+        setLedA(led_a);
+        setLedB(led_b);
+    }
+
+    void sequenceWarning()
+    {
+        for (int i = 0; i < 3; ++i) {
+            set(true, false);
+            delay(150);
+            set(false, true);
+            delay(150);
+        }
+        off();
+    }
+
+    void sequenceError()
+    {
+        for (int i = 0; i < 3; ++i) {
+            set(true, true);
+            delay(350);
+            set(false, false);
+            delay(250);
+        }
+        off();
     }
 };
 
