@@ -14,7 +14,12 @@ namespace dosa {
 class DoorContainer : public Container
 {
    public:
-    DoorContainer() : Container(), door_winch(&serial, settings, sonar), door_switch(PIN_SWITCH_DOOR, true) {}
+    DoorContainer()
+        : Container(),
+          door_winch(&serial, settings, sonar),
+          door_switch(PIN_SWITCH_DOOR, true),
+          recovery_switch(PIN_SWITCH_ALT, true)
+    {}
 
     [[nodiscard]] DoorWinch& getDoorWinch()
     {
@@ -31,6 +36,11 @@ class DoorContainer : public Container
         return door_switch;
     }
 
+    [[nodiscard]] Switch& getRecoverySwitch()
+    {
+        return recovery_switch;
+    }
+
     [[nodiscard]] Sonar& getSonar()
     {
         return sonar;
@@ -41,6 +51,7 @@ class DoorContainer : public Container
     DoorWinch door_winch;
     DoorLights door_lights;
     Switch door_switch;
+    Switch recovery_switch;
 };
 
 }  // namespace dosa

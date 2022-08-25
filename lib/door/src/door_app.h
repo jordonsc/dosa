@@ -27,6 +27,7 @@ class DoorApp final : public dosa::OtaApplication
 
         container.getDoorLights().ready();
         container.getDoorSwitch().setCallback(&doorSwitchStateChangeForwarder, this);
+        container.getRecoverySwitch().setCallback(&recoverySwitchStateChangeForwarder, this);
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
         container.getDoorWinch().setTickCallback(&doorTickForwarder, this);
@@ -46,8 +47,9 @@ class DoorApp final : public dosa::OtaApplication
     {
         OtaApplication::loop();
 
-        // Check the door switch
+        // Check the hardware switches
         container.getDoorSwitch().process();
+        container.getRecoverySwitch().process();
 
         // Check if the wifi handler has picked up a trigger request
 
@@ -166,10 +168,16 @@ class DoorApp final : public dosa::OtaApplication
     }
 
     /**
-     * Fractional door close and recalibrate
+     * Fractional door close and recalibrate.
+     *
+     * `rewind_request` property must first be set. If set to zero, the normal close value will be used.
      */
     void rewindSequence()
     {
+        if (rewind_request == 0) {
+            rewind_request = getSettings().getDoorCloseTicks();
+        }
+
         setDeviceState(messages::DeviceState::WORKING);
         getStats().count(stats::begin);
         auto start = millis();
@@ -177,9 +185,10 @@ class DoorApp final : public dosa::OtaApplication
 
         container.getDoorLights().activity();
         container.getDoorWinch().rewind(rewind_request);
-        container.getDoorLights().ready();
+        rewind_request = 0;
 
-        if (!isErrorState()) {
+        if (!isWarnState()) {
+            container.getDoorLights().ready();
             setDeviceState(messages::DeviceState::OK);
         }
 
@@ -228,11 +237,51 @@ class DoorApp final : public dosa::OtaApplication
     }
 
     /**
+     * When the recovery switch (red button) changes state.
+     */
+    void recoverySwitchStateChange(bool state)
+    {
+        if (!state) {
+            return;
+        }
+
+        container.getSerial().writeln("Recovery switch pressed");
+
+        if (isLocked()) {
+            netLog("Lock violation by physical button press", NetLogLevel::WARNING);
+            switch (getLockState()) {
+                default:
+                case LockState::ALERT:
+                    secAlert(SecurityLevel::ALERT);
+                    break;
+                case LockState::BREACH:
+                    secAlert(SecurityLevel::BREACH);
+                    break;
+            }
+            return;
+        }
+
+        netLog("Recovery by physical button", NetLogLevel::INFO);
+
+        // Perform a full rewind (100% of close-ticks)
+        rewind_request = getSettings().getDoorCloseTicks();
+        rewindSequence();
+    }
+
+    /**
      * Context forwarder for door switch callback.
      */
     static void doorSwitchStateChangeForwarder(bool state, void* context)
     {
         static_cast<DoorApp*>(context)->doorSwitchStateChange(state);
+    }
+
+    /**
+     * Context forwarder for recovery switch callback.
+     */
+    static void recoverySwitchStateChangeForwarder(bool state, void* context)
+    {
+        static_cast<DoorApp*>(context)->recoverySwitchStateChange(state);
     }
 
     /**
