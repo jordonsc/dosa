@@ -27,9 +27,12 @@
 #define WINCH_FALLBACK_OPEN_COEFFICIENT 0.7
 #define WINCH_FALLBACK_CLOSE_COEFFICIENT 1.0
 #define WINCH_CALIBRATE_TIMEOUT 3500
-#define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.7
+#define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.8
 #define WINCH_CALIBRATE_ROLLBACK_TICKS 300
 #define WINCH_CALIBRATE_PRE_DELAY 500
+
+// Door power
+#define WINCH_MAX_POWER 180
 
 // Forced fallback mode (use if sonar absent)
 #define DOOR_SONAR_FALLBACK 1
@@ -205,7 +208,7 @@ class DoorWinch : public Loggable
             return 0;
         }
 
-        setMotor(true, 255);
+        setMotor(true, WINCH_MAX_POWER);
         while (true) {
             runTickCallback();
             if (fallback_mode) {
@@ -240,7 +243,7 @@ class DoorWinch : public Loggable
         seq_start_time = millis();
         resetCprTimer();
 
-        setMotor(false, 255);
+        setMotor(false, WINCH_MAX_POWER);
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
@@ -262,7 +265,7 @@ class DoorWinch : public Loggable
         auto start_time = millis();
         resetCprTimer();
 
-        setMotor(true, 255);
+        setMotor(true, WINCH_MAX_POWER);
 
         double max_tps = 0;
         while (true) {
@@ -290,7 +293,7 @@ class DoorWinch : public Loggable
         stopMotor();
         delay(100);
         resetCprTimer();
-        setMotor(false, 255);
+        setMotor(false, WINCH_MAX_POWER);
         start_time = millis();
 
         // Rollback a little to undo the door breach during tension testing
