@@ -15,6 +15,10 @@ class DeviceType:
     POWER_TOGGLE = 110
     MOTOR = 112
     LIGHT = 113
+    POWER_GRID = 120
+    BATTERY = 121
+    SOLAR_PANEL = 122
+    POWER_MONITOR = 123
 
     @staticmethod
     def as_string(x):
@@ -42,6 +46,14 @@ class DeviceType:
             return "Motorised Winch"
         elif x == DeviceType.LIGHT:
             return "Light Controller"
+        elif x == DeviceType.POWER_GRID:
+            return "Power Grid"
+        elif x == DeviceType.BATTERY:
+            return "Battery"
+        elif x == DeviceType.SOLAR_PANEL:
+            return "Solar Panel"
+        elif x == DeviceType.POWER_MONITOR:
+            return "Power Monitor"
         else:
             return "Unknown (" + str(x) + ")"
 

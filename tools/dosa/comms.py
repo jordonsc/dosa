@@ -157,7 +157,7 @@ class Comms:
 
     def receive(self, timeout=5.0, max_size=10240):
         """
-        Wait for an return a DOSA Message object containing a received payload.
+        Wait for a return DOSA Message object containing a received payload.
         """
         start_time = time.perf_counter()
 
