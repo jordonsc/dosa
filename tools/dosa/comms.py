@@ -25,6 +25,8 @@ class Messages:
     PONG = b"pon"
     CONFIG_SETTING = b"cfg"
     PLAY = b"pla"
+    REQ_STAT = b"req"
+    STATUS = b"sta"
 
 
 class Message:

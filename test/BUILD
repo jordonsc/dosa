@@ -8,6 +8,7 @@ cc_test(
         "messages/alt.cc",
         "messages/log_msg.cc",
         "messages/trigger.cc",
+        "messages/stat.cc",
         "test.cc",
     ],
     copts = COPTS,

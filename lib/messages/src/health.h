@@ -31,6 +31,12 @@ enum class DeviceType : uint8_t
     POWER_TOGGLE = 110,  // Power toggle switch
     MOTOR_WINCH = 112,   // Motorised winch
     LIGHT = 113,         // Light controller
+
+    // Power devices
+    POWER_GRID = 120,     // Multi-component power grid
+    BATTERY = 121,        // Battery
+    SOLAR_PANEL = 122,    // PV
+    POWER_MONITOR = 123,  // Power meter
 };
 
 enum class DeviceState : uint8_t

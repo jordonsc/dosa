@@ -8,4 +8,5 @@
 #include "log_message.h"
 #include "pong.h"
 #include "security.h"
+#include "stat.h"
 #include "trigger.h"

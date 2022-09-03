@@ -1,4 +1,4 @@
-#pragma once
+#pragma oncestatus_size
 
 #include <cstring>
 

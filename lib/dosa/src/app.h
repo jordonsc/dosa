@@ -57,7 +57,8 @@ class App : public virtual Loggable, public StatefulApplication
           bt_device_name(dosa::bt::char_device_name, BLERead | BLEWrite, 20),
           bt_set_pin(dosa::bt::char_set_pin, BLEWrite, 50),
           bt_set_wifi(dosa::bt::char_set_wifi, BLEWrite, 255)
-    {}
+    {
+    }
 
     /**
      * Arduino init.
@@ -134,6 +135,12 @@ class App : public virtual Loggable, public StatefulApplication
         getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
             DOSA_COMMS_MSG_FLUSH,
             &flushMessageForwarder,
+            this);
+
+        // Default stat handler
+        getContainer().getComms().newHandler<comms::StandardHandler<messages::GenericMessage>>(
+            DOSA_COMMS_MSG_REQ_STAT,
+            &reqMessageForwarder,
             this);
 
         wifi_last_checked = millis();
@@ -612,7 +619,26 @@ class App : public virtual Loggable, public StatefulApplication
     {
         getStats().count("dosa.request.flush");
         netLog("Flush request received from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
-        setDeviceState(messages::DeviceState::OK);
+    }
+
+    /**
+     * REQ message received, return a stat message.
+     *
+     * May be overridden.
+     */
+    virtual void onRequestStat(messages::GenericMessage const& msg, comms::Node const& sender)
+    {
+        getStats().count("dosa.request.req-stat");
+        netLog("Request-stat received from '" + Comms::getDeviceName(msg) + "' (" + comms::nodeToString(sender) + ")");
+
+        // Send reply StatusMessage
+        getContainer().getComms().dispatch(
+            sender,
+            messages::StatusMessage(
+                static_cast<uint16_t>(messages::StatusFormat::STATUS_ONLY),
+                String(static_cast<uint8_t>(getDeviceState())).c_str(),
+                1,
+                getSettings().getDeviceNameBytes()));
     }
 
    private:
@@ -1159,6 +1185,14 @@ class App : public virtual Loggable, public StatefulApplication
     static void flushMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
     {
         static_cast<App*>(context)->onFlush(msg, sender);
+    }
+
+    /**
+     * Context forwarder for req-stat messages.
+     */
+    static void reqMessageForwarder(messages::GenericMessage const& msg, comms::Node const& sender, void* context)
+    {
+        static_cast<App*>(context)->onRequestStat(msg, sender);
     }
 };
 
