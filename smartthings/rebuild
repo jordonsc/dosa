@@ -1,6 +1,10 @@
 #!/bin/bash
 
-source ids
-smartthings edge:drivers:package edge && \
+app=$(python3 -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+cd "${app}/.." || exit
+
+source smartthings/ids
+
+smartthings edge:drivers:package smartthings && \
 smartthings edge:drivers:publish $DOSA_DRIVER -C $DOSA_CHANNEL && \
 smartthings edge:drivers:install $DOSA_DRIVER -C $DOSA_CHANNEL $1 $2

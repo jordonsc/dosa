@@ -28,13 +28,13 @@ function lifecycle.device_init(driver, device)
         device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(0))
         device.profile.components["load"]:emit_event(capabilities.switch.switch.off())
         device:online()
-    elseif dosa_id == "dosa-d:" then
+    elseif dosa_id == "renogy-d:" then
         device:emit_event(capabilities.doorControl.door.closed())
         device:online()
-    elseif dosa_id == "dosa-r:" then
+    elseif dosa_id == "renogy-r:" then
         device:emit_event(capabilities.switch.switch.off())
         device:online()
-    elseif dosa_id == "dosa-s:" then
+    elseif dosa_id == "renogy-s:" then
         device:emit_event(capabilities.motionSensor.motion.inactive())
         device:online()
     else

@@ -82,10 +82,10 @@ function ota() {
   if [[ $? -eq 0 ]]; then
     echo "Uploading to GCP.."
 
-    echo "${dosa_version}" >/tmp/dosa.version
-    gsutil cp /tmp/dosa.version "gs://${ota_bucket}/${app_key}/version"
+    echo "${dosa_version}" >/tmp/renogy.version
+    gsutil cp /tmp/renogy.version "gs://${ota_bucket}/${app_key}/version"
     gsutil setmeta -h Cache-Control:no-cache "gs://${ota_bucket}/${app_key}/version"
-    rm /tmp/dosa.version
+    rm /tmp/renogy.version
 
     gsutil cp "src/$1/build/${fqbn//:/.}/$1.ino.bin" "gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin"
     gsutil setmeta -h Cache-Control:no-cache "gs://${ota_bucket}/${app_key}/build-${dosa_version}.bin"

@@ -1,4 +1,7 @@
-class DosaSmartException(Exception):
+from dosa.exc import DosaException
+
+
+class DosaSmartException(DosaException):
     pass
 
 

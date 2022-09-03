@@ -1,4 +1,3 @@
-import struct
 import pathlib
 import json
 
@@ -116,8 +115,8 @@ class MessageLog:
 
 
 def get_config_file():
-    home_file = pathlib.Path(pathlib.Path.home(), ".dosa", "config")
-    system_file = pathlib.Path("/", "etc", "dosa", "config")
+    home_file = pathlib.Path(pathlib.Path.home(), ".renogy", "config")
+    system_file = pathlib.Path("/", "etc", "renogy", "config")
 
     if home_file.exists() and home_file.is_file():
         return home_file

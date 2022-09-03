@@ -33,11 +33,11 @@ function command_handlers.fallback(_, device, command)
 
     if string.sub(device.device_network_id, 1, 4) == "bt1-" then
         command_handlers.bt1(device, command)
-    elseif dosa_type == "dosa-d:" then
+    elseif dosa_type == "renogy-d:" then
         command_handlers.door.exec(device, command)
-    elseif dosa_type == "dosa-r:" then
+    elseif dosa_type == "renogy-r:" then
         command_handlers.relay.exec(device, command)
-    elseif dosa_type == "dosa-s:" then
+    elseif dosa_type == "renogy-s:" then
         command_handlers.sensor.exec(device, command)
     end
 end

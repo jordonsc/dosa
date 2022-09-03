@@ -55,19 +55,19 @@ function hub_server.tick(self)
 
     if dvc_meta.type == "bt1" then
         --
-    elseif dvc_meta.type == "dosa-d" then
+    elseif dvc_meta.type == "renogy-d" then
         if msg.code == "bgn" then
             device:emit_event(capabilities.doorControl.door.opening())
         elseif msg.code == "end" then
             device:emit_event(capabilities.doorControl.door.closed())
         end
-    elseif dvc_meta.type == "dosa-r" then
+    elseif dvc_meta.type == "renogy-r" then
         if msg.code == "bgn" then
             device:emit_event(capabilities.switch.switch.on())
         elseif msg.code == "end" then
             device:emit_event(capabilities.switch.switch.off())
         end
-    elseif dvc_meta.type == "dosa-s" then
+    elseif dvc_meta.type == "renogy-s" then
         if msg.code == "bgn" or msg.code == "trg" then
             device:emit_event(capabilities.motionSensor.motion.active())
             self.driver:call_with_delay(10, function()
@@ -78,7 +78,7 @@ function hub_server.tick(self)
             device:emit_event(capabilities.motionSensor.motion.inactive())
         end
     else
-        log.debug(string.format("SVR: unknown dosa type: '%s'", dvc_meta.type))
+        log.debug(string.format("SVR: unknown renogy type: '%s'", dvc_meta.type))
     end
 end
 

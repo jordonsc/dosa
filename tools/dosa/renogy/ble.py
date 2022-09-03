@@ -2,7 +2,7 @@ import gatt
 import logging
 import time
 
-from dosa.exceptions import *
+from dosa.renogy.exceptions import *
 
 
 class DeviceManager(gatt.DeviceManager):

@@ -28,15 +28,15 @@ function devices.create_bt1_meta(device_id)
 end
 
 function devices.create_dosa_sensor_meta(device_id)
-    return devices.create_meta("dosa-s", device_id, device_id, "sensor.v1", "DOSA Networks")
+    return devices.create_meta("renogy-s", device_id, device_id, "sensor.v1", "DOSA Networks")
 end
 
 function devices.create_dosa_relay_meta(device_id)
-    return devices.create_meta("dosa-r", device_id, device_id, "relay.v1", "DOSA Networks")
+    return devices.create_meta("renogy-r", device_id, device_id, "relay.v1", "DOSA Networks")
 end
 
 function devices.create_dosa_door_meta(device_id)
-    return devices.create_meta("dosa-d", device_id, device_id, "door.v1", "DOSA Networks")
+    return devices.create_meta("renogy-d", device_id, device_id, "door.v1", "DOSA Networks")
 end
 
 function devices.track(self, msg, addr, type)
@@ -64,19 +64,19 @@ function devices.register(self, driver, msg, addr, add_device)
         if add_device then
             driver:try_create_device(self.create_dosa_sensor_meta(msg.device_name))
         end
-        self:track(msg, addr, "dosa-s")
+        self:track(msg, addr, "renogy-s")
     elseif msg.device_type[1] == 110 then
         -- Power Toggle
         if add_device then
             driver:try_create_device(self.create_dosa_relay_meta(msg.device_name))
         end
-        self:track(msg, addr, "dosa-r")
+        self:track(msg, addr, "renogy-r")
     elseif msg.device_type[1] == 112 then
         -- Door/motor
         if add_device then
             driver:try_create_device(self.create_dosa_door_meta(msg.device_name))
         end
-        self:track(msg, addr, "dosa-d")
+        self:track(msg, addr, "renogy-d")
     elseif msg.device_type[1] == 120 then
         -- Renogy BT-1 dongle
         if add_device then

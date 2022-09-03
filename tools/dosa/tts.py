@@ -13,11 +13,11 @@ class Tts:
         self.voice = voice
         self.engine = engine
         self.output_format = "mp3"
-        self.tts_cache = os.path.join(os.path.expanduser("~"), ".dosa", "tts-cache")
+        self.tts_cache = os.path.join(os.path.expanduser("~"), ".renogy", "tts-cache")
 
-        # Create a client using the credentials and region defined in the [dosa] section of the AWS credentials
+        # Create a client using the credentials and region defined in the [renogy] section of the AWS credentials
         # file (~/.aws/credentials)
-        self.session = Session(profile_name="dosa")
+        self.session = Session(profile_name="renogy")
         self.polly = self.session.client("polly")
 
     def play(self, msg, wait=False, no_cache=False):

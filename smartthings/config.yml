@@ -1,5 +1,5 @@
 name: 'DOSA'
-packageKey: 'sh.shq.st-dosa'
+packageKey: 'sh.shq.st-renogy'
 permissions:
   discovery: {}
   lan: {}

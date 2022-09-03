@@ -25,9 +25,9 @@ class SecBot:
         self.config = dosa.Config(self.comms)
         self.history = dosa.MessageLog()
 
-        # Create a client using the credentials and region defined in the [dosa] section of the AWS credentials
+        # Create a client using the credentials and region defined in the [renogy] section of the AWS credentials
         # file (~/.aws/credentials)
-        self.session = Session(profile_name="dosa")
+        self.session = Session(profile_name="renogy")
         self.sns = self.session.client("sns")
 
         # -- Settings from config file --
@@ -81,7 +81,7 @@ class SecBot:
 
         # Send a heartbeat if we're stale
         if ct - self.last_heartbeat > self.heartbeat_interval:
-            self.comms.send("dosa.secbot.heartbeat:1|c".encode(),
+            self.comms.send("renogy.secbot.heartbeat:1|c".encode(),
                             (self.statsd_server["server"], self.statsd_server["port"]))
             self.last_heartbeat = ct
 

@@ -1,19 +1,6 @@
 # DOSA SmartThings Integration
-This project integrates DOSA and supporting devices into the SmartThings ecosystem.
-
-In order to do this, you require another Wifi & BLE-capable device to act as the LAN edge, a Raspberry Pi being an ideal
-platform.
-
-## Python Server
-The Python server acts as a LAN hub for the SmartThings hub to communicate with. In addition to working with the ST hub,
-it has two core functions:
-
-1. Listen for DOSA network traffic
-2. Polls a Renogy BT-1 dongle and reads battery information
-
-## SmartThings Drivers
-The SmartThings Drivers need to be installed on the hub, this allows the hub to communicate the with Python Server
-and receive the DOSA & power grid data.
+This project creates SmartThings Edge drivers for the DOSA platform. By using Edge drivers, the automation within a 
+SmartThings Hub will always remain and execute locally.
 
 ## Getting Started with SmartThings
 * [SmartThings CLI](https://github.com/SmartThingsCommunity/smartthings-cli/releases)
@@ -29,10 +16,6 @@ and receive the DOSA & power grid data.
 `smartthings devices` to kick off the SmartThings login. Once done, you'll be able to see what hubs you have and what
 devices are configured on each hub.
 
-### Python Requirements
-The Python dependencies are not installed as part of the main DOSA setup script, so add them in:
-
-    pip3 install -r requirements.txt
 
 ## Building 
 #### Build the edge drivers
@@ -42,7 +25,7 @@ This is your primary compilation phase. The final path is the path to the `edge`
 
 eg:
 
-    smartthings edge:drivers:package smartthings/edge
+    smartthings edge:drivers:package smartthings
 
 You should get an output like this:
 
@@ -73,10 +56,10 @@ You only need to do this once _per hub_:
 
 #### To tail logs:
 
-    source ids
+    source smartthings/ids
     smartthings edge:drivers:logcat $DOSA_DRIVER --hub-address <hub IP address>
 
 #### Quick rebuild:
 For every modification, you need to re-package, publish & install. This script will do all three in a single run:
 
-    ./rebuild -H <your hub ID>
+    smartthings/rebuild -H <your hub ID>

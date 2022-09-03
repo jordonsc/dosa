@@ -1,3 +1,5 @@
 pySerial
 boto3
 python-daemon
+gatt
+libscrc

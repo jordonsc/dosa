@@ -2,9 +2,9 @@ from threading import Timer
 import logging
 import time
 
-from dosa.ble import DeviceManager, Device
-from dosa.utilities import create_request_payload, parse_charge_controller_info, parse_set_load_response, bytes_to_int
-from dosa.exceptions import *
+from dosa.renogy.ble import DeviceManager, Device
+from dosa.renogy.utilities import create_request_payload, parse_charge_controller_info, parse_set_load_response, bytes_to_int
+from dosa.renogy.exceptions import *
 
 DEVICE_ID = 255
 NOTIFY_CHAR_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
