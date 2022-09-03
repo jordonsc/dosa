@@ -30,10 +30,10 @@ components:
   - id: load
     capabilities:
       - id: powerMeter
-        name: Load Current
+        name: Load Power
         version: 1
       - id: energyMeter
-        name: Discharge AH
+        name: Discharge kWh
         version: 1
       - id: switch
         name: Load

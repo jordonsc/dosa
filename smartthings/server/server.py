@@ -11,16 +11,13 @@ poll_interval = 30  # read data interval (seconds)
 
 
 def on_data_received(app: Bt1Client, data):
-    logging.info("Battery SOC: %s", data["battery_percentage"])
-    logging.info("Battery V:   %s", data["battery_voltage"])
-    logging.info("PV Watts:    %s", data["pv_power"])
-
-    # ST Capability Map:
-    # Battery -
-    # Battery SOC           battery_percentage
-    # Battery Voltage       battery_voltage
-    # PV -
-    # Load -
+    logging.info("Battery SOC:   %s", data["battery_percentage"])
+    logging.info("Battery V:     %s", data["battery_voltage"])
+    logging.info("PV Watts:      %s", data["pv_power"])
+    logging.info("PV V:          %s", data["pv_voltage"])
+    logging.info("PV Charge:     %s", data["power_generation_today"])
+    logging.info("Load current:  %s", data["load_power"])
+    logging.info("Discharge kWh: %s", data["discharging_amp_hours_today"] * data["battery_voltage"])
 
 
 def main():

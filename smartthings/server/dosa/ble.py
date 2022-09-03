@@ -10,10 +10,6 @@ class DeviceManager(gatt.DeviceManager):
         super().__init__(adapter_name)
         logging.debug("Adapter status: %s", "powered" if self.is_powered() else "unpowered")
 
-    def device_discovered(self, device):
-        super().device_discovered(device)
-        logging.info("Discovered %s (%s)", device.alias(), device.mac_address)
-
     def is_powered(self) -> bool:
         return self.is_adapter_powered
 
