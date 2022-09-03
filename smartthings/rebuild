@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source ids
+smartthings edge:drivers:package edge && \
+smartthings edge:drivers:publish $DOSA_DRIVER -C $DOSA_CHANNEL && \
+smartthings edge:drivers:install $DOSA_DRIVER -C $DOSA_CHANNEL $1 $2

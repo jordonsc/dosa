@@ -1,0 +1,13 @@
+# DOSA Relay
+name: relay.v1
+components:
+  - id: main
+    capabilities:
+      - id: switch
+        name: Relay
+        version: 1
+      - id: refresh
+        name: Refresh
+        version: 1
+    categories:
+      - name: Switch

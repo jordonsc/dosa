@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Current driver/channel information -
+export DOSA_DRIVER="90ab51b2-eb99-4c7d-9f4e-d2dc797d14d2"
+export DOSA_CHANNEL="0d663ddd-0660-4844-9dab-b36f3d5b3e5b"

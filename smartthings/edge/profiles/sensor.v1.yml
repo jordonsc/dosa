@@ -1,0 +1,13 @@
+# DOSA Sensor
+name: sensor.v1
+components:
+  - id: main
+    capabilities:
+      - id: motionSensor
+        name: Motion Sensor
+        version: 1
+      - id: refresh
+        name: Refresh
+        version: 1
+    categories:
+      - name: MotionSensor

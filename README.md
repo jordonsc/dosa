@@ -11,6 +11,7 @@ Docs
 * [Configuring Devices](docs/Configuring.md)
 * [Command Line Interface](docs/CLI.md)
 * [Over-The-Air updates](docs/OTA.md)
+* [SmartThings Integration](docs/SmartThings.md)
 * [Guide to using graphics](docs/Graphics.md)
 * [Troubleshooting](docs/Troubleshooting.md)
 

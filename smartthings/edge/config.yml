@@ -1,0 +1,5 @@
+name: 'DOSA'
+packageKey: 'sh.shq.st-dosa'
+permissions:
+  discovery: {}
+  lan: {}

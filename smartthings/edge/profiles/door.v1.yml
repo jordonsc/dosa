@@ -1,0 +1,13 @@
+# DOSA Door/Winch
+name: door.v1
+components:
+  - id: main
+    capabilities:
+      - id: doorControl
+        name: Door
+        version: 1
+      - id: refresh
+        name: Refresh
+        version: 1
+    categories:
+      - name: Door

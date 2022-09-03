@@ -43,7 +43,7 @@ else
 fi
 
 # For Python applications
-pip3 install -r ${app}/pip-reqs.txt
+pip3 install -r ${app}/requirements.txt
 
 echo
 echo "Done"
