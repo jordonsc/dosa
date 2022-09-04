@@ -19,7 +19,6 @@ FUNCTION = {
 
 def bytes_to_int(bs, offset, length):
     # Reads data from a list of bytes, and converts to an int
-    # Bytes2Int(bs, 3, 2)
     ret = 0
     if len(bs) < (offset + length):
         return ret
@@ -85,8 +84,9 @@ def parse_charge_controller_info(bs):
         'max_discharging_power_today': bytes_to_int(bs, 35, 2),
         'charging_amp_hours_today': bytes_to_int(bs, 37, 2),
         'discharging_amp_hours_today': bytes_to_int(bs, 39, 2),
-        'power_generation_today': bytes_to_int(bs, 41, 2),
-        'power_generation_total': bytes_to_int(bs, 59, 4)
+        'power_generation_today': bytes_to_int(bs, 41, 2),  # kWh / 10,000
+        'power_generation_total': bytes_to_int(bs, 59, 4),  # kWh / 10,000
+        'load_state': bytes_to_int(bs, 67, 1) & 0x01,
     }
 
     charging_status_code = bytes_to_int(bs, 67, 2) & 0x00ff

@@ -28,8 +28,6 @@ class PowerGrid:
             self.from_data(data)
 
     def from_data(self, data: dict):
-        logging.debug("Function: ", data['function'])
-
         self.battery_soc = data['battery_percentage']
         self.battery_voltage = data['battery_voltage']
         self.battery_temperature = data['battery_temperature']
