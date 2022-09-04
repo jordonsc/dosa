@@ -12,6 +12,7 @@ Docs
 * [Command Line Interface](docs/CLI.md)
 * [Over-The-Air updates](docs/OTA.md)
 * [SmartThings Integration](docs/SmartThings.md)
+* [Renogy Integration](docs/Renogy.md)
 * [Guide to using graphics](docs/Graphics.md)
 * [Troubleshooting](docs/Troubleshooting.md)
 
@@ -104,6 +105,9 @@ Hardware components:
 
 Display Monitor
 ---------------
+
+> DEPRECATED
+
 * Board: `Croduino_Boards:Inkplate:Inkplate6`
 * Application: `monitor`
 * Designation: None
