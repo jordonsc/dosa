@@ -53,7 +53,7 @@ class PowerGrid:
         payload += struct.pack("<H", self.pv_provided)
 
         payload += struct.pack("<B", int(self.load_state))
-        payload += struct.pack("<H", self.load_power)
+        payload += struct.pack("<H", round(self.load_power))
         payload += struct.pack("<H", round(self.load_consumed))
 
         payload += struct.pack("<h", self.controller_temperature)
