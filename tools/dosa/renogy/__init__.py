@@ -18,7 +18,7 @@ class PowerGrid:
         self.pv_voltage = 0
         self.pv_provided = 0
 
-        self.load_active = False
+        self.load_state = False
         self.load_power = 0
         self.load_consumed = 0
 
@@ -36,9 +36,9 @@ class PowerGrid:
         self.pv_voltage = data['pv_voltage']
         self.pv_provided = data['power_generation_today']
 
-        self.load_active = bool(data['function'])
+        self.load_state = data['load_state']
         self.load_power = data['load_power']
-        self.load_consumed = data['discharging_amp_hours_today'] * 12.5
+        self.load_consumed = data['discharging_amp_hours_today'] * 13
 
         self.controller_temperature = data['controller_temperature']
 
@@ -52,7 +52,7 @@ class PowerGrid:
         payload += struct.pack("<H", self.pv_voltage * 10)
         payload += struct.pack("<H", self.pv_provided)
 
-        payload += struct.pack("<B", int(self.load_active))
+        payload += struct.pack("<B", int(self.load_state))
         payload += struct.pack("<H", self.load_power)
         payload += struct.pack("<H", round(self.load_consumed))
 
@@ -102,7 +102,7 @@ class RenogyBridge:
             if msg.msg_code == dosa.Messages.PING:
                 # send PONG reply with load state
                 logging.debug("PING from {}:{}".format(msg.addr[0], msg.addr[1]))
-                payload = b'0x780x01' if self.power_grid.load_active else b'0x780x00'
+                payload = b'0x780x01' if self.power_grid.load_state else b'0x780x00'
                 self.comms.send(self.comms.build_payload(dosa.Messages.PONG, payload), msg.addr)
 
             elif msg.msg_code == dosa.Messages.REQ_STAT:
@@ -116,7 +116,8 @@ class RenogyBridge:
         self.bt_thread.start()
 
     def bt_listener(self):
-        bt1_client = Bt1Client(adapter_name=self.hci, on_data_received=self.on_data_received)
+        bt1_client = Bt1Client(adapter_name=self.hci, on_data_received=self.on_data_received,
+                               polling_interval=self.poll_interval)
 
         try:
             bt1_client.connect(self.target_mac)

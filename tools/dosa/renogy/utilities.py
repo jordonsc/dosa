@@ -86,7 +86,7 @@ def parse_charge_controller_info(bs):
         'discharging_amp_hours_today': bytes_to_int(bs, 39, 2),
         'power_generation_today': bytes_to_int(bs, 41, 2),  # kWh / 10,000
         'power_generation_total': bytes_to_int(bs, 59, 4),  # kWh / 10,000
-        'load_state': bytes_to_int(bs, 67, 1) & 0x01,
+        'load_state': bytes_to_int(bs, 67, 1) & 0x80 == 0x80,
     }
 
     charging_status_code = bytes_to_int(bs, 67, 2) & 0x00ff
