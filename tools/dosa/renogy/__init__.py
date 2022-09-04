@@ -37,7 +37,7 @@ class PowerGrid:
         self.pv_provided = data['power_generation_today']
 
         self.load_state = data['load_state']
-        self.load_power = data['load_power']
+        self.load_power = data['load_current'] * data['load_voltage']
         self.load_consumed = data['discharging_amp_hours_today'] * 13
 
         self.controller_temperature = data['controller_temperature']
