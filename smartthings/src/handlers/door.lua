@@ -53,7 +53,6 @@ function door.control(device, device_name, _)
 end
 
 function door.exec(device, command)
-    --local component = command.component
     local capability = command.capability
     local device_name = string.sub(device.device_network_id, 8)
     local cmd = command.command

@@ -21,20 +21,22 @@ function lifecycle.device_init(driver, device)
     if string.sub(device.device_network_id, 1, 4) == "bt1-" then
         device.profile.components["main"]:emit_event(capabilities.battery.battery(0))
         device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(0))
+        device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(0))
         device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(0))
         device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(0))
         device.profile.components["pv"]:emit_event(capabilities.energyMeter.energy(0))
         device.profile.components["load"]:emit_event(capabilities.powerMeter.power(0))
         device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(0))
         device.profile.components["load"]:emit_event(capabilities.switch.switch.off())
+        device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature(0))
         device:online()
-    elseif dosa_id == "renogy-d:" then
+    elseif dosa_id == "dosa-d:" then
         device:emit_event(capabilities.doorControl.door.closed())
         device:online()
-    elseif dosa_id == "renogy-r:" then
+    elseif dosa_id == "dosa-r:" then
         device:emit_event(capabilities.switch.switch.off())
         device:online()
-    elseif dosa_id == "renogy-s:" then
+    elseif dosa_id == "dosa-s:" then
         device:emit_event(capabilities.motionSensor.motion.inactive())
         device:online()
     else

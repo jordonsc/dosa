@@ -65,6 +65,7 @@ function comms.state_code_to_string(code)
 end
 
 function comms.log_msg(msg, addr, port)
+    log.debug(string.format("Inbound: %s", msg.code))
     if msg.code == "pon" then
         log.debug(string.format("[COMMS] %s:%s (%s): %s // %s - %s", addr, port, msg.device_name, msg.code, msg.device_type[2], msg.device_state[2]))
     else
@@ -83,11 +84,46 @@ function comms.handle_packet(packet)
     msg.device_name = string.gsub(string.sub(packet, 7, 27), string.char(0x00), "")
     msg.size = string.unpack("<I2", string.sub(packet, 6, 7))
 
-    if msg.code == "pon" and msg.size == 29 then
+    if msg.code == "pon" then
+        -- Decode 'pong' message
+        if msg.size ~= 29 then
+            log.error(string.format("Pong message size mismatch: %s != 29", msg.size))
+        end
         local type_code = string.byte(packet, 28)
         local state_code = string.byte(packet, 29)
         msg.device_type = { type_code, comms.type_code_to_string(type_code) }
         msg.device_state = { state_code, comms.state_code_to_string(state_code) }
+    elseif msg.code == "sta" then
+        -- Decode 'status' message
+        msg.status_format = string.unpack("<I2", string.sub(packet, 28, 29))
+        msg.status_payload = string.sub(packet, 30, msg.size)
+        msg = comms.decode_stat(msg)
+    end
+
+    return msg
+end
+
+function comms.decode_stat(msg)
+    if msg.state_code == 0 then
+        -- "Status Only" format
+        msg.status = msg.status_payload[1]
+    elseif msg.state_code == 100 then
+        -- "Power Grid" format
+        msg.power_grid = {}
+
+        msg.power_grid.battery_soc = msg.status_payload[1]
+        msg.power_grid.battery_voltage = string.unpack("<I2", string.sub(msg.status_payload, 2, 3)) / 10
+        msg.power_grid.battery_temperature = string.unpack("<i2", string.sub(msg.status_payload, 4, 5))
+
+        msg.power_grid.pv_power = string.unpack("<I2", string.sub(msg.status_payload, 6, 7))
+        msg.power_grid.pv_voltage = string.unpack("<I2", string.sub(msg.status_payload, 8, 9)) / 10
+        msg.power_grid.pv_produced = string.unpack("<I2", string.sub(msg.status_payload, 10, 11))
+
+        msg.power_grid.load_state = msg.status_payload[12] == 1
+        msg.power_grid.load_power = string.unpack("<I2", string.sub(msg.status_payload, 13, 14))
+        msg.power_grid.load_consumed = string.unpack("<I2", string.sub(msg.status_payload, 15, 16))
+
+        msg.power_grid.controller_temperature = string.unpack("<i2", string.sub(msg.status_payload, 17, 18))
     end
 
     return msg
@@ -105,6 +141,12 @@ end
 function comms.create_ping_packet()
     log.debug("[COMMS] <pin>")
     return comms.create_dosa_packet("pin", 0)
+end
+
+-- Create a DOSA req-stat payload
+function comms.create_req_stat_packet()
+    log.debug("[COMMS] <req>")
+    return comms.create_dosa_packet("req", 0)
 end
 
 -- Create a DOSA trigger payload
@@ -204,6 +246,35 @@ function comms.ping_refresh(device_name)
         local msg = comms.handle_packet(resp)
         if msg ~= nil and msg.code == "pon" then
             log.trace(string.format("%s (%s): pon", device_name, addr))
+            sock:close()
+            return msg
+        end
+    end
+end
+
+function comms.req_stat(device_name)
+    local addr = devices.reg[device_name][1]
+    if addr == nil then
+        log.error(string.format("Device <%s> not registered, ignoring req-stat dispatch: ", device_name))
+        return
+    end
+    log.trace(string.format("Req-stat to %s at %s", device_name, addr))
+
+    local sock = comms.create_udp_socket(true)
+    sock:sendto(comms.create_req_stat_packet(), addr, config.MC_PORT)
+
+    while true do
+        local resp = sock:receivefrom()
+        if resp == nil then
+            -- timeout waiting for status update
+            log.error(string.format("No status from %s (%s)", device_name, addr))
+            sock:close()
+            return nil
+        end
+
+        local msg = comms.handle_packet(resp)
+        if msg ~= nil and msg.code == "sta" then
+            log.trace(string.format("%s (%s): sta", device_name, addr))
             sock:close()
             return msg
         end
