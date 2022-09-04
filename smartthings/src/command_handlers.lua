@@ -8,7 +8,7 @@ local command_handlers = {
 function command_handlers.fallback(_, device, command)
     local dosa_type = string.sub(device.device_network_id, 1, 7)
 
-    if string.sub(device.device_network_id, 1, 4) == "bt1-" then
+    if string.sub(device.device_network_id, 1, 4) == "bt1:" then
         command_handlers.bt1.exec(device, command)
     elseif dosa_type == "dosa-d:" then
         command_handlers.door.exec(device, command)

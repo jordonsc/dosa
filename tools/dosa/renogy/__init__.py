@@ -102,7 +102,7 @@ class RenogyBridge:
             if msg.msg_code == dosa.Messages.PING:
                 # send PONG reply with load state
                 logging.debug("PING from {}:{}".format(msg.addr[0], msg.addr[1]))
-                payload = b'0x78x01' if self.power_grid.load_state else b'0x78x00'
+                payload = b'\x78\x01' if self.power_grid.load_state else b'\x78\x00'
                 self.comms.send(self.comms.build_payload(dosa.Messages.PONG, payload), msg.addr)
 
             elif msg.msg_code == dosa.Messages.REQ_STAT:

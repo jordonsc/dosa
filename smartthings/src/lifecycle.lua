@@ -18,7 +18,7 @@ function lifecycle.device_init(driver, device)
     log.info(string.format("Initialising %s device: %s", device.label, device.device_network_id))
     local dosa_id = string.sub(device.device_network_id, 1, 7)
 
-    if string.sub(device.device_network_id, 1, 4) == "bt1-" then
+    if string.sub(device.device_network_id, 1, 4) == "bt1:" then
         device.profile.components["main"]:emit_event(capabilities.battery.battery(0))
         device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(0))
         device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(0))
