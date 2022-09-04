@@ -131,3 +131,6 @@ class RenogyBridge:
 
     def on_data_received(self, app: Bt1Client, data):
         self.power_grid.from_data(data)
+
+        payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
+        self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))

@@ -54,7 +54,30 @@ function hub_server.tick(self)
     device:online()
 
     if dvc_meta.type == "bt1" then
-        --
+        if msg.code == "sta" then
+            if msg.status_format ~= 100 or msg.power_grid == nil then
+                log.error(string.format("STATUS message from BT-1 server is malformed (format: %s)", msg.status_format))
+                return
+            end
+
+            device:online()
+            device.profile.components["main"]:emit_event(capabilities.battery.battery(msg.power_grid.battery_soc))
+            device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.battery_voltage))
+            device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.battery_temperature))
+
+            device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.pv_voltage))
+            device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(msg.power_grid.pv_power))
+            device.profile.components["pv"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.pv_produced))
+
+            if msg.power_grid.load_state then
+                device.profile.components["load"]:emit_event(capabilities.switch.switch.on())
+            else
+                device.profile.components["load"]:emit_event(capabilities.switch.switch.off())
+            end
+            device.profile.components["load"]:emit_event(capabilities.powerMeter.power(msg.power_grid.load_power))
+            device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.load_consumed))
+            device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.controller_temperature))
+        end
     elseif dvc_meta.type == "dosa-d" then
         if msg.code == "bgn" then
             device:emit_event(capabilities.doorControl.door.opening())

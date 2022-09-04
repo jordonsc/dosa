@@ -65,7 +65,6 @@ function comms.state_code_to_string(code)
 end
 
 function comms.log_msg(msg, addr, port)
-    log.debug(string.format("Inbound: %s", msg.code))
     if msg.code == "pon" then
         log.debug(string.format("[COMMS] %s:%s (%s): %s // %s - %s", addr, port, msg.device_name, msg.code, msg.device_type[2], msg.device_state[2]))
     else
@@ -88,11 +87,13 @@ function comms.handle_packet(packet)
         -- Decode 'pong' message
         if msg.size ~= 29 then
             log.error(string.format("Pong message size mismatch: %s != 29", msg.size))
+            msg.code = "xxx"
+        else
+            local type_code = string.byte(packet, 28)
+            local state_code = string.byte(packet, 29)
+            msg.device_type = { type_code, comms.type_code_to_string(type_code) }
+            msg.device_state = { state_code, comms.state_code_to_string(state_code) }
         end
-        local type_code = string.byte(packet, 28)
-        local state_code = string.byte(packet, 29)
-        msg.device_type = { type_code, comms.type_code_to_string(type_code) }
-        msg.device_state = { state_code, comms.state_code_to_string(state_code) }
     elseif msg.code == "sta" then
         -- Decode 'status' message
         msg.status_format = string.unpack("<I2", string.sub(packet, 28, 29))

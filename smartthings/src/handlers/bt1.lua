@@ -47,11 +47,14 @@ end
 function bt1.exec(device, command)
     local component = command.component
     local capability = command.capability
-    local device_name = string.sub(device.device_network_id, 8)
     local cmd = command.command
+    local device_name = string.sub(device.device_network_id, 8)
+
+    log.debug(string.format("BT-1 exec: %s.%s.%s (%s)", component, capability, cmd, device_name))
 
     if component == "main" then
         if capability == "refresh" then
+
             bt1.refresh(device, device_name, cmd)
 
         end
