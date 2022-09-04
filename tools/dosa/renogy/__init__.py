@@ -1,3 +1,4 @@
+import struct
 import time
 import logging
 from threading import Thread
@@ -5,6 +6,61 @@ from threading import Thread
 import dosa
 from dosa.renogy.exceptions import *
 from dosa.renogy.bt1 import Bt1Client
+
+
+class PowerGrid:
+    def __init__(self, data: dict = None):
+        self.battery_soc = 0
+        self.battery_voltage = 0
+        self.battery_temperature = 0
+
+        self.pv_power = 0
+        self.pv_voltage = 0
+        self.pv_provided = 0
+
+        self.load_active = False
+        self.load_power = 0
+        self.load_consumed = 0
+
+        self.controller_temperature = 0
+
+        if data is not None:
+            self.from_data(data)
+
+    def from_data(self, data: dict):
+        logging.debug("Function: ", data['function'])
+
+        self.battery_soc = data['battery_percentage']
+        self.battery_voltage = data['battery_voltage']
+        self.battery_temperature = data['battery_temperature']
+
+        self.pv_power = data['pv_power']
+        self.pv_voltage = data['pv_voltage']
+        self.pv_provided = data['power_generation_today']
+
+        self.load_active = bool(data['function'])
+        self.load_power = data['load_power']
+        self.load_consumed = data['discharging_amp_hours_today'] * 12.5
+
+        self.controller_temperature = data['controller_temperature']
+
+    def to_bytes(self) -> bytes:
+        payload = b''
+        payload += struct.pack("<B", self.battery_soc)
+        payload += struct.pack("<H", self.battery_voltage * 10)
+        payload += struct.pack("<h", self.battery_temperature)
+
+        payload += struct.pack("<H", self.pv_power)
+        payload += struct.pack("<H", self.pv_voltage * 10)
+        payload += struct.pack("<H", self.pv_provided)
+
+        payload += struct.pack("<B", int(self.load_active))
+        payload += struct.pack("<H", self.load_power)
+        payload += struct.pack("<H", round(self.load_consumed))
+
+        payload += struct.pack("<h", self.controller_temperature)
+
+        return payload
 
 
 class RenogyBridge:
@@ -15,7 +71,8 @@ class RenogyBridge:
             comms = dosa.Comms()
         self.comms = comms
 
-        self.data = None
+        self.power_grid = PowerGrid()
+
         self.hci = hci
         self.target_mac = tgt_mac
         self.poll_interval = poll_int  # read data interval (seconds)
@@ -45,11 +102,16 @@ class RenogyBridge:
                 continue
 
             if msg.msg_code == dosa.Messages.PING:
-                pass
-            elif msg.msg_code == dosa.Messages.REQ_STAT:
-                pass
+                # send PONG reply with load state
+                logging.debug("PING from {}:{}".format(msg.addr[0], msg.addr[1]))
+                payload = b'0x780x01' if self.power_grid.load_active else b'0x780x00'
+                self.comms.send(self.comms.build_payload(dosa.Messages.PONG, payload), msg.addr)
 
-            time.sleep(0.1)
+            elif msg.msg_code == dosa.Messages.REQ_STAT:
+                # send STATUS reply with full data dump
+                logging.debug("REQ_STAT from {}:{}".format(msg.addr[0], msg.addr[1]))
+                payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
+                self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload), msg.addr)
 
     def spawn_listener(self):
         self.bt_thread = Thread(target=self.bt_listener, args=())
@@ -69,11 +131,4 @@ class RenogyBridge:
             bt1_client.disconnect()
 
     def on_data_received(self, app: Bt1Client, data):
-        self.data = data
-        logging.debug("Battery SOC:   %s", data["battery_percentage"])
-        logging.debug("Battery V:     %s", data["battery_voltage"])
-        logging.debug("PV Watts:      %s", data["pv_power"])
-        logging.debug("PV V:          %s", data["pv_voltage"])
-        logging.debug("PV Charge:     %s", data["power_generation_today"])
-        logging.debug("Load Watts:    %s", data["load_power"])
-        logging.debug("Discharge kWh: %s", data["discharging_amp_hours_today"] * data["battery_voltage"])
+        self.power_grid.from_data(data)

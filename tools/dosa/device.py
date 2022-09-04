@@ -81,6 +81,11 @@ class DeviceStatus:
             return "UNKNOWN STATE"
 
 
+class StatusFormat:
+    STATUS_ONLY = 0
+    POWER_GRID = 100
+
+
 class Device:
     def __init__(self, msg=None, device_type=None, device_state=None):
         if msg:

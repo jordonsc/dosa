@@ -122,7 +122,8 @@ class Comms:
         """
         Send a byte-array message to tgt.
 
-        If tgt is None, the multicast group will be used (message broadcasted to all DOSA devices).
+        If `tgt` is None, the multicast group will be used (message broadcast to all DOSA devices).
+        `tgt` should be a tuple of (ip, port)
 
         Returns True if ack'd, False if not ack'd or None if no ack was requested.
         """
