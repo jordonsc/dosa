@@ -45,11 +45,11 @@ class PowerGrid:
     def to_bytes(self) -> bytes:
         payload = b''
         payload += struct.pack("<B", self.battery_soc)
-        payload += struct.pack("<H", self.battery_voltage * 10)
+        payload += struct.pack("<H", round(self.battery_voltage * 10))
         payload += struct.pack("<h", self.battery_temperature)
 
         payload += struct.pack("<H", self.pv_power)
-        payload += struct.pack("<H", self.pv_voltage * 10)
+        payload += struct.pack("<H", round(self.pv_voltage * 10))
         payload += struct.pack("<H", self.pv_provided)
 
         payload += struct.pack("<B", int(self.load_state))
