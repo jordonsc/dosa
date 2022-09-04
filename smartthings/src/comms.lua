@@ -98,17 +98,18 @@ function comms.handle_packet(packet)
         -- Decode 'status' message
         msg.status_format = string.unpack("<I2", string.sub(packet, 28, 29))
         msg.status_payload = string.sub(packet, 30, msg.size)
-        msg = comms.decode_stat(msg)
+        return comms.decode_stat(msg)
     end
 
     return msg
 end
 
 function comms.decode_stat(msg)
-    if msg.state_code == 0 then
+    if msg.status_format == 0 then
         -- "Status Only" format
         msg.status = msg.status_payload[1]
-    elseif msg.state_code == 100 then
+
+    elseif msg.status_format == 100 then
         -- "Power Grid" format
         msg.power_grid = {}
 
