@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+app=$(python3 -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 
 # Set user to the dialout group so that they can access the USB
 sudo usermod -a -G dialout $USER
