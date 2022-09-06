@@ -19,16 +19,6 @@ function lifecycle.device_init(driver, device)
     local dosa_id = string.sub(device.device_network_id, 1, 7)
 
     if string.sub(device.device_network_id, 1, 4) == "bt1:" then
-        device.profile.components["main"]:emit_event(capabilities.battery.battery(0))
-        device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(0))
-        device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(0))
-        device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(0))
-        device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(0))
-        device.profile.components["pv"]:emit_event(capabilities.energyMeter.energy(0))
-        device.profile.components["load"]:emit_event(capabilities.powerMeter.power(0))
-        device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(0))
-        device.profile.components["load"]:emit_event(capabilities.switch.switch.off())
-        device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature(0))
         device:online()
     elseif dosa_id == "dosa-d:" then
         device:emit_event(capabilities.doorControl.door.closed())

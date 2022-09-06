@@ -2,6 +2,7 @@
 name: bt1.v1
 components:
   - id: main
+    name: Batteries
     capabilities:
       - id: battery
         name: Battery SOC
@@ -18,6 +19,7 @@ components:
     categories:
       - name: Battery
   - id: pv
+    name: PV
     capabilities:
       - id: voltageMeasurement
         name: PV Voltage
@@ -31,6 +33,7 @@ components:
     categories:
       - name: SolarPanel
   - id: load
+    name: System Load
     capabilities:
       - id: powerMeter
         name: Load Power
