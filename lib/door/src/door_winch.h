@@ -24,15 +24,16 @@
 // #define DOOR_CLOSE_ALLOW_INTERRUPT
 
 // Calibration thresholds
-#define WINCH_FALLBACK_OPEN_COEFFICIENT 0.7
+#define WINCH_FALLBACK_OPEN_COEFFICIENT 0.9
 #define WINCH_FALLBACK_CLOSE_COEFFICIENT 1.0
-#define WINCH_CALIBRATE_TIMEOUT 3500
-#define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.8
+#define WINCH_STALL_COEFFICIENT 0.2
+#define WINCH_CALIBRATE_TIMEOUT 1500
+#define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.85
 #define WINCH_CALIBRATE_ROLLBACK_TICKS 800
 #define WINCH_CALIBRATE_PRE_DELAY 500
 
 // Door power
-#define WINCH_MAX_POWER 180
+#define WINCH_MAX_POWER 200
 
 // Forced fallback mode (use if sonar absent)
 #define DOOR_SONAR_FALLBACK 1
@@ -69,7 +70,6 @@ typedef bool (*doorInterruptCallback)(void*);
 
 class DoorWinch : public Loggable
 {
-   protected:
    public:
     explicit DoorWinch(SerialComms* s, Settings& settings, Sonar& sonar) : Loggable(s), settings(settings), sonar(sonar)
     {
@@ -137,9 +137,16 @@ class DoorWinch : public Loggable
         }
 
         // Request the door close to the same degree as it was last opened + a coefficient to ensure the pulley is slack
-        auto close_ticks = close(
+        auto close_spread = static_cast<unsigned long>(
             fallback_mode ? settings.getDoorCloseTicks() * WINCH_FALLBACK_CLOSE_COEFFICIENT
                           : settings.getDoorCloseTicks());
+
+        if (require_extended_close) {
+            // Normally because of a door jam, we need to undo the damage from opening too far
+            close_spread *= static_cast<unsigned long>(1.5);
+        }
+
+        auto close_ticks = close(close_spread);
         logln("Closed in " + String(close_ticks) + " ticks");
 
         // Remove slack on the line, cooldown
@@ -192,7 +199,9 @@ class DoorWinch : public Loggable
         logln("Door: OPEN");
         seq_start_time = millis();
         resetCprTimer();
+        resetMaxTps();
         uint32_t open_distance = settings.getDoorOpenDistance();
+        require_extended_close = false;  // used if there is jam during open (probably caused by bad calibration)
 
 #ifndef DOOR_SONAR_FALLBACK
         // if the sonar fails, we'll use the door close ticks as a time-based open sequence
@@ -209,8 +218,11 @@ class DoorWinch : public Loggable
         }
 
         setMotor(true, WINCH_MAX_POWER);
+        delay(10);
+
         while (true) {
             runTickCallback();
+            calcMaxTps();
             if (fallback_mode) {
                 // Legacy/fallback mode
                 if (checkForOpenKill() || (int_cpr_ticks > open_ticks)) {
@@ -242,12 +254,15 @@ class DoorWinch : public Loggable
         logln("Door: CLOSE");
         seq_start_time = millis();
         resetCprTimer();
+        resetMaxTps();
 
         setMotor(false, WINCH_MAX_POWER);
+        delay(10);
 
         while (!checkForCloseKill(ticks)) {
             delay(10);
             runTickCallback();
+            calcMaxTps();
         }
 
         stopMotor();
@@ -264,17 +279,14 @@ class DoorWinch : public Loggable
         logln("Door: CALIBRATE");
         auto start_time = millis();
         resetCprTimer();
+        resetMaxTps();
 
         setMotor(true, WINCH_MAX_POWER);
 
-        double max_tps = 0;
         while (true) {
             delay(10);
-            auto tps = getTicksPerSecond();
-            if (tps > max_tps) {
-                // Speed is increasing
-                max_tps = tps;
-            } else if (max_tps > 0 && (tps < (max_tps * WINCH_CALIBRATE_TENSION_COEFFICIENT))) {
+            auto max_tps = calcMaxTps();
+            if (max_tps > 0 && (getTicksPerSecond() < (max_tps * WINCH_CALIBRATE_TENSION_COEFFICIENT))) {
                 // Tension detected, drop out
                 break;
             } else if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
@@ -286,7 +298,7 @@ class DoorWinch : public Loggable
                     error_cb(DoorErrorCode::CALIBRATE_TIMEOUT, error_cb_ctx);
                 }
 
-                return;
+                break;
             }
         }
 
@@ -351,6 +363,7 @@ class DoorWinch : public Loggable
     unsigned long seq_start_time = 0;  // Time that an open/close sequence started
     unsigned long cpr_last_time = 0;   // For calculating motor speed
     unsigned long cpr_last_ticks = 0;
+    double tps_peak = 0;
 
     winchErrorCallback error_cb = nullptr;
     void* error_cb_ctx = nullptr;
@@ -362,6 +375,7 @@ class DoorWinch : public Loggable
     void* tick_cb_ctx = nullptr;
 
     bool fallback_mode = false;
+    bool require_extended_close = false;
 
     /**
      * Resets and initialises tick-data so that ticksPerSecond may be accurately called.
@@ -373,6 +387,26 @@ class DoorWinch : public Loggable
         cpr_last_time = millis();
     }
 
+    double calcMaxTps()
+    {
+        auto tps = getTicksPerSecond();
+        if (tps > tps_peak) {
+            tps_peak = tps;
+        }
+
+        return tps_peak;
+    }
+
+    [[nodiscard]] double getMaxTps() const
+    {
+        return tps_peak;
+    }
+
+    void resetMaxTps()
+    {
+        tps_peak = 0;
+    }
+
     /**
      * Returns the number of CPR ticks per second.
      *
@@ -381,19 +415,21 @@ class DoorWinch : public Loggable
      */
     double getTicksPerSecond()
     {
+        static double last_tps = 0;
+
         auto now = millis();
-        if (now == cpr_last_time) {
-            // div by zero safety
-            return 1;
+        if (now - cpr_last_time < 5) {
+            // div by zero & micro-timing safe guard
+            return last_tps;
         }
 
         double coefficient = (double)1000 / (double)(now - cpr_last_time);
-        double tps = (double)(int_cpr_ticks - cpr_last_ticks) * coefficient;
+        last_tps = (double)(int_cpr_ticks - cpr_last_ticks) * coefficient;
 
         cpr_last_time = now;
         cpr_last_ticks = int_cpr_ticks;
 
-        return tps;
+        return last_tps;
     }
 
     /**
@@ -419,18 +455,12 @@ class DoorWinch : public Loggable
         }
 
         // Check for motor stall
-        if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
-            if (stall_time > 0) {
-                if (millis() - stall_time > STALL_PERIOD) {
-                    logln("Door blocked while opening");
-                    stopMotor();
-                    return true;
-                }
-            } else {
-                stall_time = millis();
-            }
-        } else {
-            stall_time = 0;
+        if (run_time > MOTOR_CPR_WARMUP && (getMaxTps() > 0) &&
+            (getTicksPerSecond() < (getMaxTps() * WINCH_STALL_COEFFICIENT))) {
+            logln("Door blocked while opening");
+            stopMotor();
+            require_extended_close = true;
+            return true;
         }
 
         return false;
@@ -446,7 +476,8 @@ class DoorWinch : public Loggable
         }
 
         // Motor stall
-        if (run_time > MOTOR_CPR_WARMUP && getTicksPerSecond() == 0) {
+        if (run_time > MOTOR_CPR_WARMUP && (getMaxTps() > 0) &&
+            (getTicksPerSecond() < (getMaxTps() * WINCH_STALL_COEFFICIENT))) {
             logln("Winch jammed (close sequence!)", dosa::LogLevel::WARNING);
             stopMotor();
             if (error_cb != nullptr) {
