@@ -17,7 +17,6 @@
 // All times in milliseconds, see also dosa::settings.h for configurable values
 #define MAX_DOOR_SEQ_TIME 15000  // Max time to open or close the door before declaring a system error
 #define MOTOR_CPR_WARMUP 100     // Grace we give the motor to report CPR pulses before declaring a stall
-#define STALL_PERIOD 50          // Time a motor cannot move before considering stalled
 #define SONAR_MAX_WAIT 100       // Max time we wait for the sonar to report before declaring an error
 
 // If defined, we allow the door to be interrupted during the close sequence
@@ -25,14 +24,14 @@
 
 // Calibration thresholds
 #define WINCH_FALLBACK_OPEN_COEFFICIENT 0.9
-#define WINCH_FALLBACK_CLOSE_COEFFICIENT 1.0
+#define WINCH_FALLBACK_CLOSE_COEFFICIENT 1.1
 #define WINCH_STALL_COEFFICIENT 0.2
-#define WINCH_CALIBRATE_TIMEOUT 1500
+#define WINCH_CALIBRATE_TIMEOUT 3000
 #define WINCH_CALIBRATE_TENSION_COEFFICIENT 0.85
 #define WINCH_CALIBRATE_ROLLBACK_TICKS 800
 #define WINCH_CALIBRATE_PRE_DELAY 500
 
-// Door power
+// Door power (0-255)
 #define WINCH_MAX_POWER 200
 
 // Forced fallback mode (use if sonar absent)
