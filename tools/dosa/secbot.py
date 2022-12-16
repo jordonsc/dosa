@@ -5,6 +5,7 @@ import json
 from boto3 import Session
 from botocore.exceptions import ClientError
 from dosa.tts import Tts
+from UnleashClient import UnleashClient
 
 
 class SecBot:
@@ -25,9 +26,9 @@ class SecBot:
         self.config = dosa.Config(self.comms)
         self.history = dosa.MessageLog()
 
-        # Create a client using the credentials and region defined in the [renogy] section of the AWS credentials
+        # Create a client using the credentials and region defined in the [dosa] section of the AWS credentials
         # file (~/.aws/credentials)
-        self.session = Session(profile_name="renogy")
+        self.session = Session(profile_name="dosa")
         self.sns = self.session.client("sns")
 
         # -- Settings from config file --
@@ -46,6 +47,20 @@ class SecBot:
         # Log servers
         self.statsd_server = self.get_setting(["logging", "statsd"], {"server": "127.0.0.1", "port": 8125})
         self.log_server = self.get_setting(["logging", "logs"], {"server": "127.0.0.1", "port": 10518})
+
+        # Bring up feature toggles
+        self.unleash = UnleashClient(
+            url=self.get_setting(["features", "server"], "http://127.0.0.1:4242"),
+            app_name="dosa-secbot",
+            custom_headers={'Authorization': self.get_setting(["features", "api-key"], "")}
+        )
+
+        self.unleash.initialize_client()
+
+    @staticmethod
+    def feature_fallback(feature_name: str, context: dict) -> bool:
+        print("(fallback)")
+        return True
 
     def get_setting(self, path, default):
         node = self.settings
@@ -81,9 +96,14 @@ class SecBot:
 
         # Send a heartbeat if we're stale
         if ct - self.last_heartbeat > self.heartbeat_interval:
-            self.comms.send("renogy.secbot.heartbeat:1|c".encode(),
+            self.comms.send("dosa.secbot.heartbeat:1|c".encode(),
                             (self.statsd_server["server"], self.statsd_server["port"]))
             self.last_heartbeat = ct
+
+        if self.unleash.is_enabled("notify-offline", fallback_function=self.feature_fallback):
+            print("YES")
+        else:
+            print("NO")
 
     def check_devices(self):
         """
@@ -115,11 +135,12 @@ class SecBot:
                     self.tts.play("Alert, " + d.device_name + " is not responding")
 
                 # Raise an incident -
-                self.alert(
-                    d.device_name, d.device_name + " is not responding",
-                    category=dosa.AlertCategory.NETWORK,
-                    level=dosa.LogLevel.as_string(dosa.LogLevel.ERROR)
-                )
+                if self.unleash.is_enabled("notify-offline", fallback_function=self.feature_fallback):
+                    self.alert(
+                        d.device_name, d.device_name + " is not responding",
+                        category=dosa.AlertCategory.NETWORK,
+                        level=dosa.LogLevel.as_string(dosa.LogLevel.ERROR)
+                    )
 
     def check_for_packets(self):
         """
@@ -227,11 +248,21 @@ class SecBot:
                     match = True
                     d.pong()
                     if d.reported_unresponsive:
-                        # device recovery
+                        # Device recovery
                         d.reported_unresponsive = False
                         self.comms.net_log(dosa.LogLevel.WARNING, "Device recovery: " + d.device_name)
+
+                        # Verbal recovery notice
                         if self.report_recovery:
                             msg = "Notice, " + d.device_name + " is back online"
+
+                        # Alert recovery notice
+                        if self.unleash.is_enabled("notify-reconnected", fallback_function=self.feature_fallback):
+                            self.alert(
+                                d.device_name, d.device_name + " has recovered",
+                                category=dosa.AlertCategory.NETWORK,
+                                level=dosa.LogLevel.as_string(dosa.LogLevel.INFO)
+                            )
                     break
 
             if not match:

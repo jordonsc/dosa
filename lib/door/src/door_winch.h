@@ -8,6 +8,8 @@
 #include <ArduinoBLE.h>
 #include <dosa.h>
 
+#include <utility>
+
 #define PIN_MOTOR_A 4    // Motor output fwd
 #define PIN_MOTOR_B 5    // Motor output reverse
 #define PIN_MOTOR_PWM 6  // Motor speed
@@ -66,6 +68,7 @@ enum class DoorErrorCode : byte
 typedef void (*tickCallback)(void*);
 typedef void (*winchErrorCallback)(DoorErrorCode, void*);
 typedef bool (*doorInterruptCallback)(void*);
+typedef void (*netLogCallback)(String const&, NetLogLevel, void*);
 
 class DoorWinch : public Loggable
 {
@@ -114,6 +117,22 @@ class DoorWinch : public Loggable
     }
 
     /**
+     * Allow the winch to send to the NetLog.
+     */
+    void setNetLogCallback(netLogCallback cb, void* context = nullptr)
+    {
+        net_log_cb = cb;
+        net_log_cb_ctx = context;
+    }
+
+    void netLog(String const& msg, NetLogLevel log_level = NetLogLevel::INFO)
+    {
+        if (net_log_cb != nullptr) {
+            net_log_cb(msg, log_level, net_log_cb_ctx);
+        }
+    }
+
+    /**
      * Trigger the door open/close sequence.
      */
     void trigger()
@@ -121,7 +140,7 @@ class DoorWinch : public Loggable
         auto open_ticks = open();
         // If the sensor believes the door is already fully open, it will return 0 ticks (and have done nothing).
         if (open_ticks > 0) {
-            logln("Opened in " + String(open_ticks) + " ticks");
+            netLog("Opened in " + String(open_ticks) + " ticks", NetLogLevel::DEBUG);
         }
 
         // Open-wait
@@ -146,7 +165,7 @@ class DoorWinch : public Loggable
         }
 
         auto close_ticks = close(close_spread);
-        logln("Closed in " + String(close_ticks) + " ticks");
+        netLog("Closed in " + String(close_ticks) + " ticks", NetLogLevel::DEBUG);
 
         // Remove slack on the line, cooldown
         delay(WINCH_CALIBRATE_PRE_DELAY);
@@ -161,7 +180,7 @@ class DoorWinch : public Loggable
     {
         // Request the door close to specified ticks
         auto close_ticks = close(rewind_ticks);
-        logln("Rewound by " + String(close_ticks) + " ticks");
+        netLog("Rewound by " + String(close_ticks) + " ticks", NetLogLevel::DEBUG);
 
         // Remove slack on the line, cooldown
         delay(WINCH_CALIBRATE_PRE_DELAY);
@@ -195,7 +214,7 @@ class DoorWinch : public Loggable
      */
     uint32_t open()
     {
-        logln("Door: OPEN");
+        netLog("Door: OPEN", NetLogLevel::DEBUG);
         seq_start_time = millis();
         resetCprTimer();
         resetMaxTps();
@@ -212,7 +231,7 @@ class DoorWinch : public Loggable
         auto open_ticks = settings.getDoorCloseTicks() * WINCH_FALLBACK_OPEN_COEFFICIENT;
 
         if (!fallback_mode && (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
-            logln("Door open-jam detected, skipping open sequence", LogLevel::WARNING);
+            netLog("Door open-jam detected, skipping open sequence", NetLogLevel ::WARNING);
             return 0;
         }
 
@@ -225,19 +244,20 @@ class DoorWinch : public Loggable
             if (fallback_mode) {
                 // Legacy/fallback mode
                 if (checkForOpenKill() || (int_cpr_ticks > open_ticks)) {
-                    logln("Open halted at " + String(int_cpr_ticks) + " ticks", LogLevel::DEBUG);
+                    netLog("Open halted at " + String(int_cpr_ticks) + " ticks", NetLogLevel::DEBUG);
                     break;
                 }
             } else {
                 // Sonar apex detection
                 sonar.process();
                 if (checkForOpenKill() || (sonar.getDistance() > 0 && sonar.getDistance() < open_distance)) {
-                    logln("Open halted at " + String(sonar.getDistance()) + "mm", LogLevel::DEBUG);
+                    netLog("Open halted at " + String(sonar.getDistance()) + "mm", NetLogLevel::DEBUG);
                     break;
                 }
             }
         }
 
+        netLog("Open max TPS: " + String(getMaxTps()), NetLogLevel::INFO);
         stopMotor();
         return int_cpr_ticks;
     }
@@ -275,13 +295,20 @@ class DoorWinch : public Loggable
      */
     void calibrate()
     {
-        logln("Door: CALIBRATE");
+        netLog("Door: CALIBRATE", NetLogLevel::DEBUG);
         auto start_time = millis();
         resetCprTimer();
         resetMaxTps();
 
         setMotor(true, WINCH_MAX_POWER);
+        bool noTension = false;
 
+        /**
+         * Primary phase.
+         *
+         * Wind the winch in, note the max speed and when the speed drops, assume that speed drop is caused by tension
+         * on the line. Halt primary phase when either tension is detected, or we time out.
+         */
         while (true) {
             delay(10);
             auto max_tps = calcMaxTps();
@@ -290,7 +317,8 @@ class DoorWinch : public Loggable
                 break;
             } else if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
                 // Tension never detected, alert and drop out
-                logln("Calibrate timeout detected, aborting calibration");
+                netLog("Calibrate timeout detected, aborting calibration", NetLogLevel::WARNING);
+                noTension = true;
                 stopMotor();
 
                 if (error_cb != nullptr) {
@@ -301,19 +329,31 @@ class DoorWinch : public Loggable
             }
         }
 
+        // Prep for secondary phase
+        auto calibrateTicks = int_cpr_ticks;
         stopMotor();
         delay(100);
         resetCprTimer();
         setMotor(false, WINCH_MAX_POWER);
         start_time = millis();
 
-        // Rollback a little to undo the door breach during tension testing
-        while (int_cpr_ticks < WINCH_CALIBRATE_ROLLBACK_TICKS) {
+        /**
+         * Secondary phase.
+         *
+         * In this phase we will roll-back just a tad, as detecting the tension will likely pull the door open a little
+         * bit.
+         *
+         * If a timeout occurred, it was probably because the door was already under tension and this calibration
+         * attempt has just made it worse. So if this has happened, we'll roll-back 150% to undo damage instead of
+         * making it worse.
+         */
+        unsigned long thresholdTicks = noTension ? calibrateTicks * 1.5 : WINCH_CALIBRATE_ROLLBACK_TICKS;
+        while (int_cpr_ticks < thresholdTicks) {
             delay(10);
 
             // This is unlikely, but always have a timeout just in case
             if (millis() - start_time > WINCH_CALIBRATE_TIMEOUT) {
-                logln("Calibrate rollback timeout detected");
+                netLog("Calibrate rollback timeout detected", NetLogLevel::ERROR);
                 stopMotor();
 
                 if (error_cb != nullptr) {
@@ -372,6 +412,9 @@ class DoorWinch : public Loggable
 
     tickCallback tick_cb = nullptr;
     void* tick_cb_ctx = nullptr;
+
+    netLogCallback net_log_cb = nullptr;
+    void* net_log_cb_ctx = nullptr;
 
     bool fallback_mode = false;
     bool require_extended_close = false;
@@ -445,7 +488,7 @@ class DoorWinch : public Loggable
 
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
-            logln("Door open sequence max time exceeded");
+            netLog("Door open sequence max time exceeded", NetLogLevel::WARNING);
             stopMotor();
             if (error_cb != nullptr) {
                 error_cb(DoorErrorCode::OPEN_TIMEOUT, error_cb_ctx);
@@ -456,7 +499,7 @@ class DoorWinch : public Loggable
         // Check for motor stall
         if (run_time > MOTOR_CPR_WARMUP && (getMaxTps() > 0) &&
             (getTicksPerSecond() < (getMaxTps() * WINCH_STALL_COEFFICIENT))) {
-            logln("Door blocked while opening");
+            netLog("Door blocked while opening", NetLogLevel::WARNING);
             stopMotor();
             require_extended_close = true;
             return true;
@@ -477,7 +520,7 @@ class DoorWinch : public Loggable
         // Motor stall
         if (run_time > MOTOR_CPR_WARMUP && (getMaxTps() > 0) &&
             (getTicksPerSecond() < (getMaxTps() * WINCH_STALL_COEFFICIENT))) {
-            logln("Winch jammed (close sequence!)", dosa::LogLevel::WARNING);
+            netLog("Winch jammed (close sequence!)", NetLogLevel ::WARNING);
             stopMotor();
             if (error_cb != nullptr) {
                 error_cb(DoorErrorCode::JAMMED, error_cb_ctx);
@@ -487,7 +530,7 @@ class DoorWinch : public Loggable
 
         // Exceeded sequence max time
         if (run_time > MAX_DOOR_SEQ_TIME) {
-            logln("Door close sequence max time exceeded", dosa::LogLevel::WARNING);
+            netLog("Door close sequence max time exceeded", NetLogLevel::WARNING);
             stopMotor();
             if (error_cb != nullptr) {
                 error_cb(DoorErrorCode::CLOSE_TIMEOUT, error_cb_ctx);
@@ -512,7 +555,7 @@ class DoorWinch : public Loggable
             }
         }
 
-        logln("Sonar not reporting data!", LogLevel::ERROR);
+        netLog("Sonar not reporting data!", NetLogLevel ::ERROR);
 
         if (error_cb != nullptr) {
             error_cb(DoorErrorCode::SONAR_ERROR, error_cb_ctx);

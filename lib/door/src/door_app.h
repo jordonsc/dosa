@@ -31,6 +31,7 @@ class DoorApp final : public dosa::OtaApplication
         container.getDoorWinch().setErrorCallback(&doorWinchErrorForwarder, this);
         container.getDoorWinch().setInterruptCallback(&doorInterruptForwarder, this);
         container.getDoorWinch().setTickCallback(&doorTickForwarder, this);
+        container.getDoorWinch().setNetLogCallback(&doorLoggerForwarder, this);
 
         container.getComms().newHandler<comms::StandardHandler<messages::Trigger>>(
             DOSA_COMMS_MSG_TRIGGER,
@@ -357,6 +358,11 @@ class DoorApp final : public dosa::OtaApplication
         return container.getDoorSwitch().getStatePassiveProcess();
     }
 
+    void doorLogger(String const& msg, NetLogLevel level)
+    {
+        netLog(msg, level);
+    }
+
     /**
      * Run continuously while the door is operating. This allows us to process inbound traffic, return acks, etc.
      */
@@ -394,6 +400,14 @@ class DoorApp final : public dosa::OtaApplication
     static bool doorInterruptForwarder(void* context)
     {
         return static_cast<DoorApp*>(context)->doorInterruptCheck();
+    }
+
+    /**
+     * Context forwarder for door logger.
+     */
+    static void doorLoggerForwarder(String const& msg, NetLogLevel level, void* context)
+    {
+        static_cast<DoorApp*>(context)->doorLogger(msg, level);
     }
 
     /**
