@@ -127,7 +127,7 @@ class SecBot:
                     self.tts.play("Alert, " + d.device_name + " is not responding")
 
                 # Raise an incident -
-                if self.is_feature_enabled(dosa.Feature.NOTIFY_OFFLINE):
+                if self.feature.is_enabled(dosa.Feature.NOTIFY_OFFLINE):
                     self.alert(
                         d.device_name, d.device_name + " is not responding",
                         category=dosa.AlertCategory.NETWORK,
@@ -249,7 +249,7 @@ class SecBot:
                             msg = "Notice, " + d.device_name + " is back online"
 
                         # Alert recovery notice
-                        if self.is_feature_enabled(dosa.Feature.NOTIFY_RECONNECT):
+                        if self.feature.is_enabled(dosa.Feature.NOTIFY_RECONNECT):
                             self.alert(
                                 d.device_name, d.device_name + " has recovered",
                                 category=dosa.AlertCategory.NETWORK,
