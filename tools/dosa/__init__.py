@@ -12,6 +12,54 @@ from dosa.ota import Ota
 from dosa.flush import Flush
 from dosa.play import Play
 from dosa.device import DeviceType, DeviceStatus, Device
+from UnleashClient import UnleashClient
+
+
+class Feature:
+    NOTIFY_OFFLINE = "notify-offline"
+    NOTIFY_RECONNECT = "notify-reconnected"
+
+    def __init__(self, unleash_url: str = None, api_key: str = None):
+        if unleash_url is None:
+            print("Unleash service not available")
+            self.unleash = None
+        else:
+            print("Unleash URL: " + unleash_url)
+            self.unleash = UnleashClient(
+                url=unleash_url,
+                app_name="dosa-secbot",
+                custom_headers={'Authorization': api_key}
+            )
+
+            self.unleash.initialize_client()
+
+    def is_enabled(self, feature: str):
+        if self.unleash is not None:
+            return self.unleash.is_enabled(feature, fallback_function=self.feature_fallback)
+        else:
+            return True
+
+    def get_variant(self, feature: str):
+        if self.unleash is not None:
+            var = self.unleash.get_variant(feature)
+            if var['enabled'] and var['name'] != "disabled":
+                return var['payload']['value']
+            else:
+                return None
+        else:
+            return None
+
+    def log_status(self, feature: str):
+        print("feature [" + feature + "]: ", end="")
+        if self.is_enabled(feature):
+            print("enabled")
+        else:
+            print("disabled")
+
+    @staticmethod
+    def feature_fallback(feature_name: str, context: dict) -> bool:
+        print("feature fallback: " + feature_name)
+        return True
 
 
 class LogLevel:
