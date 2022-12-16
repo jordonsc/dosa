@@ -5,7 +5,6 @@ import json
 from boto3 import Session
 from botocore.exceptions import ClientError
 from dosa.tts import Tts
-from UnleashClient import UnleashClient
 
 
 class SecBot:
@@ -49,20 +48,11 @@ class SecBot:
         self.log_server = self.get_setting(["logging", "logs"], {"server": "127.0.0.1", "port": 10518})
 
         # Bring up feature toggles
-        self.unleash = UnleashClient(
-            url=self.get_setting(["features", "server"], "http://127.0.0.1:4242"),
-            app_name="dosa-secbot",
-            custom_headers={'Authorization': self.get_setting(["features", "api-key"], "")}
-        )
+        self.feature = dosa.Feature(self.get_setting(["features", "server"]), self.get_setting(["features", "api-key"]))
+        self.feature.log_status(self.feature.NOTIFY_OFFLINE)
+        self.feature.log_status(self.feature.NOTIFY_RECONNECT)
 
-        self.unleash.initialize_client()
-
-    @staticmethod
-    def feature_fallback(feature_name: str, context: dict) -> bool:
-        print("(fallback)")
-        return True
-
-    def get_setting(self, path, default):
+    def get_setting(self, path, default=None):
         node = self.settings
         for p in path:
             if p in node:
@@ -100,11 +90,6 @@ class SecBot:
                             (self.statsd_server["server"], self.statsd_server["port"]))
             self.last_heartbeat = ct
 
-        if self.unleash.is_enabled("notify-offline", fallback_function=self.feature_fallback):
-            print("YES")
-        else:
-            print("NO")
-
     def check_devices(self):
         """
         Check devices on the network.
@@ -119,8 +104,15 @@ class SecBot:
             self.comms.send(self.comms.build_payload(dosa.Messages.PING))
             self.last_ping = ct
 
+        # Allow overriding device timeout via Unleash variant -
+        device_timeout = self.feature.get_variant(self.feature.NOTIFY_OFFLINE)
+        if device_timeout is not None:
+            device_timeout = int(device_timeout)
+        else:
+            device_timeout = self.device_timeout
+
         for d in self.devices:
-            if not d.reported_unresponsive and d.is_stale(self.device_timeout):
+            if not d.reported_unresponsive and d.is_stale(device_timeout):
                 # Device is now unresponsive!
                 d.reported_unresponsive = True
 
@@ -135,7 +127,7 @@ class SecBot:
                     self.tts.play("Alert, " + d.device_name + " is not responding")
 
                 # Raise an incident -
-                if self.unleash.is_enabled("notify-offline", fallback_function=self.feature_fallback):
+                if self.is_feature_enabled(dosa.Feature.NOTIFY_OFFLINE):
                     self.alert(
                         d.device_name, d.device_name + " is not responding",
                         category=dosa.AlertCategory.NETWORK,
@@ -257,7 +249,7 @@ class SecBot:
                             msg = "Notice, " + d.device_name + " is back online"
 
                         # Alert recovery notice
-                        if self.unleash.is_enabled("notify-reconnected", fallback_function=self.feature_fallback):
+                        if self.is_feature_enabled(dosa.Feature.NOTIFY_RECONNECT):
                             self.alert(
                                 d.device_name, d.device_name + " has recovered",
                                 category=dosa.AlertCategory.NETWORK,
