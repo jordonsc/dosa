@@ -4,7 +4,8 @@ import argparse
 import sys
 
 import dosa
-from dosa.renogy import RenogyBridge
+from dosa.renogy import RenogyBridge, StickConfig
+from dosa import glowbit
 
 DEVICE_NAME = b"DOSA Renogy Bridge"
 
@@ -23,18 +24,27 @@ parser.add_argument('-p', '--poll', dest='poll', action='store', default="30",
 parser.add_argument('-m', '--mac', dest='mac', action='store',
                     help='Target MAC address of BT-1 device; required')
 
+# Use a light stick
+parser.add_argument('-l', '--lights', dest='lights', action='store_true',
+                    help='Enables the use of a light stick')
+
 args = parser.parse_args()
 
 # Main app
 print("-- DOSA Renogy Bridge --")
 comms = dosa.Comms(DEVICE_NAME)
 
+if args.lights:
+    stick = glowbit.stick(numLEDs=StickConfig.total_led_count, rateLimitFPS=StickConfig.fps)
+else:
+    stick = None
+
 if not args.mac:
-    print("Target MAC address is require")
+    print("Target MAC address is required")
     sys.exit(2)
 
 try:
-    bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms)
+    bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick)
     bridge.run()
 
 except KeyboardInterrupt:

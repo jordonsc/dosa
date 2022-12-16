@@ -4,3 +4,4 @@ python-daemon
 gatt
 libscrc
 UnleashClient
+rpi_ws281x

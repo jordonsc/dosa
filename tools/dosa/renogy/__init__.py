@@ -8,6 +8,27 @@ from dosa.renogy.exceptions import *
 from dosa.renogy.bt1 import Bt1Client
 
 
+class StickConfig:
+    stick_led_count = 8
+    total_led_count = 24
+    fps = 15
+
+    colour_load = (0, 0, 150)
+    colour_good = (0, 150, 0)
+    colour_warn = (90, 60, 0)
+    colour_bad = (150, 0, 0)
+
+    index_pv = 0
+    index_bat = 8
+    index_load = 16
+
+    threshold_pv_good = 250
+    threshold_pv_med = 50
+    threshold_bat_good = 90
+    threshold_bat_med = 80
+    threshold_load_warn = 200
+
+
 class PowerGrid:
     def __init__(self, data: dict = None):
         self.battery_soc = 0
@@ -62,7 +83,7 @@ class PowerGrid:
 
 
 class RenogyBridge:
-    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None):
+    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None):
         logging.basicConfig(level=logging.DEBUG)
 
         if comms is None:
@@ -75,6 +96,18 @@ class RenogyBridge:
         self.target_mac = tgt_mac
         self.poll_interval = poll_int  # read data interval (seconds)
         self.bt_thread = None
+        self.stick = stick
+
+        self.init_lights()
+
+    def init_lights(self):
+        if self.stick is None:
+            return
+
+        self.stick.blankDisplay()
+        for i in range(StickConfig.total_led_count):
+            self.stick.pixelSet(i, self.stick.rgbColour(*StickConfig.colour_load))
+            self.stick.pixelsShow()
 
     def run(self):
         logging.info("Starting DOSA Renogy Bridge..")
@@ -134,3 +167,45 @@ class RenogyBridge:
 
         payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
         self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
+
+        self.update_stick_colours()
+
+    def update_stick_colours(self):
+        if self.stick is None:
+            return
+
+        # PV
+        if self.power_grid.pv_power >= StickConfig.threshold_pv_good:
+            pv_colour = StickConfig.colour_good
+        elif self.power_grid.pv_power >= StickConfig.threshold_pv_med:
+            pv_colour = StickConfig.colour_warn
+        else:
+            pv_colour = StickConfig.colour_bad
+
+        self.set_stick_colour(StickConfig.index_pv, pv_colour)
+
+        # Battery
+        if self.power_grid.battery_soc >= StickConfig.threshold_bat_good:
+            bat_colour = StickConfig.colour_good
+        elif self.power_grid.battery_soc >= StickConfig.threshold_bat_med:
+            bat_colour = StickConfig.colour_warn
+        else:
+            bat_colour = StickConfig.colour_bad
+
+        self.set_stick_colour(StickConfig.index_bat, bat_colour)
+
+        # Load
+        if self.power_grid.load_power >= StickConfig.threshold_load_warn:
+            load_colour = StickConfig.colour_warn
+        elif self.power_grid.load_power > 0:
+            load_colour = StickConfig.colour_good
+        else:
+            load_colour = StickConfig.colour_bad
+
+        self.set_stick_colour(StickConfig.index_load, load_colour)
+
+        self.stick.pixelsShow()
+
+    def set_stick_colour(self, index, colour):
+        for i in range(index, index + 8):
+            self.stick.pixelSet(i, self.stick.rgbColour(*colour))
