@@ -13,20 +13,25 @@ class StickConfig:
     total_led_count = 24
     fps = 15
 
-    colour_load = (0, 0, 150)
+    colour_load = (0, 100, 100)
+    colour_special = (0, 30, 170)
     colour_good = (0, 150, 0)
-    colour_warn = (90, 60, 0)
-    colour_bad = (150, 0, 0)
+    colour_warn = (120, 60, 0)
+    colour_bad = (160, 0, 0)
 
     index_pv = 0
     index_bat = 8
     index_load = 16
 
+    threshold_pv_special = 450
     threshold_pv_good = 250
-    threshold_pv_med = 50
-    threshold_bat_good = 90
-    threshold_bat_med = 80
-    threshold_load_warn = 200
+    threshold_pv_med = 25
+    threshold_bat_special_v = 13.7
+    threshold_bat_special_soc = 100
+    threshold_bat_good = 95
+    threshold_bat_med = 85
+    threshold_load_warn = 180
+    threshold_load_bad = 240
 
 
 class PowerGrid:
@@ -175,9 +180,11 @@ class RenogyBridge:
             return
 
         # PV
-        if self.power_grid.pv_power >= StickConfig.threshold_pv_good:
+        if self.power_grid.pv_power >= StickConfig.threshold_pv_special:
+            pv_colour = StickConfig.colour_special
+        elif self.power_grid.pv_power >= StickConfig.threshold_pv_good:
             pv_colour = StickConfig.colour_good
-        elif self.power_grid.pv_power >= StickConfig.threshold_pv_med:
+        elif self.power_grid.pv_power > StickConfig.threshold_pv_med:
             pv_colour = StickConfig.colour_warn
         else:
             pv_colour = StickConfig.colour_bad
@@ -185,7 +192,10 @@ class RenogyBridge:
         self.set_stick_colour(StickConfig.index_pv, pv_colour)
 
         # Battery
-        if self.power_grid.battery_soc >= StickConfig.threshold_bat_good:
+        if self.power_grid.battery_soc >= StickConfig.threshold_bat_special_soc and \
+                self.power_grid.battery_voltage >= StickConfig.threshold_bat_special_v:
+            bat_colour = StickConfig.colour_special
+        elif self.power_grid.battery_soc >= StickConfig.threshold_bat_good:
             bat_colour = StickConfig.colour_good
         elif self.power_grid.battery_soc >= StickConfig.threshold_bat_med:
             bat_colour = StickConfig.colour_warn
@@ -195,12 +205,14 @@ class RenogyBridge:
         self.set_stick_colour(StickConfig.index_bat, bat_colour)
 
         # Load
-        if self.power_grid.load_power >= StickConfig.threshold_load_warn:
+        if self.power_grid.load_power >= StickConfig.threshold_load_bad:
+            load_colour = StickConfig.colour_bad
+        elif self.power_grid.load_power >= StickConfig.threshold_load_warn:
             load_colour = StickConfig.colour_warn
         elif self.power_grid.load_power > 0:
             load_colour = StickConfig.colour_good
         else:
-            load_colour = StickConfig.colour_bad
+            load_colour = StickConfig.colour_special
 
         self.set_stick_colour(StickConfig.index_load, load_colour)
 
