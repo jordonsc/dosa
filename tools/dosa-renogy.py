@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import sys
 
 import dosa
@@ -28,6 +29,10 @@ parser.add_argument('-m', '--mac', dest='mac', action='store',
 parser.add_argument('-l', '--lights', dest='lights', action='store_true',
                     help='Enables the use of a light stick')
 
+# Set the size of the PV grid (in Watts)
+parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1000",
+                    help='Define the size of the PV grid in Watts')
+
 args = parser.parse_args()
 
 # Main app
@@ -44,7 +49,8 @@ if not args.mac:
     sys.exit(2)
 
 try:
-    bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick)
+    bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
+                          grid_size=int(args.grid))
     bridge.run()
 
 except KeyboardInterrupt:

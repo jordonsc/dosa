@@ -23,9 +23,11 @@ class StickConfig:
     index_bat = 8
     index_load = 16
 
-    threshold_pv_special = 450
-    threshold_pv_good = 250
-    threshold_pv_med = 25
+    # These values (PV only) are coefficients of the grid-size, and will be converted on RenogyBridge init
+    threshold_pv_special = 0.8
+    threshold_pv_good = 0.35
+    threshold_pv_med = 0.05
+
     threshold_bat_special_v = 13.7
     threshold_bat_special_soc = 100
     threshold_bat_good = 95
@@ -88,7 +90,7 @@ class PowerGrid:
 
 
 class RenogyBridge:
-    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None):
+    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000):
         logging.basicConfig(level=logging.DEBUG)
 
         if comms is None:
@@ -102,6 +104,11 @@ class RenogyBridge:
         self.poll_interval = poll_int  # read data interval (seconds)
         self.bt_thread = None
         self.stick = stick
+        self.config = StickConfig()
+
+        self.config.threshold_pv_special = StickConfig.threshold_pv_special * grid_size
+        self.config.threshold_pv_good = StickConfig.threshold_pv_good * grid_size
+        self.config.threshold_pv_med = StickConfig.threshold_pv_med * grid_size
 
         self.init_lights()
 
@@ -110,8 +117,8 @@ class RenogyBridge:
             return
 
         self.stick.blankDisplay()
-        for i in range(StickConfig.total_led_count):
-            self.stick.pixelSet(i, self.stick.rgbColour(*StickConfig.colour_load))
+        for i in range(self.config.total_led_count):
+            self.stick.pixelSet(i, self.stick.rgbColour(*self.config.colour_load))
             self.stick.pixelsShow()
 
     def run(self):
@@ -180,41 +187,41 @@ class RenogyBridge:
             return
 
         # PV
-        if self.power_grid.pv_power >= StickConfig.threshold_pv_special:
-            pv_colour = StickConfig.colour_special
-        elif self.power_grid.pv_power >= StickConfig.threshold_pv_good:
-            pv_colour = StickConfig.colour_good
-        elif self.power_grid.pv_power > StickConfig.threshold_pv_med:
-            pv_colour = StickConfig.colour_warn
+        if self.power_grid.pv_power >= self.config.threshold_pv_special:
+            pv_colour = self.config.colour_special
+        elif self.power_grid.pv_power >= self.config.threshold_pv_good:
+            pv_colour = self.config.colour_good
+        elif self.power_grid.pv_power > self.config.threshold_pv_med:
+            pv_colour = self.config.colour_warn
         else:
-            pv_colour = StickConfig.colour_bad
+            pv_colour = self.config.colour_bad
 
-        self.set_stick_colour(StickConfig.index_pv, pv_colour)
+        self.set_stick_colour(self.config.index_pv, pv_colour)
 
         # Battery
-        if self.power_grid.battery_soc >= StickConfig.threshold_bat_special_soc and \
-                self.power_grid.battery_voltage >= StickConfig.threshold_bat_special_v:
-            bat_colour = StickConfig.colour_special
-        elif self.power_grid.battery_soc >= StickConfig.threshold_bat_good:
-            bat_colour = StickConfig.colour_good
-        elif self.power_grid.battery_soc >= StickConfig.threshold_bat_med:
-            bat_colour = StickConfig.colour_warn
+        if self.power_grid.battery_soc >= self.config.threshold_bat_special_soc and \
+                self.power_grid.battery_voltage >= self.config.threshold_bat_special_v:
+            bat_colour = self.config.colour_special
+        elif self.power_grid.battery_soc >= self.config.threshold_bat_good:
+            bat_colour = self.config.colour_good
+        elif self.power_grid.battery_soc >= self.config.threshold_bat_med:
+            bat_colour = self.config.colour_warn
         else:
-            bat_colour = StickConfig.colour_bad
+            bat_colour = self.config.colour_bad
 
-        self.set_stick_colour(StickConfig.index_bat, bat_colour)
+        self.set_stick_colour(self.config.index_bat, bat_colour)
 
         # Load
-        if self.power_grid.load_power >= StickConfig.threshold_load_bad:
-            load_colour = StickConfig.colour_bad
-        elif self.power_grid.load_power >= StickConfig.threshold_load_warn:
-            load_colour = StickConfig.colour_warn
+        if self.power_grid.load_power >= self.config.threshold_load_bad:
+            load_colour = self.config.colour_bad
+        elif self.power_grid.load_power >= self.config.threshold_load_warn:
+            load_colour = self.config.colour_warn
         elif self.power_grid.load_power > 0:
-            load_colour = StickConfig.colour_good
+            load_colour = self.config.colour_good
         else:
-            load_colour = StickConfig.colour_special
+            load_colour = self.config.colour_special
 
-        self.set_stick_colour(StickConfig.index_load, load_colour)
+        self.set_stick_colour(self.config.index_load, load_colour)
 
         self.stick.pixelsShow()
 
