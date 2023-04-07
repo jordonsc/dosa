@@ -1,10 +1,9 @@
 #pragma once
 
-
 /**
  * Pin for PWM signal
  */
-#define DOSA_PWM_PIN 5
+#define DOSA_PWM_PIN 3
 
 /**
  * PWM frequency

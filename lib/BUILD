@@ -216,6 +216,9 @@ cc_library(
     linkopts = LINKOPTS,
     visibility = ["//visibility:public"],
     deps = [
+        "//arduino:board_megaavr",
+        "//arduino:variant_nona4809",
+        "//arduino:megaAVR_PWM",
     ],
 )
 
