@@ -45,6 +45,17 @@ cc_binary(
 )
 
 cc_binary(
+    name = "pwm",
+    srcs = glob(["pwm/pwm.cc"]),
+    copts = COPTS,
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//lib:pwm",
+    ],
+)
+
+cc_binary(
     name = "relay",
     srcs = glob(["relay/relay.cc"]),
     copts = COPTS,

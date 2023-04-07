@@ -33,6 +33,10 @@ parser.add_argument('-l', '--lights', dest='lights', action='store_true',
 parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1000",
                     help='Define the size of the PV grid in Watts')
 
+# Transmit a PWM request via a given serial port
+parser.add_argument('-s', '--serial', dest='serial', action='store',
+                    help='Define the serial TTY port for sending PWM requests')
+
 args = parser.parse_args()
 
 # Main app
@@ -50,7 +54,7 @@ if not args.mac:
 
 try:
     bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
-                          grid_size=int(args.grid))
+                          grid_size=int(args.grid), pwm_port=args.serial)
     bridge.run()
 
 except KeyboardInterrupt:

@@ -206,6 +206,19 @@ cc_library(
     ],
 )
 
+# PWM controller
+cc_library(
+    name = "pwm",
+    srcs = glob(["pwm/src/**/*.cpp"]),
+    hdrs = glob(["pwm/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["pwm/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
+)
+
 # Display monitor
 cc_library(
     name = "monitor",

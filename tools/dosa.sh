@@ -146,10 +146,10 @@ case $1 in
 "install")
   validateApp "$fqbn"
   validatePort "$3"
-  echo "Compile $1 against ${fqbn}.."
+  echo "Compile $2 against ${fqbn}.."
   arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags)" "src/$2"
   if [[ $? -eq 0 ]]; then
-    echo "Uploading $1 to board on port $3.."
+    echo "Uploading $2 to board on port $3.."
     arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
   else
     echo
@@ -160,10 +160,10 @@ case $1 in
 "install-debug")
   validateApp "$fqbn"
   validatePort "$3"
-  echo "[DEBUG] Compile $1 against ${fqbn}.."
+  echo "[DEBUG] Compile $2 against ${fqbn}.."
   arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   if [[ $? -eq 0 ]]; then
-    echo "[DEBUG] Uploading $1 to board on port $3.."
+    echo "[DEBUG] Uploading $2 to board on port $3.."
     arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
   else
     echo
@@ -174,10 +174,10 @@ case $1 in
 "debug")
   validateApp "$fqbn"
   validatePort "$3"
-  echo "[DEBUG] Compile $1 against ${fqbn}.."
+  echo "[DEBUG] Compile $2 against ${fqbn}.."
   arduino-cli compile -b "${fqbn}" --build-property "compiler.cpp.extra_flags=$(getBuildFlags debug)" "src/$2"
   if [[ $? -eq 0 ]]; then
-    echo "[DEBUG] Uploading $1 to board on port $3.."
+    echo "[DEBUG] Uploading $2 to board on port $3.."
     arduino-cli upload -b "${fqbn}" -p "$3" "src/$2"
     sleep 2
     echo

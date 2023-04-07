@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+app=$(python3 -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 
 cd ${app}/..
 arduino_path=$(find ~ -maxdepth 1 -name ".arduino*" | head -n 1)
@@ -55,6 +55,7 @@ ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
 ln -s ${app}/../lib/relay ~/Arduino/libraries/dosa_relay
 ln -s ${app}/../lib/alarm ~/Arduino/libraries/dosa_alarm
 ln -s ${app}/../lib/pir ~/Arduino/libraries/dosa_pir
+ln -s ${app}/../lib/pwm ~/Arduino/libraries/dosa_pwm
 ln -s ${app}/../lib/ranging ~/Arduino/libraries/dosa_ranging
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
 ln -s ${app}/../lib/laser ~/Arduino/libraries/dosa_laser

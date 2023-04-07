@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+app=$(python3 -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 
 # Set user to the dialout group so that they can access the USB
 sudo usermod -a -G dialout $USER
@@ -27,7 +27,7 @@ cfg=${app}/arduino-cli.yaml
 echo "Installing boards.."
 arduino-cli --config-file "${cfg}" core update-index
 # NB: issue with Adafruit BusIO on arduino:samd@1.8.11 (as of 2022-02-20)
-arduino-cli --config-file "${cfg}" core install arduino:samd@1.8.11 arduino:mbed_nano Croduino_Boards:Inkplate
+arduino-cli --config-file "${cfg}" core install arduino:samd@1.8.11 arduino:mbed_nano arduino:megaavr Croduino_Boards:Inkplate
 
 # Install required libraries
 arduino-cli --config-file "${app}" lib install ArduinoBLE WiFiNINA Array "Adafruit FRAM SPI" \
@@ -43,7 +43,7 @@ else
 fi
 
 # For Python applications
-pip3 install -r ${app}/requirements.txt
+pip3 install -r "${app}/requirements.txt"
 
 echo
 echo "Done"
