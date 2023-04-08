@@ -15,7 +15,7 @@ class PwmApp final
         Serial.begin(9600);
         Serial.flush();
 
-        pwm = new megaAVR_PWM(DOSA_PWM_PIN, DOSA_PWM_FREQ, 10);
+        pwm = new megaAVR_PWM(DOSA_PWM_PIN, DOSA_PWM_FREQ, 100);
         pwm->setPWM();
     }
 

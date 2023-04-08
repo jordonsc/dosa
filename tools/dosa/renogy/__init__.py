@@ -165,6 +165,17 @@ class RenogyBridge:
                     logging.warning("BT listener died, respawning in 5 seconds..")
                     daemon_died = time.time()
 
+            # Process data on serial line
+            if self.pwm_serial is not None:
+                try:
+                    while self.pwm_serial.in_waiting > 0:
+                        try:
+                            logging.debug("Serial: " + self.pwm_serial.readline().decode('utf-8').rstrip())
+                        except UnicodeDecodeError as e:
+                            logging.warning("Bad data on serial line: ", e)
+                except serial.serialutil.SerialException:
+                    self.serial_error_close()
+
             # Process UDP comms
             msg = self.comms.receive(timeout=0.1)
             if msg is None:
@@ -270,16 +281,8 @@ class RenogyBridge:
             logging.debug("Set PWM to {}".format(pwm))
             self.pwm_serial.write(pwm.to_bytes(1, byteorder="big", signed=False))
 
-            while self.pwm_serial.in_waiting > 0:
-                try:
-                    logging.debug("Serial: " + self.pwm_serial.readline().decode('utf-8').rstrip())
-                except UnicodeDecodeError as e:
-                    logging.warning("Bad data on serial line: ", e)
-
         except serial.serialutil.SerialException:
-            logging.error("Serial communication error")
-            self.pwm_serial.close()
-            self.pwm_serial = None
+            self.serial_error_close()
 
     def get_pwm_value(self):
         logging.debug("Controller temp: {}".format(self.power_grid.controller_temperature))
@@ -292,3 +295,8 @@ class RenogyBridge:
             pos = (self.power_grid.controller_temperature - self.config.low_temp) / \
                   (self.config.high_temp - self.config.low_temp)
             return round((pos * (self.config.pwm_max - self.config.pwm_min)) + self.config.pwm_min)
+
+    def serial_error_close(self):
+        logging.error("Serial communication error")
+        self.pwm_serial.close()
+        self.pwm_serial = None
