@@ -11,7 +11,7 @@ from dosa.renogy.bt1 import Bt1Client
 
 class StickConfig:
     stick_led_count = 8
-    total_led_count = 24
+    total_led_count = 32
     fps = 15
 
     colour_load = (0, 100, 100)
@@ -20,9 +20,10 @@ class StickConfig:
     colour_warn = (120, 60, 0)
     colour_bad = (160, 0, 0)
 
-    index_pv = 0
-    index_bat = 8
-    index_load = 16
+    index_mains = 0
+    index_pv = 8
+    index_bat = 16
+    index_load = 24
 
     # These values (PV only) are coefficients of the grid-size, and will be converted on RenogyBridge init
     threshold_pv_special = 0.8
@@ -223,6 +224,12 @@ class RenogyBridge:
     def update_stick_colours(self):
         if self.stick is None:
             return
+
+        # Mains
+        if True:
+            mains_colour = self.config.colour_bad
+
+        self.set_stick_colour(self.config.index_mains, mains_colour)
 
         # PV
         if self.power_grid.pv_power >= self.config.threshold_pv_special:
