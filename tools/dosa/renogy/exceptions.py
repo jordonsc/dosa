@@ -21,5 +21,9 @@ class ConnectionFailedException(BleException):
     pass
 
 
+class DisconnectedException(BleException):
+    pass
+
+
 class Bt1Exception(DosaSmartException):
     pass

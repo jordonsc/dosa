@@ -26,8 +26,8 @@ class StickConfig:
     index_load = 24
 
     # These values (PV only) are coefficients of the grid-size, and will be converted on RenogyBridge init
-    threshold_pv_special = 0.8
-    threshold_pv_good = 0.35
+    threshold_pv_special = 0.75
+    threshold_pv_good = 0.30
     threshold_pv_med = 0.05
 
     threshold_bat_special_v = 13.7
@@ -171,9 +171,9 @@ class RenogyBridge:
                 try:
                     while self.pwm_serial.in_waiting > 0:
                         try:
-                            logging.debug("Serial: " + self.pwm_serial.readline().decode('utf-8').rstrip())
+                            logging.debug("<FAN_CTRL: {}>".format(self.pwm_serial.readline().decode('utf-8').rstrip()))
                         except UnicodeDecodeError as e:
-                            logging.warning("Bad data on serial line: ", e)
+                            logging.warning("FAN_CTRL: bad data on serial line: ", e)
                 except serial.serialutil.SerialException:
                     self.serial_error_close()
 
@@ -199,13 +199,21 @@ class RenogyBridge:
         self.bt_thread.start()
 
     def bt_listener(self):
+        """
+        Run in a thread to listen to the BT-1 BLE device.
+
+        NB: this is a blocking call.
+        """
         bt1_client = Bt1Client(adapter_name=self.hci, on_data_received=self.on_data_received,
                                polling_interval=self.poll_interval)
 
         try:
+            # Slightly misleading function name - this will also exec manager.run() and never return.
             bt1_client.connect(self.target_mac)
         except ConnectionFailedException:
             logging.error("Connection failed")
+        except DisconnectedException:
+            logging.error("Unexpectedly disconnected from device")
         except BleDeviceNotFoundException:
             logging.error("Device not found")
         except KeyboardInterrupt:
@@ -213,25 +221,41 @@ class RenogyBridge:
             bt1_client.disconnect()
 
     def on_data_received(self, app: Bt1Client, data):
+        """
+        Inbound data from the BLE device.
+        """
         self.power_grid.from_data(data)
 
         payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
+        logging.debug("Dispatching STA multicast")
         self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
 
         self.update_stick_colours()
         self.update_pwm_speed()
 
     def update_stick_colours(self):
+        """
+        Update all glowbit sticks to the appropriate colours based on the power grid state.
+        """
         if self.stick is None:
             return
 
-        # Mains
+        self.update_stick_mains()
+        self.update_stick_pv()
+        self.update_stick_battery()
+        self.update_stick_load()
+        self.stick.pixelsShow()
+
+    def update_stick_mains(self):
+        # Mains LED
         if True:
             mains_colour = self.config.colour_bad
 
         self.set_stick_colour(self.config.index_mains, mains_colour)
 
-        # PV
+    def update_stick_pv(self):
+        # PV LED
+        logging.debug("PV: {}w, {}v".format(self.power_grid.pv_power, round(self.power_grid.pv_voltage, 1)))
         if self.power_grid.pv_power >= self.config.threshold_pv_special:
             pv_colour = self.config.colour_special
         elif self.power_grid.pv_power >= self.config.threshold_pv_good:
@@ -243,7 +267,11 @@ class RenogyBridge:
 
         self.set_stick_colour(self.config.index_pv, pv_colour)
 
-        # Battery
+    def update_stick_battery(self):
+        # Battery LED
+        logging.debug("Battery: {}%, {}v".format(
+            self.power_grid.battery_soc, round(self.power_grid.battery_voltage, 1)
+        ))
         if self.power_grid.battery_soc >= self.config.threshold_bat_special_soc and \
                 self.power_grid.battery_voltage >= self.config.threshold_bat_special_v:
             bat_colour = self.config.colour_special
@@ -256,7 +284,11 @@ class RenogyBridge:
 
         self.set_stick_colour(self.config.index_bat, bat_colour)
 
-        # Load
+    def update_stick_load(self):
+        # Load LED
+        logging.debug("Load: {}w ({})".format(
+            self.power_grid.load_power, "active" if self.power_grid.load_state else "inactive"
+        ))
         if self.power_grid.load_power >= self.config.threshold_load_bad:
             load_colour = self.config.colour_bad
         elif self.power_grid.load_power >= self.config.threshold_load_warn:
@@ -268,13 +300,20 @@ class RenogyBridge:
 
         self.set_stick_colour(self.config.index_load, load_colour)
 
-        self.stick.pixelsShow()
-
     def set_stick_colour(self, index, colour):
-        for i in range(index, index + 8):
+        """
+        Sets all LEDs in a glowbit stick to a colour.
+
+        This will change `StickConfig.stick_led_count` (8) LEDs at once, intended to be an entire stick in the chain.
+        """
+        for i in range(index, index + StickConfig.stick_led_count):
             self.stick.pixelSet(i, self.stick.rgbColour(*colour))
 
     def update_pwm_speed(self):
+        """
+        Sends a single byte down the serial line to a dedicated PWM controller. That PWM signal controls the speed of
+        fans intended to cool the solar controller & inverter.
+        """
         if self.pwm_serial_port is None:
             return
 
@@ -285,13 +324,18 @@ class RenogyBridge:
 
         try:
             pwm = self.get_pwm_value()
-            logging.debug("Set PWM to {}".format(pwm))
+            logging.debug("Set FAN_CTRL to {}%".format(pwm))
             self.pwm_serial.write(pwm.to_bytes(1, byteorder="big", signed=False))
 
         except serial.serialutil.SerialException:
             self.serial_error_close()
 
     def get_pwm_value(self):
+        """
+        Calculates the correct value for to send to the PWM controller.
+
+        This value is effectively the fan speed as an integer percentage.
+        """
         logging.debug("Controller temp: {}".format(self.power_grid.controller_temperature))
 
         if self.power_grid.controller_temperature <= self.config.low_temp:
