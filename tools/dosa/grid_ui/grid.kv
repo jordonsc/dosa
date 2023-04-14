@@ -1,14 +1,187 @@
 #:kivy 1.0.9
 
-<GridWidget>:
-    Label:
-        font_size: 80
-        center_x: root.width / 2
-        top: root.top - 50
-        text: "Jordo Grid"
+# Label fonts
+#:set font_name "../assets/Consolas.ttf"
+#:set font_size 40
+#:set label_size [250, 50]
+
+# Widget positional offsets
+#:set left_column 140
+#:set right_column 540
+#:set img_offset 60
+#:set top_offset 60
+#:set line_offset 50
+#:set group_offset 95
+
+<MainWidget>:
+    canvas.before:
+        Color:
+            rgba: root.col_bg
+        Rectangle:
+            pos: 0, 0
+            size: root.size
+
+    ### LEFT COLUMN ###
+    # Battery display
+    Image:
+        source: "../assets/bat.png"
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: root.top - top_offset
 
     Label:
-        font_size: 60
-        center_x: root.width / 2
-        top: root.top - 120
-        text: "520"
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-%"
+        id: bat_soc
+        x: left_column
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-ah"
+        id: bat_ah_remaining
+        x: left_column
+        y: bat_soc.y - line_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-v"
+        id: bat_voltage
+        y: bat_ah_remaining.y - line_offset
+        x: left_column
+
+    # Mains display
+    Image:
+        source: '../assets/mains.png'
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: bat_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_special
+        text: "Inactive"
+        id: mains_status
+        center_y: bat_voltage.center_y - group_offset
+        x: left_column
+
+    ### RIGHT COLUMN ###
+    # PV display
+    Image:
+        source: "../assets/pv.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        text: "-w"
+        color: root.col_text
+        id: pv_power
+        x: right_column
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-v"
+        id: pv_voltage
+        x: right_column
+        y: pv_power.y - line_offset
+
+    # Load display
+    Image:
+        source: "../assets/load.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: pv_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-"
+        id: load_status
+        x: right_column
+        center_y: pv_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-w"
+        id: load_power
+        x: right_column
+        y: load_status.y - line_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-a"
+        id: load_current
+        x: right_column
+        y: load_power.y - line_offset
+
+    # Time remaining
+    Image:
+        source: "../assets/clock.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: load_current.center_y - group_offset
+        id: clock
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-"
+        id: time_remaining
+        x: right_column
+        center_y: load_current.center_y - group_offset
+
+    ### SPLASH SCREEN ###
+    Image:
+        source: "../assets/splash.png"
+        size: root.size
+        pos: 0, 0
+        id: splash

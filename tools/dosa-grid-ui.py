@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
-from kivy.config import Config
+from kivy.config import Config as KivyConfig
 from dosa.grid_ui import GridApp
 
 # Arg parser
@@ -11,8 +11,9 @@ args = parser.parse_args()
 
 # Main app
 def run_app():
-    Config.set('graphics', 'width', '800')
-    Config.set('graphics', 'height', '480')
+    KivyConfig.set('graphics', 'width', '800')
+    KivyConfig.set('graphics', 'height', '480')
+    KivyConfig.set('graphics', 'show_cursor', '0')
 
     GridApp().run()
 

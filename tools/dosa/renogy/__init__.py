@@ -3,10 +3,12 @@ import serial
 import time
 import logging
 from threading import Thread
+import json
 
 import dosa
 from dosa.renogy.exceptions import *
 from dosa.renogy.bt1 import Bt1Client
+from dosa.power import thresholds
 
 
 class StickConfig:
@@ -19,21 +21,13 @@ class StickConfig:
     colour_good = (0, 150, 0)
     colour_warn = (120, 60, 0)
     colour_bad = (160, 0, 0)
+    colour_none = (0, 0, 0)
 
     index_mains = 0
     index_pv = 8
     index_bat = 16
     index_load = 24
 
-    # These values (PV only) are coefficients of the grid-size, and will be converted on RenogyBridge init
-    threshold_pv_special = 0.75
-    threshold_pv_good = 0.30
-    threshold_pv_med = 0.05
-
-    threshold_bat_special_v = 13.7
-    threshold_bat_special_soc = 100
-    threshold_bat_good = 95
-    threshold_bat_med = 85
     threshold_load_warn = 180
     threshold_load_bad = 240
 
@@ -73,7 +67,7 @@ class PowerGrid:
 
         self.load_state = data['load_state']
         self.load_power = data['load_power']
-        self.load_consumed = data['discharging_amp_hours_today'] * 13
+        self.load_consumed = data['discharging_amp_hours_today'] * 12.5
 
         self.controller_temperature = data['controller_temperature']
 
@@ -97,12 +91,23 @@ class PowerGrid:
 
 
 class RenogyBridge:
-    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, pwm_port=None):
+    data_file = "/usr/share/power_grid.json"
+
+    def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
+                 pwm_port=None):
         logging.basicConfig(level=logging.DEBUG)
 
         if comms is None:
             comms = dosa.Comms()
         self.comms = comms
+
+        self.pv_size = grid_size
+        self.bat_size = bat_size
+
+        self.mains_active = None
+
+        self.mains_proposed_state = None
+        self.mains_proposal_time = None
 
         self.power_grid = PowerGrid()
 
@@ -115,11 +120,12 @@ class RenogyBridge:
         self.pwm_serial_port = pwm_port
         self.pwm_serial = None
 
-        self.config.threshold_pv_special = StickConfig.threshold_pv_special * grid_size
-        self.config.threshold_pv_good = StickConfig.threshold_pv_good * grid_size
-        self.config.threshold_pv_med = StickConfig.threshold_pv_med * grid_size
+        self.config.threshold_pv_special = thresholds["pv"]["high"] * grid_size
+        self.config.threshold_pv_good = thresholds["pv"]["med"] * grid_size
+        self.config.threshold_pv_med = thresholds["pv"]["low"] * grid_size
 
         self.init_lights()
+        self.set_mains(None)
 
         if self.pwm_serial_port:
             self.init_pwm_serial()
@@ -149,7 +155,7 @@ class RenogyBridge:
             logging.error("Failed to bring serial online")
 
     def run(self):
-        logging.info("Starting DOSA Renogy Bridge..")
+        logging.info("Starting DOSA Power Grid Controller..")
 
         daemon_died = None
         self.spawn_listener()
@@ -230,8 +236,10 @@ class RenogyBridge:
         logging.debug("Dispatching STA multicast")
         self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
 
+        self.recalculate_mains()
         self.update_stick_colours()
         self.update_pwm_speed()
+        self.write_data_file()
 
     def update_stick_colours(self):
         """
@@ -248,19 +256,23 @@ class RenogyBridge:
 
     def update_stick_mains(self):
         # Mains LED
-        if True:
+        if self.mains_active is None:
+            mains_colour = self.config.colour_warn
+        elif self.mains_active:
             mains_colour = self.config.colour_bad
+        else:
+            mains_colour = self.config.colour_none
 
         self.set_stick_colour(self.config.index_mains, mains_colour)
 
     def update_stick_pv(self):
         # PV LED
         logging.debug("PV: {}w, {}v".format(self.power_grid.pv_power, round(self.power_grid.pv_voltage, 1)))
-        if self.power_grid.pv_power >= self.config.threshold_pv_special:
+        if self.power_grid.pv_power >= self.pv_size * thresholds["pv"]["high"]:
             pv_colour = self.config.colour_special
-        elif self.power_grid.pv_power >= self.config.threshold_pv_good:
+        elif self.power_grid.pv_power >= self.pv_size * thresholds["pv"]["med"]:
             pv_colour = self.config.colour_good
-        elif self.power_grid.pv_power > self.config.threshold_pv_med:
+        elif self.power_grid.pv_power >= self.pv_size * thresholds["pv"]["low"]:
             pv_colour = self.config.colour_warn
         else:
             pv_colour = self.config.colour_bad
@@ -272,12 +284,11 @@ class RenogyBridge:
         logging.debug("Battery: {}%, {}v".format(
             self.power_grid.battery_soc, round(self.power_grid.battery_voltage, 1)
         ))
-        if self.power_grid.battery_soc >= self.config.threshold_bat_special_soc and \
-                self.power_grid.battery_voltage >= self.config.threshold_bat_special_v:
+        if self.power_grid.battery_soc >= thresholds["battery"]["high"]:
             bat_colour = self.config.colour_special
-        elif self.power_grid.battery_soc >= self.config.threshold_bat_good:
+        elif self.power_grid.battery_soc >= thresholds["battery"]["med"]:
             bat_colour = self.config.colour_good
-        elif self.power_grid.battery_soc >= self.config.threshold_bat_med:
+        elif self.power_grid.battery_soc >= thresholds["battery"]["low"]:
             bat_colour = self.config.colour_warn
         else:
             bat_colour = self.config.colour_bad
@@ -351,3 +362,78 @@ class RenogyBridge:
         logging.error("Serial communication error")
         self.pwm_serial.close()
         self.pwm_serial = None
+
+    def write_data_file(self):
+        grid_data = {
+            "battery": {
+                "capacity": self.bat_size,
+                "soc": self.power_grid.battery_soc,
+                "voltage": round(self.power_grid.battery_voltage, 2),
+                "ah_remaining": round(self.bat_size * self.power_grid.battery_soc / 100, 2),
+            },
+            "mains": {
+                "active": self.mains_active,
+            },
+            "pv": {
+                "capacity": self.pv_size,
+                "power": self.power_grid.pv_power,
+                "voltage": self.power_grid.pv_voltage,
+            },
+            "load": {
+                # This is a placeholder pending a proper shunt
+                "power": -self.power_grid.load_power,
+                "current": -self.power_grid.load_power / 12.5,
+            },
+        }
+
+        with open(self.data_file, 'w', encoding='utf-8') as f:
+            json.dump(grid_data, f, ensure_ascii=False, indent=4)
+
+    def recalculate_mains(self):
+        def set_proposed(x):
+            logging.debug("Proposed mains relay state: {}".format(x))
+            self.mains_proposed_state = x
+            self.mains_proposal_time = int(time.time())
+
+        proposed = None  # do nothing by default
+        if self.power_grid.battery_soc < thresholds["mains"]["activate"]:
+            # Battery is getting low, propose enabling mains backup
+            proposed = True
+        elif self.power_grid.battery_soc >= thresholds["mains"]["deactivate"]:
+            # Battery SOC is high, propose turning off mains backup
+            proposed = False
+
+        if self.mains_active is None:
+            # This would be the first run - set mains to whatever we decide here (no proposal = no mains)
+            logging.info("Initial set for mains relay")
+            self.set_mains(proposed == True)
+            set_proposed(proposed)
+
+        elif proposed is not None:
+            # We need to wait for a grace period before actioning a new state proposal
+            if self.mains_proposed_state != proposed:
+                # Proposing a new state
+                set_proposed(proposed)
+
+            elif self.mains_active != proposed:
+                # Check how long we've been in this proposed state
+                time_in_proposal = int(time.time()) - self.mains_proposal_time
+                if (proposed and time_in_proposal >= thresholds["mains"]["activate_time"]) or \
+                        (not proposed and time_in_proposal >= thresholds["mains"]["deactivate_time"]):
+                    # Grace expired, action proposal
+                    self.set_mains(proposed)
+
+            else:
+                # Proposing what we're already doing - do nothing
+                pass
+
+    def set_mains(self, active):
+        """
+        Set the mains backup relay to given state, and write the state to the data file.
+
+        If active is None, a null value will be writen to the data file to indicate "still deciding" and the mains
+        relay will be activated as it's the safe option until the power grid state is assessed.
+        """
+        logging.info("Set mains relay: {}".format(active))
+        self.mains_active = active
+        self.write_data_file()

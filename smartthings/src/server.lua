@@ -63,7 +63,7 @@ function hub_server.tick(self)
             device:online()
             device.profile.components["main"]:emit_event(capabilities.battery.battery(msg.power_grid.battery_soc))
             device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.battery_voltage))
-            device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.battery_temperature))
+            device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature({value=msg.power_grid.battery_temperature, unit='C'}))
 
             device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.pv_voltage))
             device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(msg.power_grid.pv_power))
@@ -76,7 +76,7 @@ function hub_server.tick(self)
             end
             device.profile.components["load"]:emit_event(capabilities.powerMeter.power(msg.power_grid.load_power))
             device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.load_consumed))
-            device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.controller_temperature))
+            device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature({value=msg.power_grid.controller_temperature, unit='C'}))
         end
     elseif dvc_meta.type == "dosa-d" then
         if msg.code == "bgn" then

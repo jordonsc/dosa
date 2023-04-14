@@ -6,5 +6,5 @@ cd "${app}/.." || exit
 source smartthings/ids
 
 smartthings edge:drivers:package smartthings && \
-smartthings edge:drivers:publish $DOSA_DRIVER -C $DOSA_CHANNEL && \
+smartthings edge:channels:assign $DOSA_DRIVER -C $DOSA_CHANNEL && \
 smartthings edge:drivers:install $DOSA_DRIVER -C $DOSA_CHANNEL $1 $2

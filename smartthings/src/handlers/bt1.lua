@@ -12,7 +12,7 @@ function bt1.refresh(device, device_name, _)
         device:online()
         device.profile.components["main"]:emit_event(capabilities.battery.battery(msg.power_grid.battery_soc))
         device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.battery_voltage))
-        device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.battery_temperature))
+        device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature({value = msg.power_grid.battery_temperature, unit = 'C'}))
 
         device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.pv_voltage))
         device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(msg.power_grid.pv_power))
@@ -25,7 +25,7 @@ function bt1.refresh(device, device_name, _)
         end
         device.profile.components["load"]:emit_event(capabilities.powerMeter.power(msg.power_grid.load_power))
         device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.load_consumed))
-        device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature(msg.power_grid.controller_temperature))
+        device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature({value=msg.power_grid.controller_temperature, unit='C'}))
     else
         -- no status reply/error
         device:offline()
@@ -48,7 +48,7 @@ function bt1.exec(device, command)
     local component = command.component
     local capability = command.capability
     local cmd = command.command
-    local device_name = string.sub(device.device_network_id, 8)
+    local device_name = string.sub(device.device_network_id, 5)
 
     log.debug(string.format("BT-1 exec: %s.%s.%s (%s)", component, capability, cmd, device_name))
 
@@ -65,4 +65,4 @@ function bt1.exec(device, command)
     end
 end
 
-return door
+return bt1

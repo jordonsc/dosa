@@ -7,10 +7,10 @@ import dosa
 from dosa import glowbit
 from dosa.renogy import RenogyBridge, StickConfig
 
-DEVICE_NAME = b"DOSA Renogy Bridge"
+DEVICE_NAME = b"DOSA Grid"
 
 # Arg parser
-parser = argparse.ArgumentParser(description='DOSA Renogy Bridge')
+parser = argparse.ArgumentParser(description='DOSA Power Grid Controller')
 
 # HCI adapter name
 parser.add_argument('-i', '--hci', dest='hci', action='store', default="hci0",
@@ -31,6 +31,10 @@ parser.add_argument('-l', '--lights', dest='lights', action='store_true',
 # Set the size of the PV grid (in Watts)
 parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1000",
                     help='Define the size of the PV grid in Watts')
+
+# Set the size of the battery array (in Amp Hours)
+parser.add_argument('-b', '--battery-size', dest='battery', action='store', default="500",
+                    help='Define the size of the battery array in AH')
 
 # Transmit a PWM request via a given serial port
 parser.add_argument('-s', '--serial', dest='serial', action='store',
@@ -55,7 +59,7 @@ def run_app():
 
     try:
         bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
-                              grid_size=int(args.grid), pwm_port=args.serial)
+                              grid_size=int(args.grid), bat_size=int(args.battery), pwm_port=args.serial)
         bridge.run()
 
     except KeyboardInterrupt:
