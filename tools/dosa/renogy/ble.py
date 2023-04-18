@@ -55,8 +55,8 @@ class Device(gatt.Device):
         return self
 
     def disconnect(self):
-        super().disconnect()
         self.manager.stop()
+        super().disconnect()
         raise DisconnectedException("Disconnected from central device")
 
     def connect_succeeded(self):

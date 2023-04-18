@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
-import logging
 import sys
 
 import dosa
-from dosa.renogy import RenogyBridge, StickConfig
 from dosa import glowbit
+from dosa.renogy import RenogyBridge, StickConfig
 
 DEVICE_NAME = b"DOSA Renogy Bridge"
 
@@ -37,26 +36,32 @@ parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1
 parser.add_argument('-s', '--serial', dest='serial', action='store',
                     help='Define the serial TTY port for sending PWM requests')
 
-args = parser.parse_args()
 
-# Main app
-print("-- DOSA Renogy Bridge --")
-comms = dosa.Comms(DEVICE_NAME)
+def run_app():
+    args = parser.parse_args()
 
-if args.lights:
-    stick = glowbit.stick(numLEDs=StickConfig.total_led_count, rateLimitFPS=StickConfig.fps)
-else:
-    stick = None
+    # Main app
+    print("-- DOSA Renogy Bridge --")
+    comms = dosa.Comms(DEVICE_NAME)
 
-if not args.mac:
-    print("Target MAC address is required")
-    sys.exit(2)
+    if args.lights:
+        stick = glowbit.stick(numLEDs=StickConfig.total_led_count, rateLimitFPS=StickConfig.fps)
+    else:
+        stick = None
 
-try:
-    bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
-                          grid_size=int(args.grid), pwm_port=args.serial)
-    bridge.run()
+    if not args.mac:
+        print("Target MAC address is required")
+        sys.exit(2)
 
-except KeyboardInterrupt:
-    print("")
-    sys.exit(0)
+    try:
+        bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
+                              grid_size=int(args.grid), pwm_port=args.serial)
+        bridge.run()
+
+    except KeyboardInterrupt:
+        print("")
+        sys.exit(0)
+
+
+if __name__ == "__main__":
+    run_app()
