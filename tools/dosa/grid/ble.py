@@ -2,7 +2,7 @@ import gatt
 import logging
 import time
 
-from dosa.renogy.exceptions import *
+from dosa.grid.exceptions import *
 
 
 class DeviceManager(gatt.DeviceManager):
@@ -55,8 +55,11 @@ class Device(gatt.Device):
         return self
 
     def disconnect(self):
+        logging.debug("Halting BLE manager..")
         self.manager.stop()
+        logging.debug("Device disconnect..")
         super().disconnect()
+        logging.debug("BLE disconnected")
         raise DisconnectedException("Disconnected from central device")
 
     def connect_succeeded(self):

@@ -255,9 +255,14 @@ function comms.ping_refresh(device_name)
 end
 
 function comms.req_stat(device_name)
+    if devices.reg[device_name] == nil then
+        log.error(string.format("Device <%s> not registered, ignoring req-stat dispatch: ", device_name))
+        return
+    end
+
     local addr = devices.reg[device_name][1]
     if addr == nil then
-        log.error(string.format("Device <%s> not registered, ignoring req-stat dispatch: ", device_name))
+        log.error(string.format("Device <%s> incorrectly registered, ignoring req-stat dispatch: ", device_name))
         return
     end
     log.trace(string.format("Req-stat to %s at %s", device_name, addr))

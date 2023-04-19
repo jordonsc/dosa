@@ -1,5 +1,5 @@
-# Renogy BT-1 Bluetooth Adapter
-name: bt1.v1
+# DOSA Power Grid
+name: grid.v1
 components:
   - id: main
     name: Batteries

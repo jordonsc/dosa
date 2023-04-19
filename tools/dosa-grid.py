@@ -5,7 +5,7 @@ import sys
 
 import dosa
 from dosa import glowbit
-from dosa.renogy import RenogyBridge, StickConfig
+from dosa.grid import PowerGrid, StickConfig
 
 DEVICE_NAME = b"DOSA Grid"
 
@@ -58,8 +58,8 @@ def run_app():
         sys.exit(2)
 
     try:
-        bridge = RenogyBridge(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
-                              grid_size=int(args.grid), bat_size=int(args.battery), pwm_port=args.serial)
+        bridge = PowerGrid(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
+                           grid_size=int(args.grid), bat_size=int(args.battery), pwm_port=args.serial)
         bridge.run()
 
     except KeyboardInterrupt:

@@ -18,7 +18,7 @@ function lifecycle.device_init(driver, device)
     log.info(string.format("Initialising %s device: %s", device.label, device.device_network_id))
     local dosa_id = string.sub(device.device_network_id, 1, 7)
 
-    if string.sub(device.device_network_id, 1, 4) == "bt1:" then
+    if dosa_id == "dosa-g:" then
         device:online()
     elseif dosa_id == "dosa-d:" then
         device:emit_event(capabilities.doorControl.door.closed())

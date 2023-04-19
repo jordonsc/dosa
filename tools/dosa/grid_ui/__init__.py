@@ -30,8 +30,10 @@ class MainWidget(Widget):
     load_power = 0
     load_current = 0
 
-    def remove_splash(self, dt):
-        self.remove_widget(self.ids.splash)
+    main_loop = None
+
+    def begin_main_sequence(self, dt):
+        self.main_loop = Clock.schedule_interval(self.reload_data, 1.0)
 
     def set_pv_size(self, watts):
         print("Update PV grid size to {} w".format(round(watts)))
@@ -131,7 +133,7 @@ class MainWidget(Widget):
             abs_time = abs(time)
             unit = " hrs"
             if abs_time > 24:
-                abs_time = abs_time/24
+                abs_time = abs_time / 24
                 unit = " days"
 
             time_remaining.text = str(round(abs_time, 1)) + unit
@@ -196,6 +198,5 @@ class MainWidget(Widget):
 class GridApp(App):
     def build(self):
         app = MainWidget()
-        Clock.schedule_interval(app.reload_data, 5.0)
-
+        Clock.schedule_once(app.begin_main_sequence, 5.0)
         return app

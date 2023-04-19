@@ -53,10 +53,10 @@ function hub_server.tick(self)
 
     device:online()
 
-    if dvc_meta.type == "bt1" then
+    if dvc_meta.type == "dosa-g" then
         if msg.code == "sta" then
             if msg.status_format ~= 100 or msg.power_grid == nil then
-                log.error(string.format("STATUS message from BT-1 server is malformed (format: %s)", msg.status_format))
+                log.error(string.format("STATUS message from power grid server is malformed (format: %s)", msg.status_format))
                 return
             end
 

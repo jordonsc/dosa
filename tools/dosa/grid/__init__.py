@@ -6,8 +6,8 @@ from threading import Thread
 import json
 
 import dosa
-from dosa.renogy.exceptions import *
-from dosa.renogy.bt1 import Bt1Client
+from dosa.grid.exceptions import *
+from dosa.grid.bt1 import Bt1Client
 from dosa.power import thresholds
 
 
@@ -23,10 +23,10 @@ class StickConfig:
     colour_bad = (160, 0, 0)
     colour_none = (0, 0, 0)
 
-    index_mains = 0
-    index_pv = 8
+    index_mains = 24
     index_bat = 16
-    index_load = 24
+    index_pv = 8
+    index_load = 0
 
     threshold_load_warn = 180
     threshold_load_bad = 240
@@ -37,7 +37,7 @@ class StickConfig:
     high_temp = 45
 
 
-class PowerGrid:
+class GridStatus:
     def __init__(self, data: dict = None):
         self.battery_soc = 0
         self.battery_voltage = 0
@@ -90,7 +90,7 @@ class PowerGrid:
         return payload
 
 
-class RenogyBridge:
+class PowerGrid:
     data_file = "/usr/share/power_grid.json"
 
     def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
@@ -109,7 +109,7 @@ class RenogyBridge:
         self.mains_proposed_state = None
         self.mains_proposal_time = None
 
-        self.power_grid = PowerGrid()
+        self.power_grid = GridStatus()
 
         self.hci = hci
         self.target_mac = tgt_mac
@@ -138,10 +138,8 @@ class RenogyBridge:
             return
 
         logging.info("Bringing lights online..")
-        self.stick.blankDisplay()
-        for i in range(self.config.total_led_count):
-            self.stick.pixelSet(i, self.stick.rgbColour(*self.config.colour_load))
-            self.stick.pixelsShow()
+        self.stick.pixelsFill(self.stick.rgbColour(*self.config.colour_load))
+        self.stick.pixelsShow()
 
     def init_pwm_serial(self):
         if not self.pwm_serial_port or self.pwm_serial is not None:
@@ -256,6 +254,9 @@ class RenogyBridge:
 
     def update_stick_mains(self):
         # Mains LED
+        if self.config.index_mains is None:
+            return
+
         if self.mains_active is None:
             mains_colour = self.config.colour_warn
         elif self.mains_active:
@@ -268,6 +269,10 @@ class RenogyBridge:
     def update_stick_pv(self):
         # PV LED
         logging.debug("PV: {}w, {}v".format(self.power_grid.pv_power, round(self.power_grid.pv_voltage, 1)))
+
+        if self.config.index_pv is None:
+            return
+
         if self.power_grid.pv_power >= self.pv_size * thresholds["pv"]["high"]:
             pv_colour = self.config.colour_special
         elif self.power_grid.pv_power >= self.pv_size * thresholds["pv"]["med"]:
@@ -284,6 +289,10 @@ class RenogyBridge:
         logging.debug("Battery: {}%, {}v".format(
             self.power_grid.battery_soc, round(self.power_grid.battery_voltage, 1)
         ))
+
+        if self.config.index_bat is None:
+            return
+
         if self.power_grid.battery_soc >= thresholds["battery"]["high"]:
             bat_colour = self.config.colour_special
         elif self.power_grid.battery_soc >= thresholds["battery"]["med"]:
@@ -300,6 +309,10 @@ class RenogyBridge:
         logging.debug("Load: {}w ({})".format(
             self.power_grid.load_power, "active" if self.power_grid.load_state else "inactive"
         ))
+
+        if self.config.index_load is None:
+            return
+
         if self.power_grid.load_power >= self.config.threshold_load_bad:
             load_colour = self.config.colour_bad
         elif self.power_grid.load_power >= self.config.threshold_load_warn:
@@ -364,6 +377,9 @@ class RenogyBridge:
         self.pwm_serial = None
 
     def write_data_file(self):
+        # This calculation is a placeholder pending a proper shunt
+        power_delta = self.power_grid.pv_power - self.power_grid.load_power
+
         grid_data = {
             "battery": {
                 "capacity": self.bat_size,
@@ -380,9 +396,8 @@ class RenogyBridge:
                 "voltage": self.power_grid.pv_voltage,
             },
             "load": {
-                # This is a placeholder pending a proper shunt
-                "power": -self.power_grid.load_power,
-                "current": -self.power_grid.load_power / 12.5,
+                "power": power_delta,
+                "current": power_delta / 12.5,
             },
         }
 
