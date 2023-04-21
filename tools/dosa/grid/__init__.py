@@ -1,14 +1,29 @@
-import struct
-import serial
-import time
-import logging
-from threading import Thread
 import json
+import logging
+import os
+import queue
+import struct
+import time
+from threading import Thread
+
+import serial
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 import dosa
-from dosa.grid.exceptions import *
 from dosa.grid.bt1 import Bt1Client
-from dosa.power import thresholds
+from dosa.grid.exceptions import *
+from dosa.power import thresholds, get_data_file, get_config_file
+
+
+# Watchdog handler for the config file
+class WatchHandler(FileSystemEventHandler):
+    def __init__(self, q: queue.Queue) -> None:
+        self.queue = q
+        super().__init__()
+
+    def on_modified(self, event):
+        self.queue.put(event.src_path)
 
 
 class StickConfig:
@@ -91,8 +106,6 @@ class GridStatus:
 
 
 class PowerGrid:
-    data_file = "/usr/share/power_grid.json"
-
     def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
                  pwm_port=None):
         logging.basicConfig(level=logging.DEBUG)
@@ -103,28 +116,42 @@ class PowerGrid:
 
         self.pv_size = grid_size
         self.bat_size = bat_size
+        self.mains_config_level = 0
 
         self.mains_active = None
-
         self.mains_proposed_state = None
         self.mains_proposal_time = None
 
         self.power_grid = GridStatus()
 
+        # BLE
         self.hci = hci
         self.target_mac = tgt_mac
-        self.poll_interval = poll_int  # read data interval (seconds)
+        self.poll_interval = poll_int  # BLE read data interval (seconds)
         self.bt_thread = None
+
+        # LED stick
         self.stick = stick
         self.config = StickConfig()
+
+        # Fan serial comms
         self.pwm_serial_port = pwm_port
         self.pwm_serial = None
 
+        # Threshold config
         self.config.threshold_pv_special = thresholds["pv"]["high"] * grid_size
         self.config.threshold_pv_good = thresholds["pv"]["med"] * grid_size
         self.config.threshold_pv_med = thresholds["pv"]["low"] * grid_size
 
+        # Config file monitoring
+        self.config_queue = queue.Queue()
+        self.watch_handler = WatchHandler(self.config_queue)
+        self.watch_observer = Observer()
+
+        # Start brining systems online
         self.init_lights()
+        self.init_config_watch()
+        self.load_config()
         self.set_mains(None)
 
         if self.pwm_serial_port:
@@ -151,6 +178,16 @@ class PowerGrid:
             self.pwm_serial.reset_input_buffer()
         except serial.serialutil.SerialException:
             logging.error("Failed to bring serial online")
+
+    def init_config_watch(self):
+        # We need the file to exist in order to monitor it for change
+        if not os.path.exists(get_config_file()) or not os.path.isfile(get_config_file()):
+            logging.error("Config file not found, creating empty data file")
+            with open(get_config_file(), 'w', encoding='utf-8') as f:
+                json.dump("{}", f, ensure_ascii=False)
+
+        self.watch_observer.schedule(self.watch_handler, path=get_config_file(), recursive=False)
+        self.watch_observer.start()
 
     def run(self):
         logging.info("Starting DOSA Power Grid Controller..")
@@ -180,6 +217,14 @@ class PowerGrid:
                             logging.warning("FAN_CTRL: bad data on serial line: ", e)
                 except serial.serialutil.SerialException:
                     self.serial_error_close()
+
+            # Check for config file changes
+            try:
+                fn = self.config_queue.get_nowait()
+                if fn == get_config_file():
+                    self.load_config()
+            except queue.Empty:
+                pass
 
             # Process UDP comms
             msg = self.comms.receive(timeout=0.1)
@@ -348,7 +393,7 @@ class PowerGrid:
 
         try:
             pwm = self.get_pwm_value()
-            logging.debug("Set FAN_CTRL to {}%".format(pwm))
+            logging.debug(f"Set FAN_CTRL to {pwm}%")
             self.pwm_serial.write(pwm.to_bytes(1, byteorder="big", signed=False))
 
         except serial.serialutil.SerialException:
@@ -401,20 +446,22 @@ class PowerGrid:
             },
         }
 
-        with open(self.data_file, 'w', encoding='utf-8') as f:
+        with open(get_data_file(), 'w', encoding='utf-8') as f:
             json.dump(grid_data, f, ensure_ascii=False, indent=4)
 
     def recalculate_mains(self):
         def set_proposed(x):
-            logging.debug("Proposed mains relay state: {}".format(x))
+            logging.debug(f"Proposed mains relay state: {x}")
             self.mains_proposed_state = x
             self.mains_proposal_time = int(time.time())
 
+        mains = thresholds["mains"][self.mains_config_level]
         proposed = None  # do nothing by default
-        if self.power_grid.battery_soc < thresholds["mains"]["activate"]:
+
+        if self.power_grid.battery_soc < mains["activate"]:
             # Battery is getting low, propose enabling mains backup
             proposed = True
-        elif self.power_grid.battery_soc >= thresholds["mains"]["deactivate"]:
+        elif self.power_grid.battery_soc >= mains["deactivate"]:
             # Battery SOC is high, propose turning off mains backup
             proposed = False
 
@@ -433,8 +480,8 @@ class PowerGrid:
             elif self.mains_active != proposed:
                 # Check how long we've been in this proposed state
                 time_in_proposal = int(time.time()) - self.mains_proposal_time
-                if (proposed and time_in_proposal >= thresholds["mains"]["activate_time"]) or \
-                        (not proposed and time_in_proposal >= thresholds["mains"]["deactivate_time"]):
+                if (proposed and time_in_proposal >= mains["activate_time"]) or \
+                        (not proposed and time_in_proposal >= mains["deactivate_time"]):
                     # Grace expired, action proposal
                     self.set_mains(proposed)
 
@@ -449,6 +496,27 @@ class PowerGrid:
         If active is None, a null value will be writen to the data file to indicate "still deciding" and the mains
         relay will be activated as it's the safe option until the power grid state is assessed.
         """
-        logging.info("Set mains relay: {}".format(active))
+        logging.info(f"Set mains relay: {active}")
         self.mains_active = active
         self.write_data_file()
+
+    def load_config(self):
+        """
+        Load the config provided by the GUI.
+
+        You should call this on load, or when you detect changes to the config file.
+        """
+        def get_value(arr, key, default):
+            if key in arr:
+                return arr[key]
+            else:
+                return default
+
+        try:
+            with open(get_config_file(), 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+                self.mains_config_level = min(max(0, int(get_value(cfg, "opt", 1))), 2)
+                logging.info(f"Updating mains config level to {self.mains_config_level}")
+
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            self.mains_config_level = 1
