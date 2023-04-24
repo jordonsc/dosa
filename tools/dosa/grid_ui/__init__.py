@@ -1,6 +1,9 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
+from kivy.graphics import Line
+
+import dosa
 from dosa.power import thresholds, is_production_machine, get_data_file, get_config_file
 
 from watchdog.observers import Observer
@@ -27,6 +30,7 @@ colors = {
     'dark_amber': (0.580, 0.533, 0.196, 1.0),
     'red': (0.584, 0.102, 0.114, 1.0),
     'blue': (0.259, 0.384, 0.678, 1.0),
+    'red_trans': (0.584, 0.102, 0.114, 0.5),
 }
 
 
@@ -168,6 +172,7 @@ class MainWidget(Widget):
 
         self.ids.bat_ah_remaining.text = str(int(round(self.bat_ah_remaining))) + "ah"
         self.ids.bat_voltage.text = str(round(self.bat_voltage, 1)) + "v"
+        self.set_soc_graphic(round(self.bat_soc))
 
     def update_mains(self, active):
         self.mains_active = active
@@ -218,30 +223,30 @@ class MainWidget(Widget):
         self.ids.load_power.text = str(int(round(self.load_power))) + "w"
         self.ids.load_current.text = str(round(self.load_current, 1)) + "a"
 
-    def update_time(self, time):
+    def update_time(self, t):
         time_remaining = self.ids.time_remaining
         clock = self.ids.clock
 
-        if time == 0:
+        if t == 0:
             time_remaining.text = "-"
             time_remaining.color = self.col_text
             clock.source = "../assets/clock.png"
         else:
-            abs_time = abs(time)
+            abs_time = abs(t)
             unit = " hrs"
             if abs_time > 24:
                 abs_time = abs_time / 24
                 unit = " days"
 
             time_remaining.text = str(round(abs_time, 1)) + unit
-            if time > 0:
+            if t > 0:
                 time_remaining.color = self.col_good
                 clock.source = "../assets/bat_full.png"
             else:
                 clock.source = "../assets/bat_empty.png"
-                if time < -10:
+                if t < -10:
                     time_remaining.color = self.col_text
-                elif time < -5:
+                elif t < -5:
                     time_remaining.color = self.col_warn
                 else:
                     time_remaining.color = self.col_bad
@@ -287,8 +292,18 @@ class MainWidget(Widget):
                 self.update_time((self.bat_size - self.bat_ah_remaining) / (self.load_power / 12.5))
 
             self.ids.splash.opacity = 0
-        except (KeyError, TypeError):
-            self.set_error_condition("Key error in grid data (no data?)")
+        except (KeyError, TypeError) as e:
+            self.set_error_condition(f"Key error in grid data: {e}")
+
+    def set_soc_graphic(self, soc):
+        soc_graphic = self.ids.soc_graphic
+        soc_graphic.canvas.remove_group("soc_lines")
+        soc_graphic.canvas.add(Line(circle=(soc_graphic.center_x, soc_graphic.center_y, 150 / 2, 240,
+                                            dosa.map_range(soc, 0, 50, 240, 360)), group="soc_lines", width=4))
+        if soc >= 50:
+            soc_graphic.canvas.add(Line(circle=(soc_graphic.center_x, soc_graphic.center_y, 150 / 2, 0,
+                                                dosa.map_range(soc, 50, 100, 0, 120)), group="soc_lines",
+                                        width=4))
 
     def set_error_condition(self, err_msg="unknown"):
         self.ids.splash.opacity = 1
@@ -308,8 +323,8 @@ class MainWidget(Widget):
         try:
             with open(get_config_file(), 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
-                self.cfg["ctrl"] = get_value_range(cfg, "ctrl", 0, 0, 2)
-                self.cfg["opt"] = get_value_range(cfg, "opt", 1, 0, 2)
+                self.cfg["mains"] = get_value_range(cfg, "mains", 0, 0, 2)
+                self.cfg["mains_opt"] = get_value_range(cfg, "mains_opt", 1, 0, 2)
                 self.cfg["display"] = get_value_range(cfg, "display", 0, 0, 3)
 
                 self.cfg["opt_0_title"] = get_value(cfg, "opt_0_title", "Eco")
@@ -320,8 +335,8 @@ class MainWidget(Widget):
                 self.ids.settings.ids.mains_1.text = self.cfg["opt_1_title"]
                 self.ids.settings.ids.mains_2.text = self.cfg["opt_2_title"]
 
-                self.ids.settings.ids[f"ctrl_{self.cfg['ctrl']}"].state = "down"
-                self.ids.settings.ids[f"mains_{self.cfg['opt']}"].state = "down"
+                self.ids.settings.ids[f"ctrl_{self.cfg['mains']}"].state = "down"
+                self.ids.settings.ids[f"mains_{self.cfg['mains_opt']}"].state = "down"
                 self.ids.settings.ids[f"display_{self.cfg['display']}"].state = "down"
 
         except FileNotFoundError:
@@ -334,13 +349,14 @@ class MainWidget(Widget):
             return
 
     def load_default_config(self):
-        self.cfg["ctrl"] = 0
-        self.cfg["opt"] = 1
+        self.cfg["mains"] = 0
+        self.cfg["mains_opt"] = 1
         self.cfg["display"] = 0
         self.cfg["opt_0_title"] = "Eco"
         self.cfg["opt_1_title"] = "Std"
         self.cfg["opt_2_title"] = "Safe"
-        self.ids.settings.ids["mains_{}".format(self.cfg["opt"])].state = "down"
+        self.ids.settings.ids["ctrl_{}".format(self.cfg["mains"])].state = "down"
+        self.ids.settings.ids["mains_{}".format(self.cfg["mains_opt"])].state = "down"
         self.save_config()
 
     def save_config(self):
@@ -352,14 +368,14 @@ class MainWidget(Widget):
         title = self.ids.settings.ids[f"ctrl_{button}"].text
         logging.info(f"Change mains control setting to option {button + 1} ({title})")
         self.ids.settings.ids[f"ctrl_{button}"].state = "down"
-        self.cfg["ctrl"] = button
+        self.cfg["mains"] = button
         self.save_config()
 
     def mains_button(self, button: int):
         title = self.cfg[f"opt_{button}_title"]
         logging.info(f"Change mains sensitivity setting to option {button + 1} ({title})")
         self.ids.settings.ids[f"mains_{button}"].state = "down"
-        self.cfg["opt"] = button
+        self.cfg["mains_opt"] = button
         self.save_config()
 
     def display_button(self, button: int):

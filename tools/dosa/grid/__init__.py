@@ -116,6 +116,21 @@ class PowerGrid:
 
         self.pv_size = grid_size
         self.bat_size = bat_size
+
+        """
+        Define the way we manage mains backup power:
+          0: Automatic
+          1: Always enabled
+          2: Always disable
+        """
+        self.mains_setting = 0
+
+        """
+        Set the sensitivity for the automatic mode on the above setting:
+          0: Eco mode; allow the SOC to get a reasonably low level, maximising solar usage
+          1: Standard; a middle-ground, enable mains before we lose too much power
+          2: Safe mode; enable the mains at a high-level, for when you want to use the grid as an emergency backup
+        """
         self.mains_config_level = 0
 
         self.mains_active = None
@@ -406,15 +421,13 @@ class PowerGrid:
         This value is effectively the fan speed as an integer percentage.
         """
         logging.debug("Controller temp: {}".format(self.power_grid.controller_temperature))
-
-        if self.power_grid.controller_temperature <= self.config.low_temp:
-            return self.config.pwm_min
-        elif self.power_grid.controller_temperature >= self.config.high_temp:
-            return self.config.pwm_max
-        else:
-            pos = (self.power_grid.controller_temperature - self.config.low_temp) / \
-                  (self.config.high_temp - self.config.low_temp)
-            return round((pos * (self.config.pwm_max - self.config.pwm_min)) + self.config.pwm_min)
+        return round(dosa.map_range(
+            self.power_grid.controller_temperature,
+            self.config.low_temp,
+            self.config.high_temp,
+            self.config.pwm_min,
+            self.config.pwm_max
+        ))
 
     def serial_error_close(self):
         logging.error("Serial communication error")
@@ -450,6 +463,26 @@ class PowerGrid:
             json.dump(grid_data, f, ensure_ascii=False, indent=4)
 
     def recalculate_mains(self):
+        if self.mains_setting > 0:
+            self.recalculate_mains_override()
+        else:
+            self.recalculate_mains_auto()
+
+    def recalculate_mains_override(self):
+        """
+        Ensure that the mains state matches the override level
+        """
+        if self.mains_setting == 1 and not self.mains_active:
+            self.set_mains(True)
+
+        if self.mains_setting == 2 and self.mains_active:
+            self.set_mains(False)
+
+    def recalculate_mains_auto(self):
+        """
+        Automatically change the mains state based on SOC and thresholds.
+        """
+
         def set_proposed(x):
             logging.debug(f"Proposed mains relay state: {x}")
             self.mains_proposed_state = x
@@ -489,7 +522,7 @@ class PowerGrid:
                 # Proposing what we're already doing - do nothing
                 pass
 
-    def set_mains(self, active):
+    def set_mains(self, active: bool):
         """
         Set the mains backup relay to given state, and write the state to the data file.
 
@@ -506,6 +539,7 @@ class PowerGrid:
 
         You should call this on load, or when you detect changes to the config file.
         """
+
         def get_value(arr, key, default):
             if key in arr:
                 return arr[key]
@@ -515,8 +549,10 @@ class PowerGrid:
         try:
             with open(get_config_file(), 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
-                self.mains_config_level = min(max(0, int(get_value(cfg, "opt", 1))), 2)
-                logging.info(f"Updating mains config level to {self.mains_config_level}")
+                self.mains_setting = min(max(0, int(get_value(cfg, "mains", 0))), 2)
+                self.mains_config_level = min(max(0, int(get_value(cfg, "mains_opt", 1))), 2)
+                logging.info(f"Updating mains config level to {self.mains_setting}:{self.mains_config_level}")
+                self.recalculate_mains()
 
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             self.mains_config_level = 1

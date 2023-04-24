@@ -174,15 +174,11 @@ def get_config_file():
         return None
 
 
-def get_config():
-    cfg_file = get_config_file()
-
-    if cfg_file is None:
-        return {}
+def map_range(value, in_low, in_high, out_low, out_high):
+    if value <= in_low:
+        return out_low
+    elif value >= in_high:
+        return out_high
     else:
-        print("Load config from " + str(cfg_file) + "..")
-        try:
-            return json.load(cfg_file.open('r'))
-        except json.decoder.JSONDecodeError as e:
-            print("ERROR: Failed to parse configuration: " + str(e))
-            return {}
+        pos = (value - in_low) / (in_high - in_low)
+        return (pos * (out_high - out_low)) + out_low

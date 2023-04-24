@@ -19,6 +19,7 @@
 
 # Used for borders around buttons, etc
 #:set line_size 3
+#:set graph_size 150
 
 <GridButton@ToggleButton>:
     background_color: transparent
@@ -46,24 +47,43 @@
     on_touch_down: root.display_touch(*args)
 
     ### LEFT COLUMN ###
-    # Battery display
-    Image:
-        source: "../assets/bat.png"
-        size: self.texture_size
-        center_x: left_column - img_offset
-        center_y: root.top - top_offset
+    # SOC display
+    BoxLayout:
+        id: soc_graphic
+        size: [150, 150]
+        pos: [120, root.height - 200]
+        canvas:
+            Color:
+                rgb: [0.16, 0.1, 0.1]
+            Line:
+                width: 4
+                circle: (self.center_x, self.center_y, graph_size / 2, 240, 360)
+            Line:
+                width: 4
+                circle: (self.center_x, self.center_y, graph_size / 2, 0, 120)
+            Color:
+                rgba: root.col_special
+            # SOC line will go here (programmatically added)
 
     Label:
-        font_size: font_size
+        font_size: font_size * 1.2
         font_name: font_name
-        halign: "left"
+        halign: "center"
         size: label_size
         text_size: self.size
         color: root.col_good
         text: "-%"
         id: bat_soc
-        x: left_column
-        center_y: root.top - top_offset
+        center_x: soc_graphic.center_x
+        center_y: soc_graphic.center_y
+
+
+    # Battery display
+    Image:
+        source: "../assets/bat.png"
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: root.top - top_offset - 200
 
     Label:
         font_size: font_size
@@ -75,7 +95,7 @@
         text: "-ah"
         id: bat_ah_remaining
         x: left_column
-        y: bat_soc.y - line_offset
+        center_y: root.top - top_offset - 200
 
     Label:
         font_size: font_size
