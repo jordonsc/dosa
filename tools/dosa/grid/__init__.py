@@ -717,18 +717,24 @@ class PowerGrid:
         mains = thresholds["mains"][self.mains_config_level]
         proposed = None  # do nothing by default
 
-        if self.power_grid.battery_soc < mains["activate"]:
+        if self.mains_active is None and self.power_grid.battery_soc == 0:
+            # No data yet
+            return
+
+        elif self.power_grid.battery_soc < mains["activate"]:
             # Battery is getting low, propose enabling mains backup
             proposed = True
+
         elif self.power_grid.battery_soc >= mains["deactivate"]:
             # Battery SOC is high, propose turning off mains backup
             proposed = False
 
         if self.mains_active is None:
             # This would be the first run - set mains to whatever we decide here (no proposal = no mains)
-            logging.info("Initial set for mains relay")
+            logging.info(f"Initial set for mains relay at SOC {self.power_grid.battery_soc}% < {mains['activate']}%")
+            self.mains_proposed_state = proposed
+            self.mains_proposal_time = int(time.time())
             self.set_mains(proposed == True)
-            set_proposed(proposed)
 
         elif proposed is not None:
             # We need to wait for a grace period before actioning a new state proposal
@@ -755,10 +761,12 @@ class PowerGrid:
         If active is None, a null value will be writen to the data file to indicate "still deciding" and the mains
         relay will be activated as it's the safe option until the power grid state is assessed.
         """
-        logging.info(f"Set mains relay: {active}")
         self.mains_active = active
         self.write_data_file()
-        self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
+
+        if active is not None:
+            logging.info(f"Set mains relay: {active}")
+            self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
 
     def load_config(self):
         """
