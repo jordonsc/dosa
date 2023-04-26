@@ -16,19 +16,19 @@ thresholds = {
             "activate": 33,
             "activate_time": 30,
             "deactivate": 66,
-            "deactivate_time": 180,
+            "deactivate_time": 60,
         },
         1: {
             "activate": 50,
             "activate_time": 30,
             "deactivate": 75,
-            "deactivate_time": 180,
+            "deactivate_time": 60,
         },
         2: {
             "activate": 75,
             "activate_time": 15,
             "deactivate": 100,
-            "deactivate_time": 300,
+            "deactivate_time": 180,
         }
     }
 }

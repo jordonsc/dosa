@@ -745,8 +745,8 @@ class PowerGrid:
             elif self.mains_active != proposed:
                 # Check how long we've been in this proposed state
                 time_in_proposal = int(time.time()) - self.mains_proposal_time
-                if (proposed and time_in_proposal >= mains["activate_time"]) or \
-                        (not proposed and time_in_proposal >= mains["deactivate_time"]):
+                if (proposed == True and time_in_proposal >= mains["activate_time"]) or \
+                        (proposed == False and time_in_proposal >= mains["deactivate_time"]):
                     # Grace expired, action proposal
                     self.set_mains(proposed)
 
