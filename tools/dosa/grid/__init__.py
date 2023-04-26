@@ -11,6 +11,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 import dosa
+from dosa import LogLevel
 from dosa.grid.bt1 import Bt1Client
 from dosa.grid.exceptions import *
 from dosa.power import thresholds, get_data_file, get_config_file
@@ -28,7 +29,7 @@ class WatchHandler(FileSystemEventHandler):
 
 class StickConfig:
     stick_led_count = 8
-    total_led_count = 32
+    total_led_count = 24
     fps = 15
 
     colour_load = (0, 100, 100)
@@ -38,7 +39,7 @@ class StickConfig:
     colour_bad = (160, 0, 0)
     colour_none = (0, 0, 0)
 
-    index_mains = 24
+    index_mains = None  # None implies we're not using this LED bank
     index_bat = 16
     index_pv = 8
     index_load = 0
@@ -50,56 +51,86 @@ class StickConfig:
     pwm_max = 100
     low_temp = 25
     high_temp = 45
+    warn_temp = 55
+    error_temp = 60
 
 
 class GridStatus:
     def __init__(self, data: dict = None):
-        self.battery_soc = 0
+        # Battery metrics
+        self.battery_soc = 0  # 0-100 (uint)
         self.battery_voltage = 0
-        self.battery_temperature = 0
 
+        # PV metrics
         self.pv_power = 0
         self.pv_voltage = 0
-        self.pv_provided = 0
 
-        self.load_state = False
+        # Load metrics
         self.load_power = 0
-        self.load_consumed = 0
+        self.load_current = 0
+        self.time_remaining = 0  # in minutes
 
+        # Controller metrics
+        self.load_state = False
         self.controller_temperature = 0
 
         if data is not None:
             self.from_data(data)
 
-    def from_data(self, data: dict):
-        self.battery_soc = data['battery_percentage']
-        self.battery_voltage = data['battery_voltage']
-        self.battery_temperature = data['battery_temperature']
+    def from_data(self, data: dict,
+                  allow_battery_data: bool = True,
+                  allow_pv_data: bool = True,
+                  allow_load_data: bool = True,
+                  allow_controller_data: bool = True) -> int:
+        """
+        Updates metrics from a dict object.
 
-        self.pv_power = data['pv_power']
-        self.pv_voltage = data['pv_voltage']
-        self.pv_provided = data['power_generation_today']
+        You can optionally select to ignore certain metric groups if you are gathering data from multiple sources.
 
-        self.load_state = data['load_state']
-        self.load_power = data['load_power']
-        self.load_consumed = data['discharging_amp_hours_today'] * 12.5
+        Returns the number of data-points modified.
+        """
+        changed = []
 
-        self.controller_temperature = data['controller_temperature']
+        def assign(original, key):
+            if key in data:
+                if data[key] != original:
+                    changed.append(key)
+                return data[key]
+
+            return original
+
+        if allow_battery_data:
+            self.battery_soc = assign(self.battery_soc, 'battery_soc')
+            self.battery_voltage = assign(self.battery_voltage, 'battery_voltage')
+
+        if allow_pv_data:
+            self.pv_power = assign(self.pv_power, 'pv_power')
+            self.pv_voltage = assign(self.pv_voltage, 'pv_voltage')
+
+        if allow_load_data:
+            self.load_power = assign(self.load_power, 'load_power')
+            self.load_current = assign(self.load_current, 'load_current')
+            self.time_remaining = assign(self.time_remaining, 'time_remaining')
+
+        if allow_controller_data:
+            self.load_state = assign(self.load_state, 'load_state')
+            self.controller_temperature = assign(self.controller_temperature, 'controller_temperature')
+
+        return len(changed)
 
     def to_bytes(self) -> bytes:
         payload = b''
-        payload += struct.pack("<B", self.battery_soc)
+        payload += struct.pack("<B", round(self.battery_soc))
         payload += struct.pack("<H", round(self.battery_voltage * 10))
-        payload += struct.pack("<h", self.battery_temperature)
 
         payload += struct.pack("<H", self.pv_power)
         payload += struct.pack("<H", round(self.pv_voltage * 10))
-        payload += struct.pack("<H", self.pv_provided)
+
+        payload += struct.pack("<h", self.load_power)
+        payload += struct.pack("<h", round(self.load_current * 10))
+        payload += struct.pack("<h", self.time_remaining)
 
         payload += struct.pack("<B", int(self.load_state))
-        payload += struct.pack("<H", self.load_power)
-        payload += struct.pack("<H", round(self.load_consumed))
-
         payload += struct.pack("<h", self.controller_temperature)
 
         return payload
@@ -107,7 +138,7 @@ class GridStatus:
 
 class PowerGrid:
     def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
-                 pwm_port=None):
+                 pwm_port=None, shunt_port=None):
         logging.basicConfig(level=logging.DEBUG)
 
         if comms is None:
@@ -144,14 +175,24 @@ class PowerGrid:
         self.target_mac = tgt_mac
         self.poll_interval = poll_int  # BLE read data interval (seconds)
         self.bt_thread = None
+        self.time_ble_daemon_died = None
 
         # LED stick
         self.stick = stick
         self.config = StickConfig()
 
         # Fan serial comms
-        self.pwm_serial_port = pwm_port
+        self.fan_speed = 0
+        self.pwm_port = pwm_port
         self.pwm_serial = None
+        self.fan_warning_time = None
+
+        # Victron SmartShunt serial comms
+        self.shunt_port = shunt_port
+        self.shunt_serial = None
+        self.shunt_last_connect_attempt = None
+        self.shunt_last_updated = None
+        self.shunt_new_metrics = 0
 
         # Threshold config
         self.config.threshold_pv_special = thresholds["pv"]["high"] * grid_size
@@ -169,14 +210,19 @@ class PowerGrid:
         self.load_config()
         self.set_mains(None)
 
-        if self.pwm_serial_port:
+        if self.pwm_port:
             self.init_pwm_serial()
         else:
-            logging.info("No PWM serial port configured")
+            logging.warning("No PWM serial port configured")
+
+        if self.shunt_port:
+            self.init_shunt_serial()
+        else:
+            logging.warning("No SmartShunt serial port configured")
 
     def init_lights(self):
         if self.stick is None:
-            logging.info("No lights configured")
+            logging.warning("No lights configured")
             return
 
         logging.info("Bringing lights online..")
@@ -184,15 +230,45 @@ class PowerGrid:
         self.stick.pixelsShow()
 
     def init_pwm_serial(self):
-        if not self.pwm_serial_port or self.pwm_serial is not None:
+        """
+        Connect to the fan PWM micro-controller.
+
+        Immediately return if we're already connected.
+
+        NB: there is no delay-retry logic here, if you hammer this function, it will hammer a connection attempt.
+        """
+        if not self.pwm_port or self.pwm_serial is not None:
             return
 
         try:
             logging.info("Bringing PWM serial online..")
-            self.pwm_serial = serial.Serial(self.pwm_serial_port, 9600, timeout=1)
+            self.pwm_serial = serial.Serial(self.pwm_port, 9600, timeout=1)
             self.pwm_serial.reset_input_buffer()
         except serial.serialutil.SerialException:
-            logging.error("Failed to bring serial online")
+            logging.error("Failed to bring PWM serial online")
+
+    def init_shunt_serial(self):
+        """
+        Connect to the Victron SmartShunt device.
+
+        Immediately returns if we're already connected. If we recently tried to connect, we will wait a few seconds.
+        """
+        if not self.shunt_port or self.shunt_serial is not None:
+            return
+
+        # Delay-retry
+        if (self.shunt_last_connect_attempt is not None) and (time.time() - self.shunt_last_connect_attempt < 5):
+            return
+
+        self.shunt_last_connect_attempt = time.time()
+
+        try:
+            logging.info("Bringing SmartShunt serial online..")
+            self.shunt_serial = serial.Serial(self.shunt_port, 19200, parity=serial.PARITY_NONE,
+                                              stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=1)
+            self.shunt_serial.reset_input_buffer()
+        except serial.serialutil.SerialException:
+            logging.error("Failed to bring SmartShunt serial online")
 
     def init_config_watch(self):
         # We need the file to exist in order to monitor it for change
@@ -205,60 +281,163 @@ class PowerGrid:
         self.watch_observer.start()
 
     def run(self):
-        logging.info("Starting DOSA Power Grid Controller..")
+        """
+        Primary loop.
 
-        daemon_died = None
-        self.spawn_listener()
+        Runs indefinitely managing all sub-systems.
+        """
+        logging.info("Starting DOSA Power Grid Controller..")
+        self.spawn_bt_listener()
+        self.comms.net_log(LogLevel.INFO, "Power Grid online")
+
+        def run_safe(fn, *args):
+            try:
+                fn(*args)
+            except Exception as e:
+                # Main thread should not error - if it does, understand why -
+                logging.error(e)
+                self.comms.net_log(LogLevel.ERROR, f"Main loop error: {e}")
 
         while True:
-            # Manage the BLE listener
-            if not self.bt_thread.is_alive():
-                if daemon_died is not None:
-                    if time.time() - daemon_died > 5:
-                        logging.info("Respawning BT listener..")
-                        daemon_died = None
-                        self.spawn_listener()
-                else:
-                    logging.warning("BT listener died, respawning in 5 seconds..")
-                    daemon_died = time.time()
+            run_safe(self.process_ble)
+            run_safe(self.process_pwm_serial)
+            run_safe(self.process_shunt_serial)
+            run_safe(self.process_config)
+            run_safe(self.process_udp)
 
-            # Process data on serial line
-            if self.pwm_serial is not None:
-                try:
-                    while self.pwm_serial.in_waiting > 0:
-                        try:
-                            logging.debug("<FAN_CTRL: {}>".format(self.pwm_serial.readline().decode('utf-8').rstrip()))
-                        except UnicodeDecodeError as e:
-                            logging.warning("FAN_CTRL: bad data on serial line: ", e)
-                except serial.serialutil.SerialException:
-                    self.serial_error_close()
+    def process_ble(self):
+        """
+        Ensure the BLE manager thread is alive and healthy.
 
-            # Check for config file changes
+        Will respawn it after a cooling period if it crashes for any reason.
+        """
+        if not self.bt_thread.is_alive():
+            if self.time_ble_daemon_died is not None:
+                if time.time() - self.time_ble_daemon_died > 5:
+                    logging.info("Respawning BT listener..")
+                    self.time_ble_daemon_died = None
+                    self.spawn_bt_listener()
+            else:
+                logging.warning("BT listener died, respawning in 5 seconds..")
+                self.comms.net_log(LogLevel.WARNING, "BT listener died")
+                self.time_ble_daemon_died = time.time()
+
+    def process_pwm_serial(self):
+        """
+        Process data on PWM serial line.
+
+        This is simply just logging a response from the PWM MCU, and potentially killing the connection if there was
+        an error.
+
+        If this serial connection has disconnected (or never connected), we will attempt to reconnect it when we want
+        to update the fan speed next.
+        """
+        if self.pwm_serial is not None:
             try:
-                fn = self.config_queue.get_nowait()
-                if fn == get_config_file():
-                    self.load_config()
-            except queue.Empty:
-                pass
+                while self.pwm_serial.in_waiting > 0:
+                    try:
+                        logging.debug("<FAN_CTRL: {}>".format(self.pwm_serial.readline().decode('utf-8').rstrip()))
+                    except UnicodeDecodeError as e:
+                        logging.warning("FAN_CTRL: bad data on serial line")
+            except serial.serialutil.SerialException:
+                self.pwm_serial_error_close()
 
-            # Process UDP comms
-            msg = self.comms.receive(timeout=0.1)
-            if msg is None:
-                continue
+    def process_shunt_serial(self):
+        """
+        Process data on SmartShunt serial line.
 
-            if msg.msg_code == dosa.Messages.PING:
-                # send PONG reply with load state
-                logging.debug("PING from {}:{}".format(msg.addr[0], msg.addr[1]))
-                payload = b'\x78\x01' if self.power_grid.load_state else b'\x78\x00'
-                self.comms.send(self.comms.build_payload(dosa.Messages.PONG, payload), msg.addr)
+        This will read the current battery status, including SOC, voltage, current, etc. This overrides the data we
+        receive from the BT-1 device (as it is a FAR more reliable).
 
-            elif msg.msg_code == dosa.Messages.REQ_STAT:
-                # send STATUS reply with full data dump
-                logging.debug("REQ_STAT from {}:{}".format(msg.addr[0], msg.addr[1]))
-                payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
-                self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload), msg.addr)
+        If this serial connection has disconnected (or never connected), we will attempt to reconnect it here.
+        """
+        self.init_shunt_serial()
 
-    def spawn_listener(self):
+        if self.shunt_serial is not None:
+            try:
+                packets = 0
+                data = {}
+                while self.shunt_serial.in_waiting > 0:
+                    response = self.shunt_serial.readline()
+                    if response[0:2] == b"V\t":
+                        data['battery_voltage'] = round(int(response[2:-2]) / 1000, 1)
+
+                    elif response[0:4] == b"SOC\t":
+                        data['battery_soc'] = round(int(response[4:-2]) / 10, 1)
+
+                    elif response[0:2] == b"P\t":
+                        data['load_power'] = int(response[2:-2])
+
+                    elif response[0:2] == b"I\t":
+                        data['load_current'] = round(int(response[2:-2]) / 1000, 1)
+
+                    elif response[0:4] == b"TTG\t":
+                        ttg = int(response[4:-2])
+                        if ttg == -1:
+                            ttg = 0
+                        data['time_remaining'] = -ttg
+
+                    packets += 1
+                    if packets > 20:
+                        # the serial line is always sending data - if we are reading for too long, break and let the
+                        # rest of the application do something
+                        break
+
+                if len(data) > 0:
+                    last = self.shunt_new_metrics
+                    self.shunt_new_metrics += self.power_grid.from_data(
+                        data, allow_pv_data=False, allow_controller_data=False
+                    )
+                    if last != self.shunt_new_metrics and self.shunt_new_metrics > 0:
+                        logging.debug(f"Pending updates from battery shunt: {self.shunt_new_metrics}")
+
+                if self.shunt_new_metrics > 0:
+                    # Don't hammer updates - wait a few seconds before reading again
+                    if (self.shunt_last_updated is None) or (time.time() - self.shunt_last_updated > 2):
+                        self.shunt_last_updated = time.time()
+                        logging.debug("Dispatching updates from battery shunt")
+                        self.on_metrics_updated()
+                        self.shunt_new_metrics = 0
+
+            except serial.serialutil.SerialException:
+                self.shunt_serial_error_close()
+
+    def process_config(self):
+        """
+        Monitors (via a Watchdog thread queue) a file that the UI app writes to.
+
+        If the user changes settings, such as the mains configuration, we can respond to those changes.
+        """
+        try:
+            fn = self.config_queue.get_nowait()
+            if fn == get_config_file():
+                self.load_config()
+        except queue.Empty:
+            pass
+
+    def process_udp(self):
+        """
+        Process UDP traffic.
+
+        This will be DOSA UDP payloads, notably pings and REQ_STAT messages.
+        """
+        msg = self.comms.receive(timeout=0.1)
+        if msg is None:
+            return
+
+        if msg.msg_code == dosa.Messages.PING:
+            # send PONG reply with load state
+            logging.debug("PING from {}:{}".format(msg.addr[0], msg.addr[1]))
+            payload = b'\x78\x01' if self.power_grid.load_state else b'\x78\x00'
+            self.comms.send(self.comms.build_payload(dosa.Messages.PONG, payload), msg.addr)
+
+        elif msg.msg_code == dosa.Messages.REQ_STAT:
+            # send STATUS reply with full data dump
+            logging.debug("REQ_STAT from {}:{}".format(msg.addr[0], msg.addr[1]))
+            payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
+            self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload), msg.addr)
+
+    def spawn_bt_listener(self):
         self.bt_thread = Thread(target=self.bt_listener, args=())
         self.bt_thread.start()
 
@@ -288,15 +467,26 @@ class PowerGrid:
         """
         Inbound data from the BLE device.
         """
-        self.power_grid.from_data(data)
+        # Update the power-grid with data from the BT-1 device
+        allow_bat_load = self.shunt_port is None
+        if self.power_grid.from_data(data, allow_battery_data=allow_bat_load, allow_load_data=allow_bat_load) > 0:
+            self.on_metrics_updated()
 
+    def on_metrics_updated(self):
+        """
+        Power Grid metrics have been updated, recalculate all subsystems and write new stats.
+        """
+        # Dispatch a DOSA STA payload
         payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
         logging.debug("Dispatching STA multicast")
         self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
 
+        # Recalculate power systems
         self.recalculate_mains()
         self.update_stick_colours()
         self.update_pwm_speed()
+
+        # Write data for the GUI to read
         self.write_data_file()
 
     def update_stick_colours(self):
@@ -398,7 +588,7 @@ class PowerGrid:
         Sends a single byte down the serial line to a dedicated PWM controller. That PWM signal controls the speed of
         fans intended to cool the solar controller & inverter.
         """
-        if self.pwm_serial_port is None:
+        if self.pwm_port is None:
             return
 
         self.init_pwm_serial()
@@ -406,13 +596,42 @@ class PowerGrid:
         if self.pwm_serial is None:
             return
 
+        self.notify_ctrl_temp()
+
         try:
-            pwm = self.get_pwm_value()
-            logging.debug(f"Set FAN_CTRL to {pwm}%")
-            self.pwm_serial.write(pwm.to_bytes(1, byteorder="big", signed=False))
+            new_speed = self.get_pwm_value()
+            if new_speed != self.fan_speed:
+                self.fan_speed = new_speed
+                self.fan_speed = self.get_pwm_value()
+                logging.debug(f"Set FAN_CTRL to {self.fan_speed}%")
+                self.pwm_serial.write(self.fan_speed.to_bytes(1, byteorder="big", signed=False))
 
         except serial.serialutil.SerialException:
-            self.serial_error_close()
+            self.pwm_serial_error_close()
+
+    def notify_ctrl_temp(self):
+        """
+        Dispatches error logs if the PV controller temp is too high.
+
+        Does nothing when the temperature is inside nominal conditions.
+        """
+        if (self.fan_warning_time is not None) and (time.time() - self.fan_warning_time < 15):
+            return
+
+        if self.power_grid.controller_temperature > self.config.error_temp:
+            self.fan_warning_time = time.time()
+            self.comms.net_log(
+                LogLevel.CRITICAL,
+                f"PV controller temperature critical: {self.power_grid.controller_temperature}"
+            )
+            logging.critical(f"PV controller temperature critical: {self.power_grid.controller_temperature}")
+        elif self.power_grid.controller_temperature > self.config.warn_temp:
+            self.fan_warning_time = time.time()
+            self.comms.net_log(
+                LogLevel.ERROR,
+                f"PV controller temperature above safe levels: {self.power_grid.controller_temperature}"
+            )
+            logging.error(f"PV controller temperature above safe levels: {self.power_grid.controller_temperature}")
 
     def get_pwm_value(self):
         """
@@ -429,15 +648,17 @@ class PowerGrid:
             self.config.pwm_max
         ))
 
-    def serial_error_close(self):
-        logging.error("Serial communication error")
+    def pwm_serial_error_close(self):
+        logging.error("PWM serial communication error")
         self.pwm_serial.close()
         self.pwm_serial = None
 
-    def write_data_file(self):
-        # This calculation is a placeholder pending a proper shunt
-        power_delta = self.power_grid.pv_power - self.power_grid.load_power
+    def shunt_serial_error_close(self):
+        logging.error("SmartShunt serial communication error")
+        self.shunt_serial.close()
+        self.shunt_serial = None
 
+    def write_data_file(self):
         grid_data = {
             "battery": {
                 "capacity": self.bat_size,
@@ -454,8 +675,13 @@ class PowerGrid:
                 "voltage": self.power_grid.pv_voltage,
             },
             "load": {
-                "power": power_delta,
-                "current": power_delta / 12.5,
+                "power": self.power_grid.load_power,
+                "current": self.power_grid.load_current,
+                "ttg": self.power_grid.time_remaining,
+            },
+            "ctrl": {
+                "temp": self.power_grid.controller_temperature,
+                "fan_speed": self.fan_speed,
             },
         }
 
@@ -522,7 +748,7 @@ class PowerGrid:
                 # Proposing what we're already doing - do nothing
                 pass
 
-    def set_mains(self, active: bool):
+    def set_mains(self, active: (bool, None)):
         """
         Set the mains backup relay to given state, and write the state to the data file.
 
@@ -532,6 +758,7 @@ class PowerGrid:
         logging.info(f"Set mains relay: {active}")
         self.mains_active = active
         self.write_data_file()
+        self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
 
     def load_config(self):
         """
@@ -552,6 +779,10 @@ class PowerGrid:
                 self.mains_setting = min(max(0, int(get_value(cfg, "mains", 0))), 2)
                 self.mains_config_level = min(max(0, int(get_value(cfg, "mains_opt", 1))), 2)
                 logging.info(f"Updating mains config level to {self.mains_setting}:{self.mains_config_level}")
+                self.comms.net_log(
+                    LogLevel.INFO,
+                    f"Grid updated mains configuration level to {self.mains_setting}:{self.mains_config_level}"
+                )
                 self.recalculate_mains()
 
         except (FileNotFoundError, json.decoder.JSONDecodeError):

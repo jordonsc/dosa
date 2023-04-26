@@ -1,5 +1,4 @@
 import pathlib
-import json
 
 from dosa.exc import *
 from dosa.comms import Messages, Message, Comms

@@ -61,21 +61,25 @@ function hub_server.tick(self)
             end
 
             device:online()
+
+            -- Battery metrics
             device.profile.components["main"]:emit_event(capabilities.battery.battery(msg.power_grid.battery_soc))
             device.profile.components["main"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.battery_voltage))
-            device.profile.components["main"]:emit_event(capabilities.temperatureMeasurement.temperature({value=msg.power_grid.battery_temperature, unit='C'}))
 
+            -- PV
             device.profile.components["pv"]:emit_event(capabilities.voltageMeasurement.voltage(msg.power_grid.pv_voltage))
             device.profile.components["pv"]:emit_event(capabilities.powerMeter.power(msg.power_grid.pv_power))
-            device.profile.components["pv"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.pv_produced))
 
+            -- Load
+            device.profile.components["load"]:emit_event(capabilities.powerMeter.power(msg.power_grid.load_power))
+
+            -- Controller
             if msg.power_grid.load_state then
                 device.profile.components["load"]:emit_event(capabilities.switch.switch.on())
             else
                 device.profile.components["load"]:emit_event(capabilities.switch.switch.off())
             end
-            device.profile.components["load"]:emit_event(capabilities.powerMeter.power(msg.power_grid.load_power))
-            device.profile.components["load"]:emit_event(capabilities.energyMeter.energy(msg.power_grid.load_consumed))
+
             device.profile.components["load"]:emit_event(capabilities.temperatureMeasurement.temperature({value=msg.power_grid.controller_temperature, unit='C'}))
         end
     elseif dvc_meta.type == "dosa-d" then

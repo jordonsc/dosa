@@ -233,7 +233,10 @@ class MainWidget(Widget):
             clock.source = "../assets/clock.png"
         else:
             abs_time = abs(t)
-            unit = " hrs"
+            unit = " mins"
+            if abs_time > 60:
+                abs_time = abs_time / 60
+                unit = " hrs"
             if abs_time > 24:
                 abs_time = abs_time / 24
                 unit = " days"
@@ -244,9 +247,9 @@ class MainWidget(Widget):
                 clock.source = "../assets/bat_full.png"
             else:
                 clock.source = "../assets/bat_empty.png"
-                if t < -10:
+                if t < -600:
                     time_remaining.color = self.col_text
-                elif t < -5:
+                elif t < -300:
                     time_remaining.color = self.col_warn
                 else:
                     time_remaining.color = self.col_bad
@@ -284,12 +287,7 @@ class MainWidget(Widget):
             self.update_load(grid_data["load"]["power"], grid_data["load"]["current"])
 
             # Estimate time remaining
-            if self.load_power < 0:
-                self.update_time(self.bat_ah_remaining / (self.load_power / 12.5))
-            elif self.load_power == 0:
-                self.update_time(0)
-            else:
-                self.update_time((self.bat_size - self.bat_ah_remaining) / (self.load_power / 12.5))
+            self.update_time(grid_data["load"]["ttg"])
 
             self.ids.splash.opacity = 0
         except (KeyError, TypeError) as e:

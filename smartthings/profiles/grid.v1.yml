@@ -10,9 +10,6 @@ components:
       - id: voltageMeasurement
         name: Battery Voltage
         version: 1
-      - id: temperatureMeasurement
-        name: Battery Temperature
-        version: 1
       - id: refresh
         name: Refresh
         version: 1
@@ -27,9 +24,6 @@ components:
       - id: powerMeter
         name: PV Power
         version: 1
-      - id: energyMeter
-        name: Charge AH
-        version: 1
     categories:
       - name: SolarPanel
   - id: load
@@ -37,9 +31,6 @@ components:
     capabilities:
       - id: powerMeter
         name: Load Power
-        version: 1
-      - id: energyMeter
-        name: Discharge kWh
         version: 1
       - id: switch
         name: Load

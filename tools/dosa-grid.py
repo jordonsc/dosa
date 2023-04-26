@@ -12,21 +12,28 @@ DEVICE_NAME = b"DOSA Grid"
 # Arg parser
 parser = argparse.ArgumentParser(description='DOSA Power Grid Controller')
 
-# HCI adapter name
+# HCI adapter name for BLE comms
 parser.add_argument('-i', '--hci', dest='hci', action='store', default="hci0",
-                    help='HCI adapter name; default "hci0"')
+                    help='HCI adapter for BLE communications; default "hci0"')
 
-# HCI adapter name
+# BT-1 polling interval (seconds)
 parser.add_argument('-p', '--poll', dest='poll', action='store', default="30",
-                    help='Polling interview in seconds; default 30')
+                    help='BLE polling interview in seconds; default 30')
 
-# Target MAC address
+# BT-1 Target MAC address
 parser.add_argument('-m', '--mac', dest='mac', action='store',
-                    help='Target MAC address of BT-1 device; required')
-
+                    help='Target Bluetooth MAC address of BT-1 device; required')
 # Use a light stick
 parser.add_argument('-l', '--lights', dest='lights', action='store_true',
                     help='Enables the use of a light stick')
+
+# Transmit a PWM request via a given serial port
+parser.add_argument('-s', '--pwm', dest='pwm_port', action='store',
+                    help='Define the serial TTY port for sending PWM requests')
+
+# Read from a Victron SmartShunt
+parser.add_argument('-v', '--shunt', dest='shunt_port', action='store',
+                    help='Define the serial TTY port for reading from a Victron SmartShunt')
 
 # Set the size of the PV grid (in Watts)
 parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1000",
@@ -35,10 +42,6 @@ parser.add_argument('-g', '--grid-size', dest='grid', action='store', default="1
 # Set the size of the battery array (in Amp Hours)
 parser.add_argument('-b', '--battery-size', dest='battery', action='store', default="500",
                     help='Define the size of the battery array in AH')
-
-# Transmit a PWM request via a given serial port
-parser.add_argument('-s', '--serial', dest='serial', action='store',
-                    help='Define the serial TTY port for sending PWM requests')
 
 
 def run_app():
@@ -59,7 +62,8 @@ def run_app():
 
     try:
         bridge = PowerGrid(tgt_mac=args.mac, hci=args.hci, poll_int=int(args.poll), comms=comms, stick=stick,
-                           grid_size=int(args.grid), bat_size=int(args.battery), pwm_port=args.serial)
+                           grid_size=int(args.grid), bat_size=int(args.battery),
+                           pwm_port=args.pwm_port, shunt_port=args.shunt_port)
         bridge.run()
 
     except KeyboardInterrupt:

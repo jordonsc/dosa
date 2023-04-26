@@ -115,17 +115,16 @@ function comms.decode_stat(msg)
 
         msg.power_grid.battery_soc = string.byte(string.sub(msg.status_payload, 1, 1))
         msg.power_grid.battery_voltage = string.unpack("<I2", string.sub(msg.status_payload, 2, 3)) / 10
-        msg.power_grid.battery_temperature = string.unpack("<i2", string.sub(msg.status_payload, 4, 5))
 
-        msg.power_grid.pv_power = string.unpack("<I2", string.sub(msg.status_payload, 6, 7))
-        msg.power_grid.pv_voltage = string.unpack("<I2", string.sub(msg.status_payload, 8, 9)) / 10
-        msg.power_grid.pv_produced = string.unpack("<I2", string.sub(msg.status_payload, 10, 11))
+        msg.power_grid.pv_power = string.unpack("<I2", string.sub(msg.status_payload, 4, 5))
+        msg.power_grid.pv_voltage = string.unpack("<I2", string.sub(msg.status_payload, 6, 7)) / 10
 
-        msg.power_grid.load_state = string.byte(string.sub(msg.status_payload, 12, 12)) == 1
-        msg.power_grid.load_power = string.unpack("<I2", string.sub(msg.status_payload, 13, 14))
-        msg.power_grid.load_consumed = string.unpack("<I2", string.sub(msg.status_payload, 15, 16))
+        msg.power_grid.load_power = string.unpack("<i2", string.sub(msg.status_payload, 8, 9))
+        msg.power_grid.load_current = string.unpack("<i2", string.sub(msg.status_payload, 10, 11))
+        msg.power_grid.time_remaining = string.unpack("<i2", string.sub(msg.status_payload, 12, 13))
 
-        msg.power_grid.controller_temperature = string.unpack("<i2", string.sub(msg.status_payload, 17, 18))
+        msg.power_grid.load_state = string.byte(string.sub(msg.status_payload, 14, 14)) == 1
+        msg.power_grid.controller_temperature = string.unpack("<i2", string.sub(msg.status_payload, 15, 16))
     end
 
     return msg

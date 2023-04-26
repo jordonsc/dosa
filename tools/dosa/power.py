@@ -8,8 +8,8 @@ thresholds = {
     },
     "battery": {
         "high": 100,
-        "med": 66,
-        "low": 33,
+        "med": 50,
+        "low": 25,
     },
     "mains": {
         0: {

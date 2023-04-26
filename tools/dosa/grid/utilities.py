@@ -70,7 +70,7 @@ def create_request_payload(device_id, function, reg_addr, read_word):
 def parse_charge_controller_info(bs):
     data = {
         'function': FUNCTION[bytes_to_int(bs, 1, 1)],
-        'battery_percentage': bytes_to_int(bs, 3, 2),
+        'battery_soc': bytes_to_int(bs, 3, 2),
         'battery_voltage': bytes_to_int(bs, 5, 2) * 0.1,
         'controller_temperature': bytes_to_int(bs, 9, 1),
         'battery_temperature': bytes_to_int(bs, 10, 1),
