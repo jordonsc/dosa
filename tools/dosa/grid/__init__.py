@@ -6,6 +6,7 @@ import struct
 import time
 from threading import Thread
 
+import RPi.GPIO as GPIO
 import serial
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -134,6 +135,8 @@ class GridStatus:
 
 
 class PowerGrid:
+    MAINS_PIN = 23  # GPIO 23 (16)
+
     def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
                  pwm_port=None, shunt_port=None):
         logging.basicConfig(level=logging.DEBUG)
@@ -152,6 +155,10 @@ class PowerGrid:
           2: Always disable
         """
         self.mains_setting = 0
+
+        # Configure GPIO for mains relay
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.MAINS_PIN, GPIO.OUT)
 
         """
         Set the sensitivity for the automatic mode on the above setting:
@@ -558,7 +565,7 @@ class PowerGrid:
         if self.config.index_load is None:
             return
 
-        warn = -self.pv_size * 0.5
+        warn = -self.pv_size * 0.25
         bad = -self.pv_size * 0.8
 
         if self.power_grid.load_power <= bad:
@@ -765,6 +772,7 @@ class PowerGrid:
         if active is not None:
             logging.info(f"Set mains relay: {active}")
             self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
+            GPIO.output(self.MAINS_PIN, GPIO.HIGH if active else GPIO.LOW)
 
     def load_config(self):
         """
