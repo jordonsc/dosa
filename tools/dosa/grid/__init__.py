@@ -44,9 +44,6 @@ class StickConfig:
     index_pv = 8
     index_load = 0
 
-    threshold_load_warn = 180
-    threshold_load_bad = 240
-
     pwm_min = 20
     pwm_max = 100
     low_temp = 25
@@ -556,21 +553,22 @@ class PowerGrid:
 
     def update_stick_load(self):
         # Load LED
-        logging.debug("Load: {}w ({})".format(
-            self.power_grid.load_power, "active" if self.power_grid.load_state else "inactive"
-        ))
+        logging.debug(f"Load: {self.power_grid.load_power}w")
 
         if self.config.index_load is None:
             return
 
-        if self.power_grid.load_power >= self.config.threshold_load_bad:
+        warn = -self.pv_size * 0.5
+        bad = -self.pv_size * 0.8
+
+        if self.power_grid.load_power <= bad:
             load_colour = self.config.colour_bad
-        elif self.power_grid.load_power >= self.config.threshold_load_warn:
+        elif self.power_grid.load_power <= warn:
             load_colour = self.config.colour_warn
         elif self.power_grid.load_power > 0:
-            load_colour = self.config.colour_good
-        else:
             load_colour = self.config.colour_special
+        else:
+            load_colour = self.config.colour_good
 
         self.set_stick_colour(self.config.index_load, load_colour)
 
