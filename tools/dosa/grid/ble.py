@@ -74,6 +74,7 @@ class Device(gatt.Device):
     def disconnect_succeeded(self):
         super().disconnect_succeeded()
         logging.info("Disconnected from %s", self.mac_address)
+        self.manager.stop()
 
     def services_resolved(self):
         super().services_resolved()

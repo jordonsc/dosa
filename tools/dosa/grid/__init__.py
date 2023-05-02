@@ -41,9 +41,9 @@ class StickConfig:
     colour_none = (0, 0, 0)
 
     index_mains = None  # None implies we're not using this LED bank
-    index_bat = 16
-    index_pv = 8
-    index_load = 0
+    index_pv = 16  # left-most
+    index_bat = 8  # middle
+    index_load = 0  # right-most
 
     pwm_min = 20
     pwm_max = 100

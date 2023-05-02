@@ -55,6 +55,8 @@ class Bt1Client:
                              on_data=self.__on_data_received, notify_uuid=NOTIFY_CHAR_UUID, write_uuid=WRITE_CHAR_UUID)
         self.device.connect()
 
+        logging.error("BT-1 connection failed")
+
         return self
 
     def discover(self, mac_address, wait=DISCOVERY_TIMEOUT):
