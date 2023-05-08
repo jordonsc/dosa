@@ -304,7 +304,8 @@ class MainWidget(Widget):
                                         width=4))
 
     def set_error_condition(self, err_msg="unknown"):
-        self.ids.splash.opacity = 1
+        # Potentially causes a flicker
+        #self.ids.splash.opacity = 1
         logging.error(err_msg)
 
     def load_config(self):
