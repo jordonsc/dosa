@@ -2,6 +2,7 @@ from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.clock import Clock
 from kivy.graphics import Line
+from rpi_backlight import Backlight
 
 import dosa
 from dosa.power import thresholds, is_production_machine, get_data_file, get_config_file
@@ -75,9 +76,13 @@ class MainWidget(Widget):
     file_handler = None
     queue = queue.Queue()
 
+    backlight = Backlight()
     brightness_timeout = 0
     brightness_last_action = 0
     display_dimmed = False
+
+    dim_brightness = 5
+    std_brightness = 20
 
     def begin_main_sequence(self, _):
         """
@@ -98,6 +103,10 @@ class MainWidget(Widget):
         # Will load whatever is in the file and clear the splash
         self.reload_data()
 
+        # Reset the backlight brightness
+        logging.info(f"Backlight: {self.backlight.brightness}")
+        self.change_display_brightness(dim=False)
+
         # Start a file watch
         self.file_observer = Observer()
         self.file_observer.schedule(self.file_handler, path=get_data_file(), recursive=False)
@@ -113,13 +122,7 @@ class MainWidget(Widget):
         Monitors things like files changed, or dims the display after time.
         """
         self.check_watchdog()
-
-    def check_display(self):
-        """
-        If enough time has passed, dim the display
-        """
-        if self.brightness_timeout != 0 and (int(time.time()) - self.brightness_last_action > self.brightness_timeout):
-            self.change_display_brightness(True)
+        self.check_brightness()
 
     def check_watchdog(self):
         """
@@ -131,10 +134,21 @@ class MainWidget(Widget):
             # Will throw an exception if not found, else we just want to log the filename at best
             if self.queue.get_nowait() == get_data_file():
                 logging.debug("Data file updated, reloading")
-            self.reload_data()
+                self.reload_data()
 
         except queue.Empty:
             return
+
+    def check_brightness(self):
+        if self.display_dimmed or self.brightness_timeout == 0:
+            return
+
+        if self.brightness_last_action == 0:
+            self.brightness_last_action = int(time.time())
+            return
+
+        if time.time() - self.brightness_last_action > self.brightness_timeout:
+            self.change_display_brightness(dim=True)
 
     def set_pv_size(self, watts):
         logging.info("Update PV grid size to {} w".format(round(watts)))
@@ -265,7 +279,9 @@ class MainWidget(Widget):
             self.set_error_condition("Grid data missing")
             return
         except json.decoder.JSONDecodeError:
-            self.set_error_condition("Grid data file corrupted")
+            # This log will end up polluting the logs as the file change notice can often happen before the update has
+            # finished completing.
+            # self.set_error_condition("Grid data file corrupted")
             return
 
         try:
@@ -305,7 +321,7 @@ class MainWidget(Widget):
 
     def set_error_condition(self, err_msg="unknown"):
         # Potentially causes a flicker
-        #self.ids.splash.opacity = 1
+        # self.ids.splash.opacity = 1
         logging.error(err_msg)
 
     def load_config(self):
@@ -338,6 +354,7 @@ class MainWidget(Widget):
                 self.ids.settings.ids[f"mains_{self.cfg['mains_opt']}"].state = "down"
                 self.ids.settings.ids[f"display_{self.cfg['display']}"].state = "down"
 
+            self.reset_brightness_delay()
         except FileNotFoundError:
             logging.warning(f"No config file found ({get_config_file()})")
             self.load_default_config()
@@ -362,6 +379,7 @@ class MainWidget(Widget):
         logging.info(f"Writing config to {get_config_file()}")
         with open(get_config_file(), 'w', encoding='utf-8') as f:
             json.dump(self.cfg, f, ensure_ascii=False, indent=4)
+        self.reset_brightness_delay()
 
     def ctrl_button(self, button: int):
         title = self.ids.settings.ids[f"ctrl_{button}"].text
@@ -406,13 +424,29 @@ class MainWidget(Widget):
         """
         self.ids.settings.disabled = False
 
+    def reset_brightness_delay(self):
+        if self.cfg["display"] == 0:
+            # Never dim
+            self.brightness_timeout = 0
+        elif self.cfg["display"] == 1:
+            # 1 minute
+            self.brightness_timeout = 60
+        elif self.cfg["display"] == 2:
+            # 15 minutes
+            self.brightness_timeout = 60 * 15
+        elif self.cfg["display"] == 3:
+            # 1 hour
+            self.brightness_timeout = 60 * 60
+
     def change_display_brightness(self, dim: bool):
         """
-        Change the display brightness.
-
-        TODO: Not implemented.
+        Dim or brighten the display.
         """
-        pass
+        with self.backlight.fade(duration=1):
+            self.backlight.brightness = self.dim_brightness if dim else self.std_brightness
+
+        self.display_dimmed = dim
+        logging.debug("Dimming display" if dim else "Restoring display brightness")
 
 
 # Settings widget

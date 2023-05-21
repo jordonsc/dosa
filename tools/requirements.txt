@@ -6,3 +6,4 @@ libscrc
 UnleashClient
 rpi_ws281x
 watchdog
+rpi-backlight
