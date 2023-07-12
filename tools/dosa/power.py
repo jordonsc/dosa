@@ -13,19 +13,22 @@ thresholds = {
     },
     "mains": {
         0: {
-            "activate": 33,
-            "activate_time": 30,
-            "deactivate": 75,
+            # "Summer" mode
+            "activate": 50,
+            "activate_time": 15,
+            "deactivate": 80,
             "deactivate_time": 60,
         },
         1: {
-            "activate": 50,
-            "activate_time": 30,
-            "deactivate": 85,
+            # "Winter" mode
+            "activate": 75,
+            "activate_time": 15,
+            "deactivate": 95,
             "deactivate_time": 60,
         },
         2: {
-            "activate": 75,
+            # "Store" mode
+            "activate": 90,
             "activate_time": 15,
             "deactivate": 100,
             "deactivate_time": 180,
