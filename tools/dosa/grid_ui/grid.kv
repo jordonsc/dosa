@@ -32,6 +32,7 @@
     btn_colour_down: [0.4, 0.74, 0.27, 1.0]
     btn_colour_up: [0.09, 0.16, 0.13, 1.0]
     btn_colour_txt: [0.9, 1.0, 0.9, 1.0]
+    btn_colour_active: [0.0, 0.1, 0.0, 1.0]
 
 <RoundedButtonGroup@ButtonBehavior+BoxLayout>:
     spacing: 0
@@ -293,7 +294,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [10, 0, 0, 10]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: 'On'
@@ -313,7 +314,7 @@
                     pos: [self.x + line_size, self.y + line_size]
                     size: [self.width - (line_size * 2), self.height - (line_size * 2)]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: 'Off'
@@ -335,7 +336,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [0, 10, 10, 0]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
     Label:
         font_size: font_size
@@ -377,7 +378,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [10, 0, 0, 10]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: 'B'
@@ -397,7 +398,7 @@
                     pos: [self.x + line_size, self.y + line_size]
                     size: [self.width - (line_size * 2), self.height - (line_size * 2)]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: 'C'
@@ -419,7 +420,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [0, 10, 10, 0]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
     # Display settings
     Label:
@@ -466,7 +467,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [10, 0, 0, 10]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: '1 min'
@@ -486,7 +487,7 @@
                     pos: [self.x + line_size, self.y + line_size]
                     size: [self.width - line_size, self.height - (line_size * 2)]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: '15 mins'
@@ -506,7 +507,7 @@
                     pos: [self.x + line_size, self.y + line_size]
                     size: [self.width - (line_size * 2), self.height - (line_size * 2)]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
         GridButton:
             text: '1 hour'
@@ -528,7 +529,7 @@
                     size: [self.width - line_size, self.height - (line_size * 2)]
                     radius: [0, 10, 10, 0]
 
-            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_txt
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
 
 
     # Home button
