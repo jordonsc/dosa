@@ -12,6 +12,7 @@ class SecBot:
     Monitors for security alerts and errors. Vocalises them though TTS.
     """
     NO_LOG = [dosa.Messages.PING, dosa.Messages.ACK, dosa.Messages.STATUS]
+    ACK_LOG = [dosa.Messages.BEGIN, dosa.Messages.END]
 
     def __init__(self, comms=None, voice="Emma", engine="neural"):
         if comms is None:
@@ -149,10 +150,14 @@ class SecBot:
 
         msg = ""
 
-        if packet.msg_code == dosa.Messages.BEGIN or packet.msg_code == dosa.Messages.BEGIN:
+        if packet.msg_code in self.ACK_LOG:
             # These commands we'll ack but otherwise won't do anything special with them
             self.comms.send_ack(packet.msg_id_bytes(), packet.addr)
             self.log(packet)
+
+        elif packet.msg_code in self.NO_LOG:
+            # Don't log pings, acks, etc
+            pass
 
         elif packet.msg_code == dosa.Messages.LOG:
             # For log messages, we'll hunt down any error or critical messages and raise alerts
@@ -263,10 +268,6 @@ class SecBot:
                 device.device_state = packet.payload[self.comms.BASE_PAYLOAD_SIZE + 1]
                 self.devices.append(device)
                 print("Found device: " + device.device_name)
-
-        elif packet.msg_code in self.NO_LOG:
-            # Don't log pings, acks, etc
-            pass
 
         else:
             self.log(packet)
