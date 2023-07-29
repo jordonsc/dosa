@@ -16,7 +16,11 @@ try:
     while 1:
         x = ser.readline()
         if x:
-            print(x.decode("utf-8"), end='')
+            try:
+                print(x.decode("utf-8"), end='')
+            except UnicodeDecodeError as e:
+                print("<bad data>: ", e)
+
 
 except serial.serialutil.SerialException:
     print("\n-- Device disconnected --")

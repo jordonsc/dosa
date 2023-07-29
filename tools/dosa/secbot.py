@@ -11,6 +11,7 @@ class SecBot:
     """
     Monitors for security alerts and errors. Vocalises them though TTS.
     """
+    NO_LOG = [dosa.Messages.PING, dosa.Messages.ACK, dosa.Messages.STATUS]
 
     def __init__(self, comms=None, voice="Emma", engine="neural"):
         if comms is None:
@@ -263,8 +264,8 @@ class SecBot:
                 self.devices.append(device)
                 print("Found device: " + device.device_name)
 
-        elif packet.msg_code == dosa.Messages.PING or packet.msg_code == dosa.Messages.ACK:
-            # Don't log pings or acks
+        elif packet.msg_code in self.NO_LOG:
+            # Don't log pings, acks, etc
             pass
 
         else:

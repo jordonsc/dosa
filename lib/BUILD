@@ -206,6 +206,22 @@ cc_library(
     ],
 )
 
+# PWM controller
+cc_library(
+    name = "pwm",
+    srcs = glob(["pwm/src/**/*.cpp"]),
+    hdrs = glob(["pwm/src/**/*.h"]),
+    copts = COPTS,
+    includes = ["pwm/src"],
+    linkopts = LINKOPTS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//arduino:board_megaavr",
+        "//arduino:variant_nona4809",
+        "//arduino:megaAVR_PWM",
+    ],
+)
+
 # Display monitor
 cc_library(
     name = "monitor",

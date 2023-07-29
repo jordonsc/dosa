@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 
-app=$(python -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
+app=$(python3 -c "import os; print(os.path.dirname(os.path.realpath(\"$0\")))")
 
 cd ${app}/..
 arduino_path=$(find ~ -maxdepth 1 -name ".arduino*" | head -n 1)
 samd_version=$(ls -r1 ${arduino_path}/packages/arduino/hardware/samd/ | head -n 1)
+megaavr_version=$(ls -r1 ${arduino_path}/packages/arduino/hardware/megaavr/ | head -n 1)
 inkplate_version=$(ls -r1 ${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/ | head -n 1)
 
 echo "Detected Arduino path:           ${arduino_path}"
 echo "Detected SAMD library version:   ${samd_version}"
+echo "Detected M-AVR library version:  ${megaavr_version}"
 echo "Detected Inkplate lib version:   ${inkplate_version}"
 echo
 
@@ -19,10 +21,13 @@ echo "Linking Arduino libraries to project.."
 rm -rf arduino/boards arduino/variants arduino/libraries
 
 # Link board cores, their libraries & appropriate variants -
-mkdir -p arduino/libraries arduino/boards/samd arduino/boards/inkplate arduino/variants
+mkdir -p arduino/libraries arduino/boards/samd arduino/boards/megaavr arduino/boards/inkplate arduino/variants
 ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/cores" arduino/boards/samd/cores
 ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/libraries" arduino/boards/samd/libraries
 ln -s "${arduino_path}/packages/arduino/hardware/samd/${samd_version}/variants/nano_33_iot" arduino/variants/nano_33_iot
+ln -s "${arduino_path}/packages/arduino/hardware/megaavr/${megaavr_version}/cores" arduino/boards/megaavr/cores
+ln -s "${arduino_path}/packages/arduino/hardware/megaavr/${megaavr_version}/libraries" arduino/boards/megaavr/libraries
+ln -s "${arduino_path}/packages/arduino/hardware/megaavr/${megaavr_version}/variants/nona4809" arduino/variants/nona4809
 ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/cores" arduino/boards/inkplate/cores
 ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/libraries" arduino/boards/inkplate/libraries
 ln -s "${arduino_path}/packages/Croduino_Boards/hardware/Inkplate/${inkplate_version}/variants/Inkplate" arduino/variants/inkplate
@@ -37,6 +42,7 @@ ln -s ~/Arduino/libraries/WiFiNINA arduino/libraries/WiFiNINA
 ln -s ~/Arduino/libraries/Array arduino/libraries/Array
 ln -s ~/Arduino/libraries/ArduinoOTA arduino/libraries/ArduinoOTA
 ln -s ~/Arduino/libraries/HttpClient arduino/libraries/HttpClient
+ln -s ~/Arduino/libraries/megaAVR_PWM arduino/libraries/megaAVR_PWM
 
 # Link project libraries to the Arduino lib folder -
 echo "Linking project libraries to Arduino.."
@@ -55,6 +61,7 @@ ln -s ${app}/../lib/door ~/Arduino/libraries/dosa_door
 ln -s ${app}/../lib/relay ~/Arduino/libraries/dosa_relay
 ln -s ${app}/../lib/alarm ~/Arduino/libraries/dosa_alarm
 ln -s ${app}/../lib/pir ~/Arduino/libraries/dosa_pir
+ln -s ${app}/../lib/pwm ~/Arduino/libraries/dosa_pwm
 ln -s ${app}/../lib/ranging ~/Arduino/libraries/dosa_ranging
 ln -s ${app}/../lib/sonar ~/Arduino/libraries/dosa_sonar
 ln -s ${app}/../lib/laser ~/Arduino/libraries/dosa_laser

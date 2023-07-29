@@ -23,8 +23,8 @@ function devices.create_meta(prefix, device_id, label, profile, manufacturer)
     }
 end
 
-function devices.create_bt1_meta(device_id)
-    return devices.create_meta("bt1", device_id, "Renogy BT-1", "bt1.v1", "Renogy")
+function devices.create_dosa_grid_meta(device_id)
+    return devices.create_meta("dosa-g", device_id, device_id, "grid.v1", "DOSA Networks")
 end
 
 function devices.create_dosa_sensor_meta(device_id)
@@ -78,11 +78,11 @@ function devices.register(self, driver, msg, addr, add_device)
         end
         self:track(msg, addr, "dosa-d")
     elseif msg.device_type[1] == 120 then
-        -- Renogy BT-1 dongle
+        -- Power grid
         if add_device then
-            driver:try_create_device(self.create_bt1_meta(msg.device_name))
+            driver:try_create_device(self.create_dosa_grid_meta(msg.device_name))
         end
-        self:track(msg, addr, "bt1")
+        self:track(msg, addr, "dosa-g")
     else
         log.info(string.format("Not registering unsupported DOSA device: %s", msg.device_type[2]))
         return

@@ -31,6 +31,7 @@ enum class DeviceType : uint8_t
     POWER_TOGGLE = 110,  // Power toggle switch
     MOTOR_WINCH = 112,   // Motorised winch
     LIGHT = 113,         // Light controller
+    MODULATOR = 114,     // Power/motor modulator
 
     // Power devices
     POWER_GRID = 120,     // Multi-component power grid

@@ -2,9 +2,9 @@ from threading import Timer
 import logging
 import time
 
-from dosa.renogy.ble import DeviceManager, Device
-from dosa.renogy.utilities import create_request_payload, parse_charge_controller_info, parse_set_load_response, bytes_to_int
-from dosa.renogy.exceptions import *
+from dosa.grid.ble import DeviceManager, Device
+from dosa.grid.utilities import create_request_payload, parse_charge_controller_info, parse_set_load_response, bytes_to_int
+from dosa.grid.exceptions import *
 
 DEVICE_ID = 255
 NOTIFY_CHAR_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
@@ -54,6 +54,8 @@ class Bt1Client:
         self.device = Device(mac_address=mac_address, manager=self.manager, on_resolved=self.__on_resolved,
                              on_data=self.__on_data_received, notify_uuid=NOTIFY_CHAR_UUID, write_uuid=WRITE_CHAR_UUID)
         self.device.connect()
+
+        logging.error("BT-1 connection failed")
 
         return self
 
@@ -124,6 +126,7 @@ class Bt1Client:
         self.device.characteristic_write_value(request)
 
     def disconnect(self):
+        logging.info("BT-1 disconnecting")
         self.clear_timer()
         if self.device.is_connected():
             self.device.disconnect()

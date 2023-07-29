@@ -1,0 +1,10 @@
+[Unit]
+Description=DOSA Power Grid UI
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/python -u /home/pi/dosa/tools/dosa-grid-ui.py
+
+[Install]
+WantedBy=multi-user.target

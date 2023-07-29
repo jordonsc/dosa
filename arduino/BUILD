@@ -20,6 +20,25 @@ cc_library(
 )
 
 cc_library(
+    name = "board_megaavr",
+    srcs = glob([
+        "boards/megaavr/**/*.cpp",
+        "boards/megaavr/**/*.c",
+    ]),
+    hdrs = glob(["boards/megaavr/**/*.h"]),
+    includes = [
+        "boards/megaavr/cores/arduino",
+        "boards/megaavr/cores/arduino/api",
+    ] + glob(
+        [
+            "boards/megaavr/libraries/*/src",
+        ],
+        exclude_directories = 0,
+    ),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "board_inkplate",
     srcs = glob([
         "boards/inkplate/**/*.cpp",
@@ -41,6 +60,16 @@ cc_library(
     srcs = glob(["variants/nano_33_iot/*.cpp"]),
     hdrs = glob(["variants/nano_33_iot/*.h"]),
     includes = ["variants/nano_33_iot"],
+    visibility = ["//visibility:public"],
+    deps = [
+    ],
+)
+
+cc_library(
+    name = "variant_nona4809",
+    srcs = glob(["variants/nona4809/*.cpp"]),
+    hdrs = glob(["variants/nona4809/*.h"]),
+    includes = ["variants/nona4809"],
     visibility = ["//visibility:public"],
     deps = [
     ],
@@ -131,6 +160,14 @@ cc_library(
     srcs = glob(["libraries/HttpClient/**/*.cpp"]),
     hdrs = glob(["libraries/HttpClient/**/*.h"]),
     includes = ["libraries/HttpClient"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "megaAVR_PWM",
+    srcs = glob(["libraries/megaAVR_PWM/**/*.cpp"]),
+    hdrs = glob(["libraries/megaAVR_PWM/**/*.h"]),
+    includes = ["libraries/megaAVR_PWM/src"],
     visibility = ["//visibility:public"],
 )
 

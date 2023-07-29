@@ -1,5 +1,5 @@
-# Renogy BT-1 Bluetooth Adapter
-name: bt1.v1
+# DOSA Power Grid
+name: grid.v1
 components:
   - id: main
     name: Batteries
@@ -9,9 +9,6 @@ components:
         version: 1
       - id: voltageMeasurement
         name: Battery Voltage
-        version: 1
-      - id: temperatureMeasurement
-        name: Battery Temperature
         version: 1
       - id: refresh
         name: Refresh
@@ -27,9 +24,6 @@ components:
       - id: powerMeter
         name: PV Power
         version: 1
-      - id: energyMeter
-        name: Charge AH
-        version: 1
     categories:
       - name: SolarPanel
   - id: load
@@ -37,9 +31,6 @@ components:
     capabilities:
       - id: powerMeter
         name: Load Power
-        version: 1
-      - id: energyMeter
-        name: Discharge kWh
         version: 1
       - id: switch
         name: Load

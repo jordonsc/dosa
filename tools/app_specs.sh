@@ -13,6 +13,9 @@ function getFqbn() {
   "pir")
     echo "arduino:samd:nano_33_iot"
     ;;
+  "pwm")
+    echo "arduino:megaavr:nona4809"
+    ;;
   "sonar")
     echo "arduino:samd:nano_33_iot"
     ;;
@@ -41,6 +44,9 @@ function getAppKey() {
     ;;
   "pir")
     echo "DOSA-M"
+    ;;
+  "pwm")
+    echo "DOSA-P"
     ;;
   "sonar")
     echo "DOSA-S"

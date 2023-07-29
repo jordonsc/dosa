@@ -1,0 +1,542 @@
+#:kivy 1.0.9
+
+# Label fonts
+#:set font_name "../assets/Consolas.ttf"
+#:set font_size 40
+#:set label_size [250, 50]
+#:set full_label_size [550, 50]
+#:set transparent [0, 0, 0, 0]
+
+# Widget positional offsets
+#:set left_column 140
+#:set right_column 540
+#:set img_offset 60
+#:set top_offset 60
+#:set line_offset 50
+#:set group_offset 95
+#:set settings_offset 55
+#:set settings_lower_offset 120
+
+# Used for borders around buttons, etc
+#:set line_size 3
+#:set graph_size 150
+
+<GridButton@ToggleButton>:
+    background_color: transparent
+    background_normal: ''
+    background_down: ''
+    font_size: '26px'
+    font_name: font_name
+    color: [1, 1, 1, 1]
+
+    btn_colour_down: [0.4, 0.74, 0.27, 1.0]
+    btn_colour_up: [0.09, 0.16, 0.13, 1.0]
+    btn_colour_txt: [0.9, 1.0, 0.9, 1.0]
+    btn_colour_active: [0.0, 0.1, 0.0, 1.0]
+
+<RoundedButtonGroup@ButtonBehavior+BoxLayout>:
+    spacing: 0
+    padding: 0
+
+<MainWidget>:
+    canvas.before:
+        Color:
+            rgba: root.col_bg
+        Rectangle:
+            pos: 0, 0
+            size: root.size
+    on_touch_down: root.display_touch(*args)
+
+    ### LEFT COLUMN ###
+    # SOC display
+    BoxLayout:
+        id: soc_graphic
+        size: [150, 150]
+        pos: [120, root.height - 200]
+        canvas:
+            Color:
+                rgb: [0.16, 0.1, 0.1]
+            Line:
+                width: 4
+                circle: (self.center_x, self.center_y, graph_size / 2, 240, 360)
+            Line:
+                width: 4
+                circle: (self.center_x, self.center_y, graph_size / 2, 0, 120)
+            Color:
+                rgba: root.col_special
+            # SOC line will go here (programmatically added)
+
+    Label:
+        font_size: font_size * 1.2
+        font_name: font_name
+        halign: "center"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-%"
+        id: bat_soc
+        center_x: soc_graphic.center_x
+        center_y: soc_graphic.center_y
+
+
+    # Battery display
+    Image:
+        source: "../assets/bat.png"
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: root.top - top_offset - 200
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-ah"
+        id: bat_ah_remaining
+        x: left_column
+        center_y: root.top - top_offset - 200
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-v"
+        id: bat_voltage
+        y: bat_ah_remaining.y - line_offset
+        x: left_column
+
+    # Mains display
+    Image:
+        source: '../assets/mains.png'
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: bat_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_special
+        text: "Inactive"
+        id: mains_status
+        center_y: bat_voltage.center_y - group_offset
+        x: left_column
+
+    ### RIGHT COLUMN ###
+    # PV display
+    Image:
+        source: "../assets/pv.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        text: "-w"
+        color: root.col_text
+        id: pv_power
+        x: right_column
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-v"
+        id: pv_voltage
+        x: right_column
+        y: pv_power.y - line_offset
+
+    # Load display
+    Image:
+        source: "../assets/load.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: pv_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-"
+        id: load_status
+        x: right_column
+        center_y: pv_voltage.center_y - group_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-w"
+        id: load_power
+        x: right_column
+        y: load_status.y - line_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_text
+        text: "-a"
+        id: load_current
+        x: right_column
+        y: load_power.y - line_offset
+
+    # Time remaining
+    Image:
+        source: "../assets/clock.png"
+        size: self.texture_size
+        center_x: right_column - img_offset
+        center_y: load_current.center_y - group_offset
+        id: clock
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: label_size
+        text_size: self.size
+        color: root.col_good
+        text: "-"
+        id: time_remaining
+        x: right_column
+        center_y: load_current.center_y - group_offset
+
+    ### SPLASH SCREEN ###
+    Image:
+        id: splash
+        size: root.size
+        pos: 0, 0
+        source: "../assets/splash.png"
+
+    ### SETTINGS SCREEN ###
+    SettingsWidget:
+        id: settings
+        size: root.size
+        pos: 0, 0
+        opacity: 0
+
+
+<SettingsWidget>:
+    canvas.before:
+        Color:
+            rgba: root.col_bg
+        Rectangle:
+            pos: 0, 0
+            size: root.size
+
+    disabled: True
+
+    # Mains override
+    Image:
+        source: '../assets/mains.png'
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: root.top - top_offset
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: full_label_size
+        text_size: self.size
+        color: root.col_text
+        text: "Mains Control"
+        id: mains_ctrl_text
+        x: left_column
+        center_y: root.top - top_offset
+
+    RoundedButtonGroup:
+        x: left_column
+        y: mains_ctrl_text.y - settings_offset
+        size: 330, 50
+        id: mains_ctrl
+
+        GridButton:
+            text: 'Auto'
+            group: "mains_ctrl"
+            id: ctrl_0
+            on_press: root.parent.ctrl_button(0)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 0, 0, 10]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [10, 0, 0, 10]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: 'On'
+            group: "mains_ctrl"
+            id: ctrl_1
+            on_press: root.parent.ctrl_button(1)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                Rectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - (line_size * 2), self.height - (line_size * 2)]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: 'Off'
+            group: "mains_ctrl"
+            id: ctrl_2
+            on_press: root.parent.ctrl_button(2)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [0, 10, 10, 0]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [0, 10, 10, 0]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: full_label_size
+        text_size: self.size
+        color: root.col_text
+        text: "Auto Sensitivity"
+        id: mains_cfg_text
+        x: left_column
+        y: mains_ctrl.top - settings_lower_offset
+
+
+    # Mains config
+    RoundedButtonGroup:
+        x: left_column
+        y: mains_cfg_text.y - settings_offset
+        size: 330, 50
+        id: mains_cfg
+
+        GridButton:
+            text: 'A'
+            group: "mains_cfg"
+            id: mains_0
+            on_press: root.parent.mains_button(0)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 0, 0, 10]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [10, 0, 0, 10]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: 'B'
+            group: "mains_cfg"
+            id: mains_1
+            on_press: root.parent.mains_button(1)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                Rectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - (line_size * 2), self.height - (line_size * 2)]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: 'C'
+            group: "mains_cfg"
+            id: mains_2
+            on_press: root.parent.mains_button(2)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [0, 10, 10, 0]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [0, 10, 10, 0]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+    # Display settings
+    Label:
+        font_size: font_size
+        font_name: font_name
+        halign: "left"
+        size: full_label_size
+        text_size: self.size
+        color: root.col_text
+        text: "Dim display"
+        id: display_cfg_text
+        x: left_column
+        y: mains_cfg.y - settings_lower_offset + 10
+
+    Image:
+        source: '../assets/display.png'
+        size: self.texture_size
+        center_x: left_column - img_offset
+        center_y: display_cfg_text.center_y
+
+    RoundedButtonGroup:
+        x: left_column
+        y: display_cfg_text.y - settings_offset
+        size: 500, 50
+        id: display_cfg
+
+        GridButton:
+            text: 'Never'
+            group: "display_cfg"
+            id: display_0
+            on_press: root.parent.display_button(0)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 0, 0, 10]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [10, 0, 0, 10]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: '1 min'
+            group: "display_cfg"
+            id: display_1
+            on_press: root.parent.display_button(1)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                Rectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: '15 mins'
+            group: "display_cfg"
+            id: display_2
+            on_press: root.parent.display_button(2)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                Rectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - (line_size * 2), self.height - (line_size * 2)]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: '1 hour'
+            group: "display_cfg"
+            id: display_3
+            on_press: root.parent.display_button(3)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [0, 10, 10, 0]
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                RoundedRectangle:
+                    pos: [self.x, self.y + line_size]
+                    size: [self.width - line_size, self.height - (line_size * 2)]
+                    radius: [0, 10, 10, 0]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+
+    # Home button
+    Image:
+        id: home_img
+        source: '../assets/home.png'
+        size: self.texture_size
+        x: root.width - 110
+        y: root.height - 110
+        on_touch_down: root.home_button_press(*args)
