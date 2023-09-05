@@ -1,4 +1,5 @@
 import pathlib
+import os
 
 from dosa.exc import *
 from dosa.comms import Messages, Message, Comms
@@ -12,6 +13,10 @@ from dosa.flush import Flush
 from dosa.play import Play
 from dosa.device import DeviceType, DeviceStatus, Device
 from UnleashClient import UnleashClient
+
+
+def is_pi():
+    return os.uname() == "arm"
 
 
 class Feature:

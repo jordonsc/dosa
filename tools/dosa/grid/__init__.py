@@ -6,12 +6,15 @@ import struct
 import time
 from threading import Thread
 
-import RPi.GPIO as GPIO
 import serial
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 import dosa
+
+if dosa.is_pi():
+    import RPi.GPIO as GPIO
+
 from dosa import LogLevel
 from dosa.grid.bt1 import Bt1Client
 from dosa.grid.exceptions import *
@@ -157,8 +160,9 @@ class PowerGrid:
         self.mains_setting = 0
 
         # Configure GPIO for mains relay
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.MAINS_PIN, GPIO.OUT)
+        if dosa.is_pi():
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(self.MAINS_PIN, GPIO.OUT)
 
         """
         Set the sensitivity for the automatic mode on the above setting:
@@ -771,8 +775,11 @@ class PowerGrid:
 
         if active is not None:
             logging.info(f"Set mains relay: {active}")
-            self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
-            GPIO.output(self.MAINS_PIN, GPIO.HIGH if active else GPIO.LOW)
+            if dosa.is_pi():
+                self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active}")
+                GPIO.output(self.MAINS_PIN, GPIO.HIGH if active else GPIO.LOW)
+            else:
+                self.comms.net_log(LogLevel.INFO, f"Set mains relay: {active} (not running on hardware)")
 
     def load_config(self):
         """
