@@ -16,7 +16,7 @@ from UnleashClient import UnleashClient
 
 
 def is_pi():
-    return os.uname() == "arm"
+    return True
 
 
 class Feature:
