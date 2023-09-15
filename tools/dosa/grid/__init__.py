@@ -166,9 +166,10 @@ class PowerGrid:
 
         """
         Set the sensitivity for the automatic mode on the above setting:
-          0: Eco mode; allow the SOC to get a reasonably low level, maximising solar usage
-          1: Standard; a middle-ground, enable mains before we lose too much power
-          2: Safe mode; enable the mains at a high-level, for when you want to use the grid as an emergency backup
+          0: "Summer" mode; allow the SOC to get a reasonably low level, maximising solar usage
+          1: "Spring"; a middle-ground, enable mains before we lose too much power
+          1: "Winter"; largely cautious, but release mains before we get to 100%
+          3: Safe mode; enable the mains at a high-level, for when you want to use the grid as an emergency backup
         """
         self.mains_config_level = 0
 

@@ -342,13 +342,15 @@ class MainWidget(Widget):
                 self.cfg["mains_opt"] = get_value_range(cfg, "mains_opt", 1, 0, 2)
                 self.cfg["display"] = get_value_range(cfg, "display", 0, 0, 3)
 
-                self.cfg["opt_0_title"] = get_value(cfg, "opt_0_title", "Eco")
-                self.cfg["opt_1_title"] = get_value(cfg, "opt_1_title", "Std")
-                self.cfg["opt_2_title"] = get_value(cfg, "opt_2_title", "Safe")
+                self.cfg["opt_0_title"] = get_value(cfg, "opt_0_title", "Summer")
+                self.cfg["opt_1_title"] = get_value(cfg, "opt_1_title", "Spring")
+                self.cfg["opt_2_title"] = get_value(cfg, "opt_2_title", "Winter")
+                self.cfg["opt_3_title"] = get_value(cfg, "opt_3_title", "Store")
 
                 self.ids.settings.ids.mains_0.text = self.cfg["opt_0_title"]
                 self.ids.settings.ids.mains_1.text = self.cfg["opt_1_title"]
                 self.ids.settings.ids.mains_2.text = self.cfg["opt_2_title"]
+                self.ids.settings.ids.mains_3.text = self.cfg["opt_3_title"]
 
                 self.ids.settings.ids[f"ctrl_{self.cfg['mains']}"].state = "down"
                 self.ids.settings.ids[f"mains_{self.cfg['mains_opt']}"].state = "down"
