@@ -20,13 +20,20 @@ thresholds = {
             "deactivate_time": 5,
         },
         1: {
+            # "Spring" mode
+            "activate": 60,
+            "activate_time": 5,
+            "deactivate": 85,
+            "deactivate_time": 5,
+        },
+        2: {
             # "Winter" mode
             "activate": 70,
             "activate_time": 5,
             "deactivate": 90,
             "deactivate_time": 5,
         },
-        2: {
+        3: {
             # "Store" mode
             "activate": 90,
             "activate_time": 5,

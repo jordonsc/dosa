@@ -368,9 +368,10 @@ class MainWidget(Widget):
         self.cfg["mains"] = 0
         self.cfg["mains_opt"] = 1
         self.cfg["display"] = 0
-        self.cfg["opt_0_title"] = "Eco"
-        self.cfg["opt_1_title"] = "Std"
-        self.cfg["opt_2_title"] = "Safe"
+        self.cfg["opt_0_title"] = "Summer"
+        self.cfg["opt_1_title"] = "Spring"
+        self.cfg["opt_2_title"] = "Winter"
+        self.cfg["opt_3_title"] = "Store"
         self.ids.settings.ids["ctrl_{}".format(self.cfg["mains"])].state = "down"
         self.ids.settings.ids["mains_{}".format(self.cfg["mains_opt"])].state = "down"
         self.save_config()

@@ -409,6 +409,26 @@
             canvas.before:
                 Color:
                     rgba: self.btn_colour_down
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+                Color:
+                    rgba: self.btn_colour_up if self.state=='normal' else self.btn_colour_down
+                Rectangle:
+                    pos: [self.x + line_size, self.y + line_size]
+                    size: [self.width - (line_size * 2), self.height - (line_size * 2)]
+
+            color: self.btn_colour_down if self.state=='normal' else self.btn_colour_active
+
+        GridButton:
+            text: 'D'
+            group: "mains_cfg"
+            id: mains_3
+            on_press: root.parent.mains_button(3)
+
+            canvas.before:
+                Color:
+                    rgba: self.btn_colour_down
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
