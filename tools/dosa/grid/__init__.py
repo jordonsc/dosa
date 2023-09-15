@@ -799,7 +799,7 @@ class PowerGrid:
             with open(get_config_file(), 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
                 self.mains_setting = min(max(0, int(get_value(cfg, "mains", 0))), 2)
-                self.mains_config_level = min(max(0, int(get_value(cfg, "mains_opt", 1))), 2)
+                self.mains_config_level = min(max(0, int(get_value(cfg, "mains_opt", 1))), 3)
                 logging.info(f"Updating mains config level to {self.mains_setting}:{self.mains_config_level}")
                 self.comms.net_log(
                     LogLevel.INFO,
