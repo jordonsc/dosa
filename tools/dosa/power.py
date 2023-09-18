@@ -14,14 +14,14 @@ thresholds = {
     "mains": {
         0: {
             # "Summer" mode
-            "activate": 50,
+            "activate": 40,
             "activate_time": 5,
             "deactivate": 80,
             "deactivate_time": 5,
         },
         1: {
             # "Spring" mode
-            "activate": 60,
+            "activate": 55,
             "activate_time": 5,
             "deactivate": 85,
             "deactivate_time": 5,
