@@ -411,6 +411,9 @@ class PowerGrid:
             except serial.serialutil.SerialException:
                 self.shunt_serial_error_close()
 
+            except Exception as e:
+                logging.error(f"Shunt error: {e}")
+
     def process_config(self):
         """
         Monitors (via a Watchdog thread queue) a file that the UI app writes to.
