@@ -364,7 +364,6 @@ class PowerGrid:
 
         if self.shunt_serial is not None:
             try:
-                packets = 0
                 data = {}
                 while self.shunt_serial.in_waiting > 0:
                     response = self.shunt_serial.readline()
@@ -385,12 +384,6 @@ class PowerGrid:
                         if ttg == -1:
                             ttg = 0
                         data['time_remaining'] = -ttg
-
-                    packets += 1
-                    if packets > 20:
-                        # the serial line is always sending data - if we are reading for too long, break and let the
-                        # rest of the application do something
-                        break
 
                 if len(data) > 0:
                     last = self.shunt_new_metrics
