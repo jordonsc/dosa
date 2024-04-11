@@ -66,6 +66,8 @@ def run_app():
                            pwm_port=args.pwm_port, shunt_port=args.shunt_port)
         bridge.run()
 
+        print("<app exit>")
+
     except KeyboardInterrupt:
         print("")
         sys.exit(0)

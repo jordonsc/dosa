@@ -298,13 +298,14 @@ class PowerGrid:
         logging.info("Starting DOSA Power Grid Controller..")
         self.spawn_bt_listener()
         self.comms.net_log(LogLevel.INFO, "Power Grid online")
+        self.shunt_last_updated = time.time()
 
         def run_safe(fn, *args):
             try:
                 fn(*args)
             except Exception as e:
                 # Main thread should not error - if it does, understand why -
-                logging.error(e)
+                logging.error(f"Main loop error: {e}")
                 self.comms.net_log(LogLevel.ERROR, f"Main loop error: {e}")
 
         while True:
@@ -313,6 +314,12 @@ class PowerGrid:
             run_safe(self.process_shunt_serial)
             run_safe(self.process_config)
             run_safe(self.process_udp)
+
+            if self.shunt_serial is not None and (time.time() - self.shunt_last_updated > 60):
+                err = "No updates from battery shunt in 60 seconds"
+                logging.error(err)
+                self.comms.net_log(LogLevel.ERROR, err)
+                return
 
     def process_ble(self):
         """
@@ -367,6 +374,7 @@ class PowerGrid:
                 data = {}
                 while self.shunt_serial.in_waiting > 0:
                     response = self.shunt_serial.readline()
+
                     if response[0:2] == b"V\t":
                         data['battery_voltage'] = round(int(response[2:-2]) / 1000, 1)
 
@@ -386,26 +394,24 @@ class PowerGrid:
                         data['time_remaining'] = -ttg
 
                 if len(data) > 0:
-                    last = self.shunt_new_metrics
-                    self.shunt_new_metrics += self.power_grid.from_data(
+                    self.power_grid.from_data(
                         data, allow_pv_data=False, allow_controller_data=False
                     )
-                    if last != self.shunt_new_metrics and self.shunt_new_metrics > 0:
-                        logging.debug(f"Pending updates from battery shunt: {self.shunt_new_metrics}")
 
-                if self.shunt_new_metrics > 0:
                     # Don't hammer updates - wait a few seconds before reading again
                     if (self.shunt_last_updated is None) or (time.time() - self.shunt_last_updated > 2):
                         self.shunt_last_updated = time.time()
-                        logging.debug("Dispatching updates from battery shunt")
                         self.on_metrics_updated()
-                        self.shunt_new_metrics = 0
+                        logging.debug(f"Dispatching {len(data)} updates from battery shunt")
 
             except serial.serialutil.SerialException:
                 self.shunt_serial_error_close()
 
             except Exception as e:
                 logging.error(f"Shunt error: {e}")
+        else:
+            logging.error(f"No shunt serial")
+            time.sleep(1)
 
     def process_config(self):
         """
