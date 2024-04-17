@@ -67,6 +67,7 @@ def run_app():
         bridge.run()
 
         print("<app exit>")
+        sys.exit(2)
 
     except KeyboardInterrupt:
         print("")
