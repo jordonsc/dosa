@@ -4,7 +4,7 @@ import os
 import queue
 import struct
 import time
-from threading import Thread
+from threading import Thread, Lock
 
 import serial
 from watchdog.events import FileSystemEventHandler
@@ -143,6 +143,10 @@ class PowerGrid:
     def __init__(self, tgt_mac, hci="hci0", poll_int=30, comms=None, stick=None, grid_size=1000, bat_size=500,
                  pwm_port=None, shunt_port=None):
         logging.basicConfig(level=logging.DEBUG)
+
+        self.calc_mutex = Lock()
+        self.write_mutex = Lock()
+        self.metrics_mutex = Lock()
 
         if comms is None:
             comms = dosa.Comms()
@@ -487,18 +491,23 @@ class PowerGrid:
         """
         Power Grid metrics have been updated, recalculate all subsystems and write new stats.
         """
-        # Dispatch a DOSA STA payload
-        payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
-        logging.debug("Dispatching STA multicast")
-        self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
+        with self.metrics_mutex:
+            try:
+                # Dispatch a DOSA STA payload
+                payload = struct.pack("<H", dosa.device.StatusFormat.POWER_GRID) + self.power_grid.to_bytes()
+                logging.debug("Dispatching STA multicast")
+                self.comms.send(self.comms.build_payload(dosa.Messages.STATUS, payload))
 
-        # Recalculate power systems
-        self.recalculate_mains()
-        self.update_stick_colours()
-        self.update_pwm_speed()
+                # Recalculate power systems
+                self.recalculate_mains()
+                self.update_stick_colours()
+                self.update_pwm_speed()
 
-        # Write data for the GUI to read
-        self.write_data_file()
+                # Write data for the GUI to read
+                self.write_data_file()
+
+            except Exception as e:
+                self.comms.net_log(LogLevel.ERROR, f"Metrics update error: {e}")
 
     def update_stick_colours(self):
         """
@@ -671,34 +680,35 @@ class PowerGrid:
         self.shunt_serial = None
 
     def write_data_file(self):
-        grid_data = {
-            "battery": {
-                "capacity": self.bat_size,
-                "soc": self.power_grid.battery_soc,
-                "voltage": round(self.power_grid.battery_voltage, 2),
-                "ah_remaining": round(self.bat_size * self.power_grid.battery_soc / 100, 2),
-            },
-            "mains": {
-                "active": self.mains_active,
-            },
-            "pv": {
-                "capacity": self.pv_size,
-                "power": self.power_grid.pv_power,
-                "voltage": self.power_grid.pv_voltage,
-            },
-            "load": {
-                "power": self.power_grid.load_power,
-                "current": self.power_grid.load_current,
-                "ttg": self.power_grid.time_remaining,
-            },
-            "ctrl": {
-                "temp": self.power_grid.controller_temperature,
-                "fan_speed": self.fan_speed,
-            },
-        }
+        with self.write_mutex:
+            grid_data = {
+                "battery": {
+                    "capacity": self.bat_size,
+                    "soc": self.power_grid.battery_soc,
+                    "voltage": round(self.power_grid.battery_voltage, 2),
+                    "ah_remaining": round(self.bat_size * self.power_grid.battery_soc / 100, 2),
+                },
+                "mains": {
+                    "active": self.mains_active,
+                },
+                "pv": {
+                    "capacity": self.pv_size,
+                    "power": self.power_grid.pv_power,
+                    "voltage": self.power_grid.pv_voltage,
+                },
+                "load": {
+                    "power": self.power_grid.load_power,
+                    "current": self.power_grid.load_current,
+                    "ttg": self.power_grid.time_remaining,
+                },
+                "ctrl": {
+                    "temp": self.power_grid.controller_temperature,
+                    "fan_speed": self.fan_speed,
+                },
+            }
 
-        with open(get_data_file(), 'w', encoding='utf-8') as f:
-            json.dump(grid_data, f, ensure_ascii=False, indent=4)
+            with open(get_data_file(), 'w', encoding='utf-8') as f:
+                json.dump(grid_data, f, ensure_ascii=False, indent=4)
 
     def recalculate_mains(self):
         if self.mains_setting > 0:
@@ -720,51 +730,51 @@ class PowerGrid:
         """
         Automatically change the mains state based on SOC and thresholds.
         """
-
         def set_proposed(x):
             logging.debug(f"Proposed mains relay state: {x}")
             self.mains_proposed_state = x
             self.mains_proposal_time = int(time.time())
 
-        mains = thresholds["mains"][self.mains_config_level]
-        proposed = None  # do nothing by default
+        with self.calc_mutex:
+            mains = thresholds["mains"][self.mains_config_level]
+            proposed = None  # do nothing by default
 
-        if self.mains_active is None and self.power_grid.battery_soc == 0:
-            # No data yet
-            return
+            if self.mains_active is None and self.power_grid.battery_soc == 0:
+                # No data yet
+                return
 
-        elif self.power_grid.battery_soc < mains["activate"]:
-            # Battery is getting low, propose enabling mains backup
-            proposed = True
+            elif self.power_grid.battery_soc < mains["activate"]:
+                # Battery is getting low, propose enabling mains backup
+                proposed = True
 
-        elif self.power_grid.battery_soc >= mains["deactivate"]:
-            # Battery SOC is high, propose turning off mains backup
-            proposed = False
+            elif self.power_grid.battery_soc >= mains["deactivate"]:
+                # Battery SOC is high, propose turning off mains backup
+                proposed = False
 
-        if self.mains_active is None:
-            # This would be the first run - set mains to whatever we decide here (no proposal = no mains)
-            logging.info(f"Initial set for mains relay at SOC {self.power_grid.battery_soc}% < {mains['activate']}%")
-            self.mains_proposed_state = proposed
-            self.mains_proposal_time = int(time.time())
-            self.set_mains(proposed == True)
+            if self.mains_active is None:
+                # This would be the first run - set mains to whatever we decide here (no proposal = no mains)
+                logging.info(f"Initial set for mains relay at SOC {self.power_grid.battery_soc}% < {mains['activate']}%")
+                self.mains_proposed_state = proposed
+                self.mains_proposal_time = int(time.time())
+                self.set_mains(proposed)
 
-        elif proposed is not None:
-            # We need to wait for a grace period before actioning a new state proposal
-            if self.mains_proposed_state != proposed:
-                # Proposing a new state
-                set_proposed(proposed)
+            elif proposed is not None:
+                # We need to wait for a grace period before actioning a new state proposal
+                if self.mains_proposed_state != proposed:
+                    # Proposing a new state
+                    set_proposed(proposed)
 
-            elif self.mains_active != proposed:
-                # Check how long we've been in this proposed state
-                time_in_proposal = int(time.time()) - self.mains_proposal_time
-                if (proposed == True and time_in_proposal >= mains["activate_time"]) or \
-                        (proposed == False and time_in_proposal >= mains["deactivate_time"]):
-                    # Grace expired, action proposal
-                    self.set_mains(proposed)
+                elif self.mains_active != proposed:
+                    # Check how long we've been in this proposed state
+                    time_in_proposal = int(time.time()) - self.mains_proposal_time
+                    if (proposed and time_in_proposal >= mains["activate_time"]) or \
+                            (not proposed and time_in_proposal >= mains["deactivate_time"]):
+                        # Grace expired, action proposal
+                        self.set_mains(proposed)
 
-            else:
-                # Proposing what we're already doing - do nothing
-                pass
+                else:
+                    # Proposing what we're already doing - do nothing
+                    pass
 
     def set_mains(self, active: (bool, None)):
         """
