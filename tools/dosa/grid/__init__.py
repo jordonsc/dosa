@@ -172,7 +172,7 @@ class PowerGrid:
         Set the sensitivity for the automatic mode on the above setting:
           0: "Summer" mode; allow the SOC to get a reasonably low level, maximising solar usage
           1: "Spring"; a middle-ground, enable mains before we lose too much power
-          1: "Winter"; largely cautious, but release mains before we get to 100%
+          2: "Winter"; largely cautious, but release mains before we get to 100%
           3: Safe mode; enable the mains at a high-level, for when you want to use the grid as an emergency backup
         """
         self.mains_config_level = 0
@@ -754,6 +754,8 @@ class PowerGrid:
             if self.mains_active is None:
                 # This would be the first run - set mains to whatever we decide here (no proposal = no mains)
                 logging.info(f"Initial set for mains relay at SOC {self.power_grid.battery_soc}% < {mains['activate']}%")
+                if proposed is None:
+                    proposed = False
                 self.mains_proposed_state = proposed
                 self.mains_proposal_time = int(time.time())
                 self.set_mains(proposed)
